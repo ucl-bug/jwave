@@ -1,6 +1,5 @@
 from jax import numpy as jnp
-from jax import vmap, lax, tree_util
-from jax import lax
+from jax import lax, tree_util
 from jax._src.numpy.lax_numpy import (
     where,
     _sinc_maclaurin,
@@ -8,7 +7,6 @@ from jax._src.numpy.lax_numpy import (
     _check_arraylike,
     _promote_dtypes_inexact,
 )
-from functools import partial
 from matplotlib import pyplot as plt
 
 

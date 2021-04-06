@@ -1,8 +1,7 @@
-import unittest
 from jwave import signal_processing
 from jwave.utils import assert_pytree_isclose
 from jax import numpy as jnp
-import jax
+
 
 ABS_PRECISION = 1e-6
 RELATIVE_PRECISION = 1e-3

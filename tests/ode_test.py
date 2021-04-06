@@ -29,7 +29,8 @@ class PlanetaryOrbitsTest(unittest.TestCase):
         # The function accepts the pair (p, v) to model the second order
         # ODE as a first order ODE (state-space representation)
         # Returns the pair (p', v')
-        f = lambda x, t: (x[1], self.newton_grav_law(G=self.G, M=self.M_sun, r=x[0]))
+        def f(x, t):
+            return (x[1], self.newton_grav_law(G=self.G, M=self.M_sun, r=x[0]))
 
         reference = jnp.array(
             [
@@ -65,8 +66,11 @@ class PlanetaryOrbitsTest(unittest.TestCase):
         # The function accepts the pair (p, v) to model the second order
         # ODE as a first order ODE (state-space representation)
         # Returns the pair (p', v')
-        f_1 = lambda v, t: v
-        f_2 = lambda p, t: self.newton_grav_law(G=self.G, M=self.M_sun, r=p)
+        def f_1(v, t):
+            return v
+
+        def f_2(p, t):
+            return self.newton_grav_law(G=self.G, M=self.M_sun, r=p)
 
         reference = jnp.array(
             [

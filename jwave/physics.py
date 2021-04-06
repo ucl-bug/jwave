@@ -1,9 +1,9 @@
 from jwave import geometry, signal_processing, spectral, ode
-from jax import jit, vmap, lax
+from jax import lax
 from jax import numpy as jnp
 from jax.scipy.sparse.linalg import gmres, bicgstab
 from jax.tree_util import tree_map
-from typing import Tuple, List, Callable
+from typing import Tuple, Callable
 
 from functools import partial
 import jax
@@ -90,9 +90,11 @@ def laplacian_with_pml(
     """
     # Building PML gamma function
     gamma, gamma_prime = _get_gamma_functions(grid, medium, omega, sigma_max)
-    derivative = lambda field, ax, order: spectral.derivative(
-        field, grid, 0, "complex", ax, degree=order
-    )  # 0 is for "unstaggered"
+
+    def derivative(field, ax, order):
+        return spectral.derivative(
+            field, grid, 0, "complex", ax, degree=order
+        )  # 0 is for "unstaggered"
 
     def lapl(field):
         axis = list(range(field.ndim))
@@ -101,8 +103,8 @@ def laplacian_with_pml(
             return derivative(field, ax, 2) / (gamma[ax] ** 2) - gamma_prime[
                 ax
             ] * derivative(field, ax, 1) / (gamma[ax] ** 3)
-            
-        return jnp.sum(jnp.stack([deriv(ax) for ax in axis]),axis=0)
+
+        return jnp.sum(jnp.stack([deriv(ax) for ax in axis]), axis=0)
 
     return jax.jit(lapl)
 
@@ -147,9 +149,11 @@ def heterogeneous_laplacian(
         ```
     """
     gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
-    derivative = lambda field, ax: spectral.derivative(
-        field, grid, 0, "complex", ax, degree=1
-    )  # 0 is for "unstaggered"
+
+    def derivative(field, ax):
+        return spectral.derivative(
+            field, grid, 0, "complex", ax, degree=1
+        )  # 0 is for "unstaggered"
 
     def lapl(field, cmap):
         axis = list(range(field.ndim))
@@ -348,6 +352,7 @@ def get_helmholtz_operator_density(
 
     return helmholtz_operator
 
+
 def get_helmholtz_operator_attenuation(
     grid: geometry.kGrid, medium: geometry.Medium, omega: float
 ):
@@ -369,7 +374,9 @@ def get_helmholtz_operator_attenuation(
 
     def helmholtz_operator(x, omega, medium):
         print(x.shape, medium.attenuation.shape)
-        return laplacian(x) + x * (( (1 + 1j*medium.attenuation)* omega / medium.sound_speed) ** 2)
+        return laplacian(x) + x * (
+            ((1 + 1j * medium.attenuation) * omega / medium.sound_speed) ** 2
+        )
 
     return helmholtz_operator
 
@@ -455,16 +462,16 @@ def solve_helmholtz(
     # Choosing the cheapest Helmholtz operator for the given problem
     if medium.density is None and medium.attenuation is None:
         helmholtz_operator = get_helmholtz_operator(grid, medium, omega)
-        src = - 1j * omega * src
+        src = -1j * omega * src
     elif medium.density is None:  # Heterogeneous attenuation
         helmholtz_operator = get_helmholtz_operator_attenuation(grid, medium, omega)
-        src = ((omega**2)*medium.attenuation - 1j*omega)*src
+        src = ((omega ** 2) * medium.attenuation - 1j * omega) * src
     elif medium.attenuation is None:  # General case
         helmholtz_operator = get_helmholtz_operator_density(grid, medium, omega)
-        src = - 1j * omega * src
+        src = -1j * omega * src
     else:
         helmholtz_operator = get_helmholtz_operator_general(grid, medium, omega)
-        src = ((omega**2)*medium.attenuation - 1j*omega)*src
+        src = ((omega ** 2) * medium.attenuation - 1j * omega) * src
 
     # Fixing parameters
     linear_op = partial(helmholtz_operator, omega=omega, medium=medium)
@@ -623,7 +630,10 @@ def simulate_wave_propagation(
 
 def senstor_to_operator(sensors):
     if sensors is None:
-        measurement_operator = lambda x: x  # identity operator
+
+        def measurement_operator(x):
+            return x  # identity operator
+
     elif isinstance(sensors, geometry.Sensors):
         # Define the application of the porjection matrix at the sensors
         # locations as a function

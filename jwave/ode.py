@@ -114,8 +114,8 @@ def semi_implicit_euler(f, g, x0, y0, dt, output_steps, timestep_correction=1):
   ```
 
   The structure of $`x`$ is inferred by $`x^{(0)}`$, which can be any pytree.
-  The output of $`f`$ should be compatible with $`x^{(0)}`$ (must have the same 
-  [pytree](https://jax.readthedocs.io/en/latest/pytrees.html) structure). A 
+  The output of $`f`$ should be compatible with $`x^{(0)}`$ (must have the same
+  [pytree](https://jax.readthedocs.io/en/latest/pytrees.html) structure). A
   symmetric argument holds for $`g`$.
 
   `output_steps` must be the index of the steps to save. $`\kappa`$ is `timestep_correction`.
@@ -129,7 +129,7 @@ def semi_implicit_euler(f, g, x0, y0, dt, output_steps, timestep_correction=1):
       y0 (pytree): Second initial value
       dt (float): Stepsize in seconds
       output_steps ([int]): Iterations of the euler solver to save
-      timestep_correction (int, optional): This scales the dt by a given factor 
+      timestep_correction (int, optional): This scales the dt by a given factor
           when applying the euler step. Defaults to 1.
 
   Returns:
@@ -182,7 +182,7 @@ def generalized_semi_implicit_euler(
     dt: float,
     output_steps: jnp.ndarray,
     backprop=False,
-    checkpoint=False
+    checkpoint=False,
 ):
     r"""This functions works in the same way as the
     [`semi_implicit_euler`](#jwave.ode.semi_implicit_euler) integrator,
@@ -267,7 +267,16 @@ def generalized_semi_implicit_euler(
 
     if backprop:
         return _generalized_semi_implicit_euler_with_vjp(
-            params, f, g, measurement_operator, alpha, x0, y0, dt, output_steps, checkpoint
+            params,
+            f,
+            g,
+            measurement_operator,
+            alpha,
+            x0,
+            y0,
+            dt,
+            output_steps,
+            checkpoint,
         )
     else:
         return _generalized_semi_implicit_euler(
