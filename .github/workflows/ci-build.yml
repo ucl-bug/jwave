@@ -28,7 +28,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8
         pip install -r requirements.txt
-        pip install -r dev_requirements.txt
+        pip install -r test_requirements.txt
     - name: Installing j-Wave
       run: pip install -e .
     - name: Lint with flake8

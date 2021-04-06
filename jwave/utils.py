@@ -44,7 +44,7 @@ def quickshow_helmholtz_results(medium, field):
 def assert_pytree_isclose(a, b, relative_precision=1e-4, abs_precision=1e-6):
     leaves_reference = tree_util.tree_leaves(a)
     leaves_output = tree_util.tree_leaves(b)
-    assert len(leaves_output) != len(leaves_reference)
+    assert len(leaves_output) == len(leaves_reference)
 
     is_close = map(
         lambda x: jnp.allclose(x[0], x[1], relative_precision, abs_precision),
