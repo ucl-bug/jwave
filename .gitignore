@@ -1,0 +1,12 @@
+jwave/_experiments/*
+docs/examples/_experiments
+_experiments
+docs/examples/_data
+
+*.egg-info*
+.vscode/*
+*__pycache__*
+*.ipynb_checkpoints
+*site
+*.DS_Store
+.coverage

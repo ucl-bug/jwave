@@ -1,0 +1,71 @@
+site_name: j-Wave
+
+theme:
+  name: "material"
+  features:
+    - navigation.tabs
+    - navigation.instant
+
+nav:
+  - Home: index.md
+  - Quickstart: 
+    - Install: install.md
+    - Getting started: examples/first_example.ipynb
+  - Models:
+    - Helmholtz solver: helmholtz_notes.md
+  - Examples:
+    - Simulations:
+      - Monopole source in homogeneous media: examples/monopole_homogeneous.ipynb
+      - Monopole sources in heterogeneous media: examples/monopole_heterogeneous.ipynb
+      - Helmholtz equation in heterogeneous media: examples/monopole_helmholtz_problem.ipynb
+      - 3D heterogeneous Helmholtz equation: examples/3d_helmholtz.ipynb
+      - Planet around star: examples/planet_motion.ipynb
+      - Calling k-Wave functions: examples/include_matlab_computations.ipynb
+    - Optimization:
+      - Differentiate solver by unrolling: examples/differentiate_trough_solver.ipynb
+      - Differentiate Helmholtz problem: examples/helmholtz_solver_differentiable.ipynb
+      - Optimize homogeneous skull properties: examples/homog_skull_properties_optimization.ipynb
+      - Gradients of time-domain simulations: examples/differentiate_time_domain_simulations.ipynb
+      - Full wave inversion: examples/FWI.ipynb
+  - API: 
+    - geometry: api_geometry.md
+    - matlab: api_matlab.md
+    - ode: api_ode.md
+    - physics: api_physics.md
+    - signal_processing: api_signal_processing.md
+    - spectral: api_spectral.md
+    - utils: api_utils.md
+  - Develop:
+    - Develop: develop.md
+    - Test coverage report: coverage.md
+
+plugins:
+  - mkdocs-jupyter
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          rendering:
+            show_source: true 
+      custom_templates: templates
+      watch:
+        - jwave
+  - search
+  # - with-pdf
+  - coverage:
+      page_name: coverage  # default
+      html_report_dir: docs/htmlcov  # default
+
+markdown_extensions:
+  - toc:
+      toc_depth: 3
+  - markdown_katex:
+      no_inline_svg: True
+      insert_fonts_css: True
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - admonition
+  - footnotes
+
+extra_css:
+  - stylesheets/extra.css

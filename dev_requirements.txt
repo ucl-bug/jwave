@@ -1,0 +1,12 @@
+pytest
+jupyter
+tqdm
+mkdocs
+mkdocs-jupyter
+mkdocstrings
+mkdocs-material
+markdown-katex
+mkdocs-coverage
+coverage-badge
+pybadges
+auto-changelog
