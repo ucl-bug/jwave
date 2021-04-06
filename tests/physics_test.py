@@ -34,8 +34,12 @@ def test_if_helmholtz_problem_runs():
     src_field = src_field.at[48, 16].set(1.0)
 
     # Solve
-    _ = physics.solve_helmholtz(grid, medium, src_field, omega, method="gmres", maxiter=50).block_until_ready()
-    _ = physics.solve_helmholtz(grid, medium, src_field, omega, method="bicgstab", maxiter=50).block_until_ready()
+    _ = physics.solve_helmholtz(
+        grid, medium, src_field, omega, method="gmres", maxiter=50
+    ).block_until_ready()
+    _ = physics.solve_helmholtz(
+        grid, medium, src_field, omega, method="bicgstab", maxiter=50
+    ).block_until_ready()
 
 
 def test_if_simple_problem_runs():

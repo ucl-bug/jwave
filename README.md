@@ -1,7 +1,7 @@
 # jWave
 
 ![Test passing](docs/images/build.svg)
-![Test coverage](docs/images/coverage_badge.svg)
+[![codecov](https://codecov.io/gh/astanziola/jwave/branch/main/graph/badge.svg?token=6J03OMVJS1)](https://codecov.io/gh/astanziola/jwave)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 
 jWave is a library for performing pseudospectral simulations of acoustic signals. Is heavily inspired by [k-Wave](http://www.k-wave.org/) (in its essence, is a port of k-Wave in JAX), and its intented to be used as a collection of modular blocks that can be easily included into any machine learning pipeline.

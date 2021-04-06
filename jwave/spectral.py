@@ -1,18 +1,15 @@
 import jax.numpy as jnp
-from jax import grad, jit, vmap
-from jax import random
-import jax
+from jax import jit
 from functools import partial
-from jax.ops import index_update, index, index_add
-import time
 from jwave import geometry
-from typing import Tuple, List, Callable
 
 # TODO: Use map / fori / scan instead of for loops
 # TODO: speed tests
 
 
-def diag_nabla_with_k_op(x, grid, staggered, domain):
+def diag_nabla_with_k_op(
+    x: jnp.ndarray, grid: geometry.kGrid, staggered: int, domain: str
+):
     r = []
     for i in range(x.shape[0]):
         r.append(derivative_with_k_op(x[i], grid, staggered, domain, i))
@@ -96,9 +93,13 @@ def _derivative_with_k_op_bwd(domain_axes, domain, res, g):
     return (grad_x, jnp.zeros_like(k))
 
 
-_derivative_with_k_op.defvjp(_derivative_with_k_op_fwd, _derivative_with_k_op_bwd)
+_derivative_with_k_op.defvjp(
+    _derivative_with_k_op_fwd, _derivative_with_k_op_bwd
+)
 """
 # --------------------------------------------
+
+
 def plain_derivative(x, grid, staggered, domain, axis, degree):
     # Work on last axis for elementwise product broadcasting
     x = jnp.moveaxis(x, axis, -1)
@@ -157,7 +158,10 @@ _derivative_algorithm_last_axis.defvjp(
     _derivative_algorithm_last_axis_fwd, _derivative_algorithm_last_axis_bwd
 )
 """
+
 # --------------------------------------------
+
+
 @partial(jit, static_argnums=(2, 3))
 def gradient(x, grid, staggered, domain):
     grads = []

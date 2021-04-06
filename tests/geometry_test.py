@@ -22,7 +22,7 @@ def test_make_time_against_kwave():
         sound_speed=sound_speed, density=1.0, attenuation=0, pml_size=0
     )
 
-    reference_time = geometry.TimeAxis(dt=0.00133333333333333, t_end=0.1)
+    reference_time = geometry.TimeAxis(dt=jnp.array([0.00133333333333333]), t_end=0.1)
 
     # Check
     grid = geometry.kGrid.make_grid(N, dx)

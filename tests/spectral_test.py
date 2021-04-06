@@ -1,4 +1,3 @@
-import unittest
 from jwave import spectral, geometry
 from jwave.utils import assert_pytree_isclose
 from jax import numpy as jnp
@@ -73,9 +72,14 @@ def test_derivative_adjoint():
 
     # Check (d*a,b) = (a,db)
     grid = geometry.kGrid.make_grid(N, dx)
-    d = lambda x: spectral.derivative(x, grid, 0, "real", 0, degree=2)
+
+    def d(x):
+        return spectral.derivative(x, grid, 0, "real", 0, degree=2)
+
     _, d_adj_raw = jax.vjp(d, b)
-    d_adj = lambda x: d_adj_raw(x)[0]
+
+    def d_adj(x):
+        return d_adj_raw(x)[0]
 
     db = d(b)
     d_adj_a = d_adj(a)
@@ -83,7 +87,8 @@ def test_derivative_adjoint():
     dot_product_1 = jnp.sum(jnp.conj(d_adj_a) * b)
     dot_product_2 = jnp.sum(jnp.conj(a) * db)
 
-    rel_error = lambda x, y: jnp.abs((x - y) / (x))
+    def rel_error(x, y):
+        return jnp.abs((x - y) / (x))
 
     assert rel_error(dot_product_1, dot_product_2) < 1e-4
 
@@ -106,9 +111,13 @@ def test_derivative_with_kspaceop_adjoint():
     grid = grid.to_staggered()
     grid = grid.apply_kspace_operator(jnp.amin(medium.sound_speed), time_array.dt)
 
-    d = lambda x: spectral.derivative(x, grid, 0, "real", 0, kspace_op=True)
+    def d(x):
+        return spectral.derivative(x, grid, 0, "real", 0, kspace_op=True)
+
     _, d_adj_raw = jax.vjp(d, jnp.zeros_like(b))
-    d_adj = lambda x: d_adj_raw(x)[0]
+
+    def d_adj(x):
+        return d_adj_raw(x)[0]
 
     db = d(b)
     d_adj_a = d_adj(a)
@@ -116,7 +125,8 @@ def test_derivative_with_kspaceop_adjoint():
     dot_product_1 = jnp.sum(d_adj_a * b)
     dot_product_2 = jnp.sum(a * db)
 
-    rel_error = lambda x, y: jnp.abs((x - y) / (x))
+    def rel_error(x, y):
+        return jnp.abs((x - y) / (x))
 
     assert rel_error(dot_product_1, dot_product_2) < 1e-4
 
