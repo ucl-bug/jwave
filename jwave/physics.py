@@ -158,10 +158,10 @@ def heterogeneous_laplacian(
     def lapl(field, cmap):
         axis = list(range(field.ndim))
 
-        L = jnp.zeros_like(field)
-        for ax in axis:
-            L += derivative(cmap * (derivative(field, ax) / gamma[ax]), ax) / gamma[ax]
-        return L
+        def deriv(ax):
+            return derivative(cmap * (derivative(field, ax) / gamma[ax]), ax) / gamma[ax]
+
+        return jnp.sum(jnp.stack([deriv(ax) for ax in axis]), axis=0)
 
     return jax.jit(lapl)
 
@@ -207,17 +207,18 @@ def generalized_laplacian(
     """
     gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
 
-    derivative = (
-        lambda field, ax: spectral.derivative(field, grid, 0, "complex", ax, degree=1)
-        / gamma[ax]
-    )  # 0 is for "unstaggered"
+    def derivative(field, ax):
+        # 0 is for "unstaggered"
+        return spectral.derivative(field, grid, 0, "complex", ax, degree=1) / gamma[ax]
 
-    v_derivative_axis = jax.vmap(derivative, in_axes=(None, 0))
-    v_derivative = jax.vmap(derivative, in_axes=(0, 0))
+    def v_derivative_axis(field, axis):
+        return jnp.stack([derivative(field, ax) for ax in axis])
+
+    def v_derivative(field, axis):
+        return jnp.stack([derivative(field[ax], ax) for ax in axis])
 
     def lapl(field, rho0, tau, omega):
         axis = list(range(field.ndim))
-
         inv_rho_nabla_p = v_derivative_axis(field, axis)
         rho_nabla = rho0 * jnp.sum(v_derivative(inv_rho_nabla_p, axis), axis=0)
         nabla_rho = jnp.sum(v_derivative_axis(rho0, axis) * inv_rho_nabla_p, axis=0)

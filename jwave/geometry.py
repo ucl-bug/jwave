@@ -62,7 +62,7 @@ class kGrid(NamedTuple):
         axis = [spatial_axis(n, delta) for n, delta in zip(N, dx)]
 
         def k_axis(n, d):
-            jnp.fft.fftfreq(n, d) * 2 * jnp.pi
+            return jnp.fft.fftfreq(n, d) * 2 * jnp.pi
 
         k_vec = [k_axis(n, delta) for n, delta in zip(N, dx)]
         cell_area = reduce(lambda x, y: x * y, dx)
