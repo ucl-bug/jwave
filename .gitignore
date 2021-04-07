@@ -10,3 +10,4 @@ docs/examples/_data
 *site
 *.DS_Store
 .coverage
+coverage.xml

@@ -1,6 +1,5 @@
 # jWave
 
-![Test passing](docs/images/build.svg)
 [![codecov](https://codecov.io/gh/astanziola/jwave/branch/main/graph/badge.svg?token=6J03OMVJS1)](https://codecov.io/gh/astanziola/jwave)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 
@@ -70,6 +69,7 @@ If the above command fails, you may need to install some extra packages via `pip
 ### Projects
 
 1. [`ADSeismic.jl`](https://github.com/kailaix/ADSeismic.jl): a finite difference acoustic simulator with support for AD and JIT compilation in Julia.
+2. [`stride`](https://github.com/trustimaging/stride): a general optimisation framework for medical ultrasound tomography.
 
 ### Papers
 1. [`Adler et al. 2021`](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9363496): Deep Learning for Seismic Inverse Problems
