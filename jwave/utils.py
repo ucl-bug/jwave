@@ -10,7 +10,7 @@ from jax._src.numpy.lax_numpy import (
 from matplotlib import pyplot as plt
 
 
-def safe_sinc(x):
+def safe_sinc(x: jnp.ndarray) -> jnp.ndarray:
     _check_arraylike("sinc", x)
     (x,) = _promote_dtypes_inexact(x)
     eq_zero = lax.eq(x, lax._const(x, 0))
