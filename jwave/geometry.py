@@ -3,6 +3,7 @@ from functools import reduce
 import jax
 from typing import NamedTuple, Tuple, List
 import numpy as np
+from jwave.utils import safe_sinc
 
 
 class kGrid(NamedTuple):
@@ -134,10 +135,10 @@ class kGrid(NamedTuple):
         tuple_to_dict = self._asdict()
 
         K = jnp.stack(jnp.meshgrid(*self.k_vec, indexing="ij"))
-        # k_magnitude = jnp.sqrt(jnp.sum(K ** 2, 0))
+        k_magnitude = jnp.sqrt(jnp.sum(K ** 2, 0))
 
         # TODO: Check why it seems to work better without k_space_op
-        k_space_op = 1.0  # safe_sinc(c_ref * k_magnitude * dt/(2*jnp.pi))
+        k_space_op = safe_sinc(c_ref * k_magnitude * dt / (2 * jnp.pi))  # 1.0  #
         modified_kgrid = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
 
         # Making staggered versions
