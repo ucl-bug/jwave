@@ -159,7 +159,9 @@ def heterogeneous_laplacian(
         axis = list(range(field.ndim))
 
         def deriv(ax):
-            return derivative(cmap * (derivative(field, ax) / gamma[ax]), ax) / gamma[ax]
+            return (
+                derivative(cmap * (derivative(field, ax) / gamma[ax]), ax) / gamma[ax]
+            )
 
         return jnp.sum(jnp.stack([deriv(ax) for ax in axis]), axis=0)
 
@@ -374,7 +376,6 @@ def get_helmholtz_operator_attenuation(
     laplacian = laplacian_with_pml(grid, medium, omega)
 
     def helmholtz_operator(x, omega, medium):
-        print(x.shape, medium.attenuation.shape)
         return laplacian(x) + x * (
             ((1 + 1j * medium.attenuation) * omega / medium.sound_speed) ** 2
         )
@@ -399,11 +400,11 @@ def get_helmholtz_operator_general(
     Returns:
         [type]: [description]
     """
-    g_laplacian = generalized_laplacian(grid, medium, omega)
+    h_laplacian = heterogeneous_laplacian(grid, medium, omega)
 
     def helmholtz_operator(x, omega, medium):
-        return g_laplacian(x, medium.density, medium.attenuation, omega) + x * (
-            (omega / medium.sound_speed) ** 2
+        return h_laplacian(x, 1.0 / medium.density) + x * (
+            ((1 + 1j * medium.attenuation) * (omega / medium.sound_speed)) ** 2
         )
 
     return helmholtz_operator
@@ -500,7 +501,7 @@ def solve_helmholtz(
             x0=guess,  # jnp.reshape(guess, (-1,)),
             tol=tol,
             maxiter=maxiter,
-            M=None,
+            **kwgs,
         )
 
     return field
@@ -565,7 +566,7 @@ def simulate_wave_propagation(
     # Get PML
     pml_alpha = get_time_domain_pml(
         medium.pml_size,
-        alpha_max=5 / (min(grid.dx) / jnp.amin(medium.sound_speed)),
+        alpha_max=4,  # 5 / (min(grid.dx) / jnp.amin(medium.sound_speed)),
         dimensions=grid.N,
     )
 
@@ -575,6 +576,12 @@ def simulate_wave_propagation(
     # Represents sensors as a measurement operator on the whole field
     measurement_operator = senstor_to_operator(sensors)
 
+    # Scale mass sources
+    c_sq_at_sources = jnp.expand_dims(c_sq[sources.positions], axis=-1)
+    source_signals = (
+        sources.signals * 2 / (c_sq_at_sources * grid.dx[0])
+    )  # TODO: different scalings for non-isotropic grids
+
     # Get steps to be saved
     if output_t_axis is None:
         output_t_axis = time_array
@@ -582,7 +589,7 @@ def simulate_wave_propagation(
         t = jnp.arange(0, output_t_axis.t_end, output_t_axis.dt)
     else:
         t = jnp.arange(0, output_t_axis.t_end, output_t_axis.dt)
-    output_steps = (t / output_t_axis.dt).astype(jnp.int32)
+    output_steps = (t / dt).astype(jnp.int32)
 
     # Integrate wave equation
     N = grid.N
@@ -607,10 +614,19 @@ def simulate_wave_propagation(
 
         src = jnp.zeros(rho_update.shape[1:])
         idx = (t / dt).round().astype(jnp.int32)
-        signals = sources.signals[:, idx]
+        signals = source_signals[:, idx]
 
         src = src.at[sources.positions].add(signals)
+        # TODO: This should include smoothing as below:
+        #
         return rho_update + signal_processing.smooth(src) / rho_update.shape[0]
+        #
+        # however, this introduces a scaling factor on the source signal compared
+        # to kWave. Should be investigated/ Alternatively, use
+        #
+        # return rho_update + src / rho_update.shape[0]
+        #
+        # but the simulation will probably contain visual artifacts.
 
     # Checkpoint functions to save memory if requested
     fields = ode.generalized_semi_implicit_euler(

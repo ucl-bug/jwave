@@ -1,6 +1,7 @@
 import matlab.engine
 import os
 import io
+from jax.numpy import ndarray
 
 
 class Matlab(object):
@@ -109,6 +110,8 @@ class Matlab(object):
             value (Numeric): Array of number to save
             variable_name (str): Name of the variable to be created in MATLAB.
         """
+        if isinstance(value, ndarray):
+            value = value.tolist()
         if isinstance(value, list):  # List transformed to matlab array
             value = matlab.double(value)
         self._engine.workspace[variable_name] = value
