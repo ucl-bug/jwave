@@ -7,7 +7,7 @@ with open("jwave/version.py") as f:
 __version__ = _dct["__version__"]
 
 setup(
-    name="j-Wave",
+    name="jwave",
     version=__version__,
     description="Fast differentiable pseudospectral acoustic simulations",
     author="Antonio Stanziola, UCL BUG",
