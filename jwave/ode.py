@@ -305,7 +305,12 @@ def _generalized_semi_implicit_euler(
         x, start = x_t
         end = start + i
 
-        y = jax.lax.fori_loop(start, end, euler_step, x)
+        y = jax.lax.fori_loop(
+            start, 
+            end, 
+            jax.named_call(euler_step, name='euler_step'),
+            x
+        )
         return (y, end), measurement_operator(y)
 
     jumps = jnp.concatenate([jnp.diff(output_steps), jnp.array([1])])

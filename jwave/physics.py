@@ -4,6 +4,8 @@ from jax import numpy as jnp
 from jax.scipy.sparse.linalg import gmres, bicgstab
 from jax.tree_util import tree_map
 from typing import Tuple, Callable
+from numpy import arange as nparange
+from time import time
 
 from functools import partial
 import jax
@@ -509,11 +511,9 @@ def solve_helmholtz(
 
 def d_velocity_dt(rho, c_sq, grid, rho_0):
     p = c_sq * jnp.sum(rho, 0)
-
-    du = jax.vmap(
-        lambda ax: spectral.derivative_with_k_op(p, grid, -1, "real", ax), 0, 0
-    )(jnp.arange(-rho.shape[0], 0, 1))
-    return -du / rho_0
+    axes = nparange(-rho.shape[0], 0, 1)
+    dp = spectral.derivative_with_k_op(p, grid, -1, "real", axes)
+    return -dp / rho_0
 
 
 def d_density_dt(u, grid, rho_0):
@@ -537,7 +537,7 @@ def simulate_wave_propagation(
     output_t_axis=None,
     backprop=False,
     guess=None,
-    checkpoint=False,
+    checkpoint=False
 ):
     """Simulates wave propagation
 
@@ -586,9 +586,9 @@ def simulate_wave_propagation(
     if output_t_axis is None:
         output_t_axis = time_array
         output_steps = output_t_axis
-        t = jnp.arange(0, output_t_axis.t_end, output_t_axis.dt)
+        t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)
     else:
-        t = jnp.arange(0, output_t_axis.t_end, output_t_axis.dt)
+        t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)
     output_steps = (t / dt).astype(jnp.int32)
 
     # Integrate wave equation

@@ -20,7 +20,6 @@ nav:
       - Helmholtz equation in heterogeneous media: examples/monopole_helmholtz_problem.ipynb
       - 3D heterogeneous Helmholtz equation: examples/3d_helmholtz.ipynb
       - Planet around star: examples/planet_motion.ipynb
-      - Calling k-Wave functions: examples/include_matlab_computations.ipynb
     - Optimization:
       - Differentiate solver by unrolling: examples/differentiate_trough_solver.ipynb
       - Differentiate Helmholtz problem: examples/helmholtz_solver_differentiable.ipynb
