@@ -62,20 +62,16 @@ def derivative_with_k_op(x, grid, staggered, domain, axis):
     n_dims = len(K) + 1
     domain_axes = list(range(-1, -n_dims, -1))
 
-    return _derivative_with_k_op(x, K[axis], domain_axes, domain)
-
-
-# @partial(jax.custom_vjp, nondiff_argnums=(2, 3))
-def _derivative_with_k_op(x, K, domain_axes, domain):
-    # Switch fft according to signal domain (real, complex)
+    # Make fft
     Fx = jnp.fft.fftn(x, axes=domain_axes)
-    k = K
-    kx = jnp.fft.ifftn(k * Fx, axes=domain_axes)
+
+    # batched filtering
+    kx = jnp.fft.ifftn(K[axis] * Fx, axes=domain_axes)
+
     if domain == "real":
         return kx.real
     else:
         return kx
-
 
 """
 # VJP rule ready, but crashes with linear_transpose() required
