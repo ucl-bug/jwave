@@ -523,7 +523,7 @@ def d_density_dt(u, grid, rho_0):
             lambda x, ax: spectral.derivative_with_k_op(x, grid, 1, ax),
             (0, 0),
             0,
-        )(u, jnp.arange(-u.shape[0], 0, 1)).real
+        )(u, jnp.arange(-u.shape[0], 0, 1))
     )
 
 
@@ -601,6 +601,8 @@ def simulate_wave_propagation(
 
     params = {"rho_0": medium.density, "c_sq": c_sq}
 
+    smooth = signal_processing.smoothing_filter(jnp.zeros(N))
+
     def du_dt(params, rho, t):
         rho_0 = params["rho_0"]
         c_sq = params["c_sq"]
@@ -611,19 +613,19 @@ def simulate_wave_propagation(
         rho_0 = params["rho_0"]
         rho_update = d_density_dt(u, grid, rho_0)
 
-        src = jnp.zeros(rho_update.shape[1:])
+        src = jnp.zeros(N)
         idx = (t / dt).round().astype(jnp.int32)
-        signals = source_signals[:, idx]
+        signals = source_signals[:, idx] / rho_update.shape[0]
 
         src = src.at[sources.positions].add(signals)
         # TODO: This should include smoothing as below:
         #
-        return rho_update + signal_processing.smooth(src) / rho_update.shape[0]
+        #return rho_update + smooth(src) / rho_update.shape[0]
         #
         # however, this introduces a scaling factor on the source signal compared
         # to kWave. Should be investigated/ Alternatively, use
         #
-        # return rho_update + src / rho_update.shape[0]
+        return rho_update + src 
         #
         # but the simulation will probably contain visual artifacts.
 
