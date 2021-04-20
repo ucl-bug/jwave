@@ -95,7 +95,7 @@ def laplacian_with_pml(
 
     def derivative(field, ax, order):
         return spectral.derivative(
-            field, grid, 0, "complex", ax, degree=order
+            field, grid, 0, ax, degree=order
         )  # 0 is for "unstaggered"
 
     def lapl(field):
@@ -154,7 +154,7 @@ def heterogeneous_laplacian(
 
     def derivative(field, ax):
         return spectral.derivative(
-            field, grid, 0, "complex", ax, degree=1
+            field, grid, 0, ax, degree=1
         )  # 0 is for "unstaggered"
 
     def lapl(field, cmap):
@@ -213,7 +213,7 @@ def generalized_laplacian(
 
     def derivative(field, ax):
         # 0 is for "unstaggered"
-        return spectral.derivative(field, grid, 0, "complex", ax, degree=1) / gamma[ax]
+        return spectral.derivative(field, grid, 0, ax, degree=1) / gamma[ax]
 
     def v_derivative_axis(field, axis):
         return jnp.stack([derivative(field, ax) for ax in axis])
@@ -405,7 +405,7 @@ def get_helmholtz_operator_general(
     h_laplacian = heterogeneous_laplacian(grid, medium, omega)
 
     def helmholtz_operator(x, omega, medium):
-        return h_laplacian(x, 1.0 / medium.density) + x * (
+        return medium.density*h_laplacian(x, 1.0 / medium.density) + x * (
             ((1 + 1j * medium.attenuation) * (omega / medium.sound_speed)) ** 2
         )
 
@@ -512,7 +512,7 @@ def solve_helmholtz(
 def d_velocity_dt(rho, c_sq, grid, rho_0):
     p = c_sq * jnp.sum(rho, 0)
     axes = nparange(-rho.shape[0], 0, 1)
-    dp = spectral.derivative_with_k_op(p, grid, -1, "real", axes)
+    dp = spectral.derivative_with_k_op(p, grid, -1, axes)
     return -dp / rho_0
 
 
@@ -520,7 +520,7 @@ def d_density_dt(u, grid, rho_0):
     return (
         -rho_0
         * jax.vmap(
-            lambda x, ax: spectral.derivative_with_k_op(x, grid, 1, "real", ax),
+            lambda x, ax: spectral.derivative_with_k_op(x, grid, 1, ax),
             (0, 0),
             0,
         )(u, jnp.arange(-u.shape[0], 0, 1)).real
@@ -585,7 +585,6 @@ def simulate_wave_propagation(
     # Get steps to be saved
     if output_t_axis is None:
         output_t_axis = time_array
-        output_steps = output_t_axis
         t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)
     else:
         t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)

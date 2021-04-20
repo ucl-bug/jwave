@@ -72,7 +72,10 @@ def smooth(x: jnp.ndarray) -> jnp.ndarray:
     """
     dimensions = x.shape
     axis = [blackman(x) for x in dimensions]
-    filter = jnp.fft.fftshift(jnp.outer(*axis))
+    if len(dimensions) == 1:
+        filter = jnp.fft.fftshift(axis[0])
+    else:
+        filter = jnp.fft.fftshift(jnp.outer(*axis))
     return jnp.fft.ifftn(filter * jnp.fft.fftn(x)).real
 
 

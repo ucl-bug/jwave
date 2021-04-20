@@ -8,7 +8,7 @@ from jwave import geometry
 
 
 def diag_nabla_with_k_op(
-    x: jnp.ndarray, grid: geometry.kGrid, staggered: int, domain: str
+    x: jnp.ndarray, grid: geometry.kGrid, staggered: int
 ):
     r = []
     for i in range(x.shape[0]):
@@ -20,7 +20,6 @@ def derivative(
     x: jnp.ndarray,
     grid: geometry.kGrid,
     staggered: int,
-    domain: str,
     axis: int,
     kspace_op=False,
     degree: int = 1,
@@ -32,7 +31,6 @@ def derivative(
         x (jnp.ndarray): [description]
         grid (geometry.kGrid): [description]
         staggered (int): [description]
-        domain (str): [description]
         axis (int): [description]
         kspace_op (Bool, optional): [description]. Defaults to False.
         degree (int, optional): [description]. Defaults to 1.
@@ -43,14 +41,14 @@ def derivative(
     if kspace_op:
         # TODO: warn user about the fact that the degree and parameter
         # is ignored
-        dx = derivative_with_k_op(x, grid, staggered, domain, axis)
+        dx = derivative_with_k_op(x, grid, staggered, axis)
     else:
-        dx = plain_derivative(x, grid, staggered, domain, axis, degree)
+        dx = plain_derivative(x, grid, staggered, axis, degree)
     return dx
 
 
 # --------------------------------------------
-def derivative_with_k_op(x, grid, staggered, domain, axis):
+def derivative_with_k_op(x, grid, staggered, axis):
     # Selecting operator
     if staggered == 0:
         K = 1j * grid.k_with_kspaceop["plain"]
@@ -67,11 +65,7 @@ def derivative_with_k_op(x, grid, staggered, domain, axis):
 
     # batched filtering
     kx = jnp.fft.ifftn(K[axis] * Fx, axes=domain_axes)
-
-    if domain == "real":
-        return kx.real
-    else:
-        return kx
+    return jnp.asarray(kx, x.dtype)
 
 """
 # VJP rule ready, but crashes with linear_transpose() required
@@ -96,7 +90,7 @@ _derivative_with_k_op.defvjp(
 # --------------------------------------------
 
 
-def plain_derivative(x, grid, staggered, domain, axis, degree):
+def plain_derivative(x, grid, staggered, axis, degree):
     # Work on last axis for elementwise product broadcasting
     x = jnp.moveaxis(x, axis, -1)
 
@@ -108,7 +102,7 @@ def plain_derivative(x, grid, staggered, domain, axis, degree):
     elif staggered == 1:
         k = 1j * grid.k_staggered["forward"][axis]
 
-    dx = _derivative_algorithm_last_axis(x, k, degree, domain)
+    dx = _derivative_algorithm_last_axis(x, k, degree)
 
     # Back to original axis
     kx = jnp.moveaxis(dx, -1, axis)
@@ -116,14 +110,11 @@ def plain_derivative(x, grid, staggered, domain, axis, degree):
 
 
 # @partial(jax.custom_vjp, nondiff_argnums=(2,3))
-def _derivative_algorithm_last_axis(x, k, degree, domain):
+def _derivative_algorithm_last_axis(x, k, degree):
     k = k ** degree
     Fx = jnp.fft.fft(x, axis=-1)
     kx = jnp.fft.ifft(k * Fx, axis=-1)
-    if domain == "real":
-        return kx.real
-    else:
-        return kx
+    return jnp.asarray(kx, x.dtype)
 
 
 """
