@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from jax import jit
+from jax import jit, eval_shape
 from functools import partial
 from jwave import geometry
 
@@ -12,7 +12,7 @@ def diag_nabla_with_k_op(
 ):
     r = []
     for i in range(x.shape[0]):
-        r.append(derivative_with_k_op(x[i], grid, staggered, domain, i))
+        r.append(derivative_with_k_op(x[i], grid, staggered, i))
     return jnp.stack(r, axis=0)
 
 
@@ -61,11 +61,19 @@ def derivative_with_k_op(x, grid, staggered, axis):
     domain_axes = list(range(-1, -n_dims, -1))
 
     # Make fft
-    Fx = jnp.fft.fftn(x, axes=domain_axes)
-
-    # batched filtering
-    kx = jnp.fft.ifftn(K[axis] * Fx, axes=domain_axes)
-    return jnp.asarray(kx, x.dtype)
+    if x.dtype != jnp.complex64 or x.dtype != jnp.complex128:
+        # Use real fft
+        Fx = eval_shape(lambda x: jnp.fft.rfftn(x, axes=domain_axes), x)
+        K = K[axis,:Fx.shape[0]]
+        def deriv_fun(x):
+            return jnp.fft.irfftn(
+                K * jnp.fft.rfftn(x, axes=domain_axes), 
+                axes=domain_axes
+            )
+    else:
+        def deriv_fun(x):
+            return jnp.fft.ifftn(K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes)
+    return deriv_fun
 
 """
 # VJP rule ready, but crashes with linear_transpose() required
@@ -112,6 +120,17 @@ def plain_derivative(x, grid, staggered, axis, degree):
 # @partial(jax.custom_vjp, nondiff_argnums=(2,3))
 def _derivative_algorithm_last_axis(x, k, degree):
     k = k ** degree
+    # Make fft
+    if x.dtype != jnp.complex64 or x.dtype != jnp.complex128:
+        # Use real fft
+        Fx = jnp.fft.rfft(x, axis=-1)
+        k = k[:Fx.shape[-1]]
+        dx = jnp.fft.irfft(k * Fx, axis=-1)
+    else:
+        Fx = jnp.fft.fft(x, axis=-1)
+        dx = jnp.fft.ifft(k * Fx, axis=-1)
+    return dx
+
     Fx = jnp.fft.fft(x, axis=-1)
     kx = jnp.fft.ifft(k * Fx, axis=-1)
     return jnp.asarray(kx, x.dtype)
