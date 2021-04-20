@@ -303,4 +303,5 @@ class TimeAxis(NamedTuple):
             t_end = jnp.sqrt(
                 sum((x[-1] - x[0]) ** 2 for x in grid.space_axis)
             ) / jnp.min(medium.sound_speed)
-        return TimeAxis(dt=dt, t_end=t_end)
+        return TimeAxis(
+            dt=np.array(dt), t_end=np.array(t_end))
