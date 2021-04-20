@@ -33,7 +33,7 @@ function [p, exec_time] = kwave_solution(...
     % create the time array
     kgrid.setTime(Nt, dt);
     
-    source.p_mask = zeros(L);
+    source.p_mask = zeros(Nx, Ny);
     source.p_mask(source_location(1)+1,source_location(2)+1) = 1;
     
     % define the input signal
@@ -43,6 +43,9 @@ function [p, exec_time] = kwave_solution(...
     sensor.record_start_index = Nt - 2;
 
     % input arguments
+    disp(size(source.p_mask))
+    disp([Nx, Ny])
+    disp(size(sos_map))
     input_args = {'CartInterp', 'nearest', 'PMLSize', 30, 'DataPath','/tmp/', 'DataName','jwave', 'DeleteData', false};
 
     % run the simulation
