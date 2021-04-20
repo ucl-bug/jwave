@@ -95,7 +95,7 @@ def laplacian_with_pml(
 
     def derivative(field, ax, order):
         return spectral.derivative(
-            field, grid, 0, "complex", ax, degree=order
+            field, grid, 0, ax, degree=order
         )  # 0 is for "unstaggered"
 
     def lapl(field):
@@ -154,7 +154,7 @@ def heterogeneous_laplacian(
 
     def derivative(field, ax):
         return spectral.derivative(
-            field, grid, 0, "complex", ax, degree=1
+            field, grid, 0, ax, degree=1
         )  # 0 is for "unstaggered"
 
     def lapl(field, cmap):
@@ -213,7 +213,7 @@ def generalized_laplacian(
 
     def derivative(field, ax):
         # 0 is for "unstaggered"
-        return spectral.derivative(field, grid, 0, "complex", ax, degree=1) / gamma[ax]
+        return spectral.derivative(field, grid, 0, ax, degree=1) / gamma[ax]
 
     def v_derivative_axis(field, axis):
         return jnp.stack([derivative(field, ax) for ax in axis])
@@ -405,7 +405,7 @@ def get_helmholtz_operator_general(
     h_laplacian = heterogeneous_laplacian(grid, medium, omega)
 
     def helmholtz_operator(x, omega, medium):
-        return h_laplacian(x, 1.0 / medium.density) + x * (
+        return medium.density*h_laplacian(x, 1.0 / medium.density) + x * (
             ((1 + 1j * medium.attenuation) * (omega / medium.sound_speed)) ** 2
         )
 
@@ -508,23 +508,24 @@ def solve_helmholtz(
 
     return field
 
+def velocity_update_fun(sample_input, grid):
+    axes = nparange(-len(grid.N), 0, 1)
+    deriv = spectral.derivative_with_k_op(sample_input, grid, -1, axes)
 
-def d_velocity_dt(rho, c_sq, grid, rho_0):
-    p = c_sq * jnp.sum(rho, 0)
-    axes = nparange(-rho.shape[0], 0, 1)
-    dp = spectral.derivative_with_k_op(p, grid, -1, "real", axes)
-    return -dp / rho_0
+    def d_velocity_dt(rho, c_sq, rho_0):
+        p = c_sq * jnp.sum(rho, 0)
+        dp = deriv(p)
+        return -dp / rho_0
+    return d_velocity_dt
 
+def density_update_fun(sample_input, grid):
+    axes = nparange(-len(grid.N), 0, 1)
+    deriv_funcs = [spectral.derivative_with_k_op(sample_input, grid, 1, ax) for ax in axes]
 
-def d_density_dt(u, grid, rho_0):
-    return (
-        -rho_0
-        * jax.vmap(
-            lambda x, ax: spectral.derivative_with_k_op(x, grid, 1, "real", ax),
-            (0, 0),
-            0,
-        )(u, jnp.arange(-u.shape[0], 0, 1)).real
-    )
+    def d_density_dt(u, rho_0):
+        diag_grad_u = jnp.stack([f(u[ax]) for f,ax in zip(deriv_funcs,axes)])
+        return - rho_0*diag_grad_u
+    return d_density_dt
 
 
 def simulate_wave_propagation(
@@ -585,7 +586,6 @@ def simulate_wave_propagation(
     # Get steps to be saved
     if output_t_axis is None:
         output_t_axis = time_array
-        output_steps = output_t_axis
         t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)
     else:
         t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)
@@ -602,31 +602,30 @@ def simulate_wave_propagation(
 
     params = {"rho_0": medium.density, "c_sq": c_sq}
 
+    def get_src_map(idx):
+        src = jnp.zeros(N)
+        signals = source_signals[:, idx] / len(N)
+        src = src.at[sources.positions].add(signals)
+        return src
+    
+    sample_input =get_src_map(0)
+    d_velocity_dt = velocity_update_fun(sample_input, grid)
+    d_density_dt = density_update_fun(sample_input, grid)
+
     def du_dt(params, rho, t):
         rho_0 = params["rho_0"]
         c_sq = params["c_sq"]
-        return d_velocity_dt(rho, c_sq, grid, rho_0)
+        return d_velocity_dt(rho, c_sq, rho_0)
 
     def drho_dt(params, u, t):
         # Make source term
         rho_0 = params["rho_0"]
-        rho_update = d_density_dt(u, grid, rho_0)
+        rho_update = d_density_dt(u, rho_0)
 
-        src = jnp.zeros(rho_update.shape[1:])
         idx = (t / dt).round().astype(jnp.int32)
-        signals = source_signals[:, idx]
+        src = get_src_map(idx)
 
-        src = src.at[sources.positions].add(signals)
-        # TODO: This should include smoothing as below:
-        #
-        return rho_update + signal_processing.smooth(src) / rho_update.shape[0]
-        #
-        # however, this introduces a scaling factor on the source signal compared
-        # to kWave. Should be investigated/ Alternatively, use
-        #
-        # return rho_update + src / rho_update.shape[0]
-        #
-        # but the simulation will probably contain visual artifacts.
+        return rho_update + src 
 
     # Checkpoint functions to save memory if requested
     fields = ode.generalized_semi_implicit_euler(
