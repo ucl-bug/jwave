@@ -1,4 +1,4 @@
-function [p, exec_time] = kwave_solution(...
+function [p, exec_time] = kwave_solver_3D(...
     sos_map, ...
     dx, ...
     source_location, ...
@@ -10,17 +10,15 @@ function [p, exec_time] = kwave_solution(...
 
     % set the literals
     L = size(sos_map,1);
-    Nx = double(L);           % number of grid points in the x (row) direction
-    Ny = double(L);           % number of grid points in the y (column) direction
+    N = double(L)
     dx = double(dx);
-    dy = dx;                  % grid point spacing in the y direction [m]
     sos_map = squeeze(sos_map);
     dt=double(dt);
     source_location=double(source_location);
     source_signal=double(source_signal);
     
-    disp([Nx,dx,Ny,dy])
-    kgrid = kWaveGrid(Nx, dx, Ny, dy);
+    disp([N,dx,N,dx,N,dx])
+    kgrid = kWaveGrid(N,dx,N,dx,N,dx);
     
     % define the properties of the propagation medium
     medium.sound_speed = sos_map;	% [m/s]
@@ -33,24 +31,21 @@ function [p, exec_time] = kwave_solution(...
     % create the time array
     kgrid.setTime(Nt, dt);
     
-    source.p_mask = zeros(Nx, Ny);
-    source.p_mask(source_location(1)+1,source_location(2)+1) = 1;
+    source.p_mask = zeros(N,N,N);
+    source.p_mask(source_location(1)+1,source_location(2)+1,source_location(3)+1) = 1;
     
     % define the input signal
     source.p = source_signal;
     source.p_mode = 'additive-no-correction';
     
-    sensor.mask = ones(Nx, Ny);
+    sensor.mask = ones(N, N, N);
     sensor.record_start_index = Nt - 2;
 
     % input arguments
-    disp(size(source.p_mask))
-    disp([Nx, Ny])
-    disp(size(sos_map))
-    input_args = {'CartInterp', 'nearest', 'PMLSize', 30, 'DataPath','/tmp/', 'DataName','jwave', 'DeleteData', false};
+    input_args = {'CartInterp', 'nearest', 'PMLSize', 20, 'DataPath','/tmp/', 'DataName','jwave', 'DeleteData', false};
 
     % run the simulation
-    sensor_data = kspaceFirstOrder2DG(kgrid, medium, source, sensor, input_args{:});
+    sensor_data = kspaceFirstOrder3DG(kgrid, medium, source, sensor, input_args{:});
 
     p=sensor_data(:,end);
 
