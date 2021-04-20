@@ -7,9 +7,7 @@ from jwave import geometry
 # TODO: speed tests
 
 
-def diag_nabla_with_k_op(
-    x: jnp.ndarray, grid: geometry.kGrid, staggered: int
-):
+def diag_nabla_with_k_op(x: jnp.ndarray, grid: geometry.kGrid, staggered: int):
     r = []
     for i in range(x.shape[0]):
         r.append(derivative_with_k_op(x[i], grid, staggered, i))
@@ -64,16 +62,22 @@ def derivative_with_k_op(x, grid, staggered, axis):
     if x.dtype != jnp.complex64 or x.dtype != jnp.complex128:
         # Use real fft
         Fx = eval_shape(lambda x: jnp.fft.rfftn(x, axes=domain_axes), x)
-        K = K[axis,:Fx.shape[0]]
+        K = K[axis, : Fx.shape[0]]
+
         def deriv_fun(x):
             return jnp.fft.irfftn(
-                K * jnp.fft.rfftn(x, axes=domain_axes), 
-                axes=domain_axes
+                K * jnp.fft.rfftn(x, axes=domain_axes), axes=domain_axes
             )
+
     else:
+
         def deriv_fun(x):
-            return jnp.fft.ifftn(K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes)
+            return jnp.fft.ifftn(
+                K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes
+            )
+
     return deriv_fun
+
 
 """
 # VJP rule ready, but crashes with linear_transpose() required
@@ -99,9 +103,6 @@ _derivative_with_k_op.defvjp(
 
 
 def plain_derivative(x, grid, staggered, axis, degree):
-    # Work on last axis for elementwise product broadcasting
-    x = jnp.moveaxis(x, axis, -1)
-
     # Spectral derivative
     if staggered == 0:
         k = 1j * grid.k_vec[axis]
@@ -110,11 +111,31 @@ def plain_derivative(x, grid, staggered, axis, degree):
     elif staggered == 1:
         k = 1j * grid.k_staggered["forward"][axis]
 
-    dx = _derivative_algorithm_last_axis(x, k, degree)
+    k = k ** degree
 
-    # Back to original axis
-    kx = jnp.moveaxis(dx, -1, axis)
-    return kx
+    if not ("complex" in str(x.dtype)):
+        ffts = [jnp.fft.rfft, jnp.fft.irfft]
+        Fx = eval_shape(lambda x: ffts[0](x, axis=-1), x)
+        k = k[: Fx.shape[-1]]
+    else:
+        ffts = [jnp.fft.fft, jnp.fft.ifft]
+
+    # Constructs derivative operator
+    def deriv_fun(
+        x,
+    ):  # TODO: use named axis? See https://jax.readthedocs.io/en/latest/notebooks/xmap_tutorial.html
+        # Work on last axis for elementwise product broadcasting
+        x = jnp.moveaxis(x, axis, -1)
+
+        # Use real or complex fft
+        Fx = ffts[0](x, axis=-1)
+        dx = ffts[1](k * Fx, axis=-1)
+
+        # Back to original axis
+        dx = jnp.moveaxis(dx, -1, axis)
+        return dx
+
+    return deriv_fun
 
 
 # @partial(jax.custom_vjp, nondiff_argnums=(2,3))
@@ -124,7 +145,7 @@ def _derivative_algorithm_last_axis(x, k, degree):
     if x.dtype != jnp.complex64 or x.dtype != jnp.complex128:
         # Use real fft
         Fx = jnp.fft.rfft(x, axis=-1)
-        k = k[:Fx.shape[-1]]
+        k = k[: Fx.shape[-1]]
         dx = jnp.fft.irfft(k * Fx, axis=-1)
     else:
         Fx = jnp.fft.fft(x, axis=-1)

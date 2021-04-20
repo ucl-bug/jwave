@@ -60,6 +60,7 @@ def gaussian_window(
     """
     return signal * jnp.exp(-((time - mu) ** 2) / sigma ** 2)
 
+
 def smoothing_filter(sample_input) -> jnp.ndarray:
     # Constructs the filter
     dimensions = sample_input.shape
@@ -74,20 +75,25 @@ def smoothing_filter(sample_input) -> jnp.ndarray:
             filter = jnp.fft.fftshift(jnp.outer(*axis))
         elif len(axis) == 3:
             filter_2d = jnp.outer(*axis[1:])
-            third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1),2)
-            filter = third_component*filter_2d
+            third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1), 2)
+            filter = third_component * filter_2d
 
     # Different filtering functions for real and complex data
     if sample_input.dtype != jnp.complex64 or sample_input.dtype != jnp.complex128:
         Fx = eval_shape(jnp.fft.rfft, sample_input)
-        filter = filter[...,:Fx.shape[-1]]
+        filter = filter[..., : Fx.shape[-1]]
+
         def smooth_fun(x):
             print(x.shape, jnp.fft.rfftn(x).shape, filter.shape)
             return jnp.fft.irfftn(filter * jnp.fft.rfftn(x)).real
+
     else:
+
         def smooth_fun(x):
             return jnp.fft.ifftn(filter * jnp.fft.fftn(x)).real
+
     return smooth_fun
+
 
 def smooth(x: jnp.ndarray) -> jnp.ndarray:
     """Smooths a  n-dimensioanl signal by multiplying its
@@ -111,8 +117,8 @@ def smooth(x: jnp.ndarray) -> jnp.ndarray:
             filter = jnp.fft.fftshift(jnp.outer(*axis))
         elif len(axis) == 3:
             filter_2d = jnp.outer(*axis[1:])
-            third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1),2)
-            filter = third_component*filter_2d
+            third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1), 2)
+            filter = third_component * filter_2d
     return jnp.fft.ifftn(filter * jnp.fft.fftn(x)).real
 
 

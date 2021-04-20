@@ -21,7 +21,8 @@ def test_real_derivative():
     )
     reference_da = jnp.array([-1.3090, 3.1602, 0, -3.1602, 1.3090, -0.5422, 0, 0.5422])
     grid = geometry.kGrid.make_grid(N, dx)
-    da = spectral.derivative(a, grid, 0, "real", 0)
+    da = spectral.derivative(a, grid, 0, 0)(a)
+    print(da.shape, reference_da.shape)
 
     assert_pytree_isclose(da, reference_da, relative_precision=1e-3, abs_precision=1e-4)
 
@@ -57,7 +58,7 @@ def test_complex_derivative():
 
     # Check
     grid = geometry.kGrid.make_grid(N, dx)
-    da = spectral.derivative(a, grid, 0, "complex", 0)
+    da = spectral.derivative(a, grid, 0, 0)(a)
     assert_pytree_isclose(da, reference_da, relative_precision=1e-3, abs_precision=1e-4)
 
 
@@ -74,7 +75,7 @@ def test_derivative_adjoint():
     grid = geometry.kGrid.make_grid(N, dx)
 
     def d(x):
-        return spectral.derivative(x, grid, 0, "real", 0, degree=2)
+        return spectral.derivative(x, grid, 0, 0, degree=2)(x)
 
     _, d_adj_raw = jax.vjp(d, b)
 
@@ -112,7 +113,7 @@ def test_derivative_with_kspaceop_adjoint():
     grid = grid.apply_kspace_operator(jnp.amin(medium.sound_speed), time_array.dt)
 
     def d(x):
-        return spectral.derivative(x, grid, 0, "real", 0, kspace_op=True)
+        return spectral.derivative(x, grid, 0, 0, kspace_op=True)(x)
 
     _, d_adj_raw = jax.vjp(d, jnp.zeros_like(b))
 

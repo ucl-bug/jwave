@@ -306,10 +306,7 @@ def _generalized_semi_implicit_euler(
         end = start + i
 
         y = jax.lax.fori_loop(
-            start, 
-            end, 
-            jax.named_call(euler_step, name='euler_step'),
-            x
+            start, end, jax.named_call(euler_step, name="euler_step"), x
         )
         return (y, end), measurement_operator(y)
 

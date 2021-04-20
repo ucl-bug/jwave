@@ -153,9 +153,9 @@ def heterogeneous_laplacian(
     gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
 
     def derivative(field, ax):
-        return spectral.derivative(
-            field, grid, 0, ax, degree=1
-        )  # 0 is for "unstaggered"
+        return spectral.derivative(field, grid, 0, ax, degree=1)(
+            field
+        )  # 0 is for "unstaggered" # TODO: the function constructor should be outside
 
     def lapl(field, cmap):
         axis = list(range(field.ndim))
@@ -405,7 +405,7 @@ def get_helmholtz_operator_general(
     h_laplacian = heterogeneous_laplacian(grid, medium, omega)
 
     def helmholtz_operator(x, omega, medium):
-        return medium.density*h_laplacian(x, 1.0 / medium.density) + x * (
+        return medium.density * h_laplacian(x, 1.0 / medium.density) + x * (
             ((1 + 1j * medium.attenuation) * (omega / medium.sound_speed)) ** 2
         )
 
@@ -508,6 +508,7 @@ def solve_helmholtz(
 
     return field
 
+
 def velocity_update_fun(sample_input, grid):
     axes = nparange(-len(grid.N), 0, 1)
     deriv = spectral.derivative_with_k_op(sample_input, grid, -1, axes)
@@ -516,15 +517,20 @@ def velocity_update_fun(sample_input, grid):
         p = c_sq * jnp.sum(rho, 0)
         dp = deriv(p)
         return -dp / rho_0
+
     return d_velocity_dt
+
 
 def density_update_fun(sample_input, grid):
     axes = nparange(-len(grid.N), 0, 1)
-    deriv_funcs = [spectral.derivative_with_k_op(sample_input, grid, 1, ax) for ax in axes]
+    deriv_funcs = [
+        spectral.derivative_with_k_op(sample_input, grid, 1, ax) for ax in axes
+    ]
 
     def d_density_dt(u, rho_0):
-        diag_grad_u = jnp.stack([f(u[ax]) for f,ax in zip(deriv_funcs,axes)])
-        return - rho_0*diag_grad_u
+        diag_grad_u = jnp.stack([f(u[ax]) for f, ax in zip(deriv_funcs, axes)])
+        return -rho_0 * diag_grad_u
+
     return d_density_dt
 
 
@@ -538,7 +544,7 @@ def simulate_wave_propagation(
     output_t_axis=None,
     backprop=False,
     guess=None,
-    checkpoint=False
+    checkpoint=False,
 ):
     """Simulates wave propagation
 
@@ -607,8 +613,8 @@ def simulate_wave_propagation(
         signals = source_signals[:, idx] / len(N)
         src = src.at[sources.positions].add(signals)
         return src
-    
-    sample_input =get_src_map(0)
+
+    sample_input = get_src_map(0)
     d_velocity_dt = velocity_update_fun(sample_input, grid)
     d_density_dt = density_update_fun(sample_input, grid)
 
@@ -625,7 +631,7 @@ def simulate_wave_propagation(
         idx = (t / dt).round().astype(jnp.int32)
         src = get_src_map(idx)
 
-        return rho_update + src 
+        return rho_update + src
 
     # Checkpoint functions to save memory if requested
     fields = ode.generalized_semi_implicit_euler(
