@@ -67,62 +67,6 @@ def test_if_simple_problem_runs():
 
     _ = physics.simulate_wave_propagation(grid, medium, time_array, sources)
 
-#TODO: This test fails on github CI but not locally
-'''
-def test_agreement_wave_forward_models():
-    disable_jit()
-    N = (128, 128)
-    dx = (0.5, 0.5)
-    cfl = 0.3
-
-    grid = geometry.kGrid.make_grid(N, dx)
-
-    # Physical properties
-    sound_speed = jnp.ones(N)
-
-    # Physical properties
-    medium = geometry.Medium(
-        sound_speed=sound_speed, density=jnp.ones(N), attenuation=0.0, pml_size=20
-    )
-
-    time_array = geometry.TimeAxis.from_kgrid(grid, medium, cfl=cfl, t_end=70.0)
-
-    # define a source point
-    from jwave.signal_processing import apply_ramp
-
-    source_freq = 0.5
-    source_mag = 5 / time_array.dt
-
-    t = jnp.arange(0, time_array.t_end, time_array.dt)
-    s1 = source_mag * jnp.sin(2 * jnp.pi * source_freq * t)
-    s1 = signal_processing.gaussian_window(
-        apply_ramp(s1, time_array.dt, source_freq), t, 10, 3
-    )
-    source_signals = jnp.stack([s1])
-    source_positions = ([32], [32])
-    sources = geometry.Sources(positions=source_positions, signals=source_signals)
-
-    # Define sensors
-    sensors_positions = ([96], [96])
-    sensors = geometry.Sensors(positions=sensors_positions)
-
-    # Run the simulation on the backward version;
-    fields = physics.simulate_wave_propagation(
-        grid, medium, time_array, sources, sensors, backprop=True
-    )
-    p_bwd = jnp.sum(fields[1], 1) * (medium.sound_speed[sources.positions] ** 2)
-
-    # Run simulation on euler integrator without vjp
-    fields = physics.simulate_wave_propagation(
-        grid, medium, time_array, sources, sensors, backprop=False
-    )
-
-    p_fwd = jnp.sum(fields[1], 1) * (medium.sound_speed[sources.positions] ** 2)
-
-    # TODO: Those precisions need to be set too high, figure out why (computational graph
-    # should be the same)
-    assert_pytree_isclose(p_fwd, p_bwd, relative_precision=1e-1, abs_precision=2e-1)
-'''
 
 def test_backprop_in_wave_equation_for_nans():
 
@@ -158,7 +102,6 @@ def test_backprop_in_wave_equation_for_nans():
 
 
 if __name__ == "__main__":
-    #test_agreement_wave_forward_models()
     test_if_simple_problem_runs()
     test_backprop_in_wave_equation_for_nans()
     test_if_helmholtz_problem_runs()
