@@ -17,8 +17,8 @@ def diag_nabla_with_k_op(x: jnp.ndarray, grid: geometry.kGrid, staggered: int):
 def derivative(
     x: jnp.ndarray,
     grid: geometry.kGrid,
-    staggered: int,
-    axis: int,
+    staggered: int = 0,
+    axis: int = -1,
     kspace_op=False,
     degree: int = 1,
 ) -> jnp.ndarray:
@@ -121,9 +121,8 @@ def plain_derivative(x, grid, staggered, axis, degree):
         ffts = [jnp.fft.fft, jnp.fft.ifft]
 
     # Constructs derivative operator
-    def deriv_fun(
-        x,
-    ):  # TODO: use named axis? See https://jax.readthedocs.io/en/latest/notebooks/xmap_tutorial.html
+    # TODO: use named axis? See https://jax.readthedocs.io/en/latest/notebooks/xmap_tutorial.html
+    def deriv_fun(x): 
         # Work on last axis for elementwise product broadcasting
         x = jnp.moveaxis(x, axis, -1)
 
