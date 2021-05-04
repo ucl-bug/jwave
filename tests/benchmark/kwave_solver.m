@@ -47,7 +47,7 @@ function [p, exec_time] = kwave_solution(...
     disp(size(source.p_mask))
     disp([Nx, Ny])
     disp(size(sos_map))
-    input_args = {'CartInterp', 'nearest', 'PMLSize', 30, 'DataPath','/tmp/', 'DataName','jwave', 'DeleteData', false};
+    input_args = {'CartInterp', 'nearest', 'PMLSize', 30, 'DataPath','/tmp/', 'DataName','kwave', 'DeleteData', false};
 
     % run the simulation
     sensor_data = kspaceFirstOrder2DG(kgrid, medium, source, sensor, input_args{:});
@@ -55,7 +55,7 @@ function [p, exec_time] = kwave_solution(...
     p=sensor_data(:,end);
 
     % Get exec time
-    exec_time = h5readatt(['/tmp/', 'jwave_output.h5'], '/', 'simulation_phase_execution_time');
+    exec_time = h5readatt(['/tmp/', 'kwave_output.h5'], '/', 'simulation_phase_execution_time');
     exec_time = exec_time(~isspace(exec_time));
     exec_time(exec_time == 's') = [];
     exec_time = str2num(exec_time);

@@ -567,6 +567,7 @@ def simulate_wave_propagation(
     backprop=False,
     guess=None,
     checkpoint=False,
+    get_function=False
 ):
     """Simulates wave propagation
 
@@ -628,48 +629,73 @@ def simulate_wave_propagation(
         u0 = guess[0]
         rho0 = guess[1]
 
-    params = {"rho_0": medium.density, "c_sq": c_sq}
+    acoustic_params = {"rho_0": medium.density, "c_sq": c_sq}
 
-    def get_src_map(idx):
-        src = jnp.zeros(N)
-        signals = source_signals[:, idx] / len(N)
-        src = src.at[sources.positions].add(signals)
-        return src
-
-    sample_input = get_src_map(0)
+    sample_input = jnp.zeros(N)
     d_velocity_dt = velocity_update_fun(sample_input, grid)
     d_density_dt = density_update_fun(sample_input, grid)
 
-    def du_dt(params, rho, t):
-        rho_0 = params["rho_0"]
-        c_sq = params["c_sq"]
-        return d_velocity_dt(rho, c_sq, rho_0)
+    # Parameters dictionary
+    params = {
+        "acoustic_params": acoustic_params,
+        "source_signals": source_signals,
+        "initial_wavefields": {
+            "u0": u0,
+            "rho0": rho0
+        }
+    }
+    
+    # Building solver function
+    def solver_function(params):
+        acoustic_params = params["acoustic_params"]
+        source_signals = params["source_signals"]
+        u0 = params["initial_wavefields"]["u0"]
+        rho0 = params["initial_wavefields"]["rho0"]
+        
+        
+        # Function to integrate
+        def get_src_map(idx):
+            src = jnp.zeros(N)
+            signals = source_signals[:, idx] / len(N)
+            src = src.at[sources.positions].add(signals)
+            return src
+        
+        def du_dt(params, rho, t):
+            rho_0 = params["rho_0"]
+            c_sq = params["c_sq"]
+            return d_velocity_dt(rho, c_sq, rho_0)
 
-    def drho_dt(params, u, t):
-        # Make source term
-        rho_0 = params["rho_0"]
-        rho_update = d_density_dt(u, rho_0)
+        def drho_dt(params, u, t):
+            # Make source term
+            rho_0 = params["rho_0"]
+            rho_update = d_density_dt(u, rho_0)
 
-        idx = (t / dt).round().astype(jnp.int32)
-        src = get_src_map(idx)
+            idx = (t / dt).round().astype(jnp.int32)
+            src = get_src_map(idx)
 
-        return rho_update + src
-
-    # Checkpoint functions to save memory if requested
-    fields = ode.generalized_semi_implicit_euler(
-        params,
-        du_dt,
-        drho_dt,
-        measurement_operator,
-        decay_fact,
-        u0,
-        rho0,
-        dt,
-        output_steps,
-        backprop,
-        checkpoint,
-    )
-    return fields
+            return rho_update + src
+        
+        # Integrate
+        fields = ode.generalized_semi_implicit_euler(
+            acoustic_params,
+            du_dt,
+            drho_dt,
+            measurement_operator,
+            decay_fact,
+            u0,
+            rho0,
+            dt,
+            output_steps,
+            backprop,
+            checkpoint
+        )
+        
+        return fields
+        
+    if get_function:
+        return solver_function, params
+    else:
+        return solver_function(params)
 
 
 def senstor_to_operator(sensors):
