@@ -415,13 +415,12 @@ def solve_helmholtz(
     src: jnp.ndarray,
     omega: float,
     guess=None,
-    method="bicgstab",
+    method="gmres",
     restart=10,
     tol=1e-5,
     solve_method="batched",
     maxiter=None,
-    *args,
-    **kwgs
+    solve_problem=True
 ) -> jnp.ndarray:
     r"""Solves the Helmholtz equation
 
@@ -468,44 +467,69 @@ def solve_helmholtz(
 
     if medium.density is None and medium.attenuation is None:
         helmholtz_operator = get_helmholtz_operator(guess, grid, medium, omega)
-        src = -1j * omega * src
+        def scale_src(src, omega): return -1j * omega * src
     elif medium.density is None:  # Heterogeneous attenuation
         helmholtz_operator = get_helmholtz_operator_attenuation(guess, grid, medium, omega)
-        src = ((omega ** 2) * medium.attenuation - 1j * omega) * src
+        def scale_src(src, omega): return ((omega ** 2) * medium.attenuation - 1j * omega) * src
     elif medium.attenuation is None:  # General case
         helmholtz_operator = get_helmholtz_operator_density(guess, grid, medium, omega)
-        src = -1j * omega * src
+        def scale_src(src, omega): return -1j * omega * src
     else:
         helmholtz_operator = get_helmholtz_operator_general(guess, grid, medium, omega)
-        src = ((omega ** 2) * medium.attenuation - 1j * omega) * src
+        def scale_src(src, omega): return ((omega ** 2) * medium.attenuation - 1j * omega) * src
 
     # Fixing parameters
     linear_op = partial(helmholtz_operator, omega=omega, medium=medium)
 
     # Iterative solver
-    if method == "gmres":
-        field, _ = gmres(
-            linear_op,
-            src,  # jnp.reshape(src, (-1,)),
-            x0=guess,  # jnp.reshape(guess, (-1,)),
-            tol=tol,
-            solve_method=solve_method,
-            restart=restart,
-            maxiter=maxiter,
-            **kwgs,
-        )
+    params = {
+            "src": src,
+            "guess": guess,
+            "medium": medium,
+            "omega": omega,
+            "solver_params": {
+                "tol": tol,
+                "restart": restart,
+                "solve_method": solve_method,
+                "restart": restart,
+                "maxiter": maxiter
+            }
+        }
+    
+    # Returns operator and parameters if solver is None 
+    if method is None:
+        return params, [helmholtz_operator, scale_src]
+
+    # Construct solver
+    if method=="gmres":
+        def solver(params):
+            linear_op = partial(helmholtz_operator, omega=params["omega"], medium=params["medium"])
+            src = scale_src(params["omega"],params["src"])
+            return gmres(
+                linear_op,
+                src,  # jnp.reshape(src, (-1,)),
+                x0=params["guess"],  # jnp.reshape(guess, (-1,)),
+                tol=params["solver_params"]["tol"],
+                solve_method=params["solver_params"]["solve_method"],
+                restart=params["solver_params"]["restart"],
+                maxiter=params["solver_params"]["maxiter"]
+            )[0]
     elif method == "bicgstab":
-        field, _ = bicgstab(
-            linear_op,
-            src,  # jnp.reshape(src, (-1,)),
-            x0=guess,  # jnp.reshape(guess, (-1,)),
-            tol=tol,
-            maxiter=maxiter,
-            **kwgs,
-        )
-
-    return field
-
+        def solver(params):
+            linear_op = partial(helmholtz_operator, omega=omega, medium=medium)
+            src = scale_src(params["omega"],params["src"])
+            return bicgstab(
+                linear_op,
+                src,  # jnp.reshape(src, (-1,)),
+                x0=params["guess"],  # jnp.reshape(guess, (-1,)),
+                tol=params["solver_params"]["tol"],
+                maxiter=params["solver_params"]["maxiter"]
+            )[0]
+    
+    if solve_problem:
+        return solver(params)
+    else:
+        return params, solver
 
 def velocity_update_fun(sample_input, grid):
     axes = nparange(-len(grid.N), 0, 1)
