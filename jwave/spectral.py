@@ -10,8 +10,8 @@ from jwave.geometry import Staggered
 
 
 def derivative_init(
-    grid: geometry.kGrid,
     sample_input: jnp.ndarray,
+    grid: geometry.kGrid,
     axis: int = -1,
     staggered: Staggered = Staggered.NONE,
     kspace_op: bool = False,
@@ -35,6 +35,7 @@ def derivative_init(
             shape and type as `x`
     """
     # Update and check the grid object
+    
     if staggered != Staggered.NONE:
         grid = grid.add_staggered_grid()
     if kspace_op:

@@ -1,4 +1,5 @@
 from jwave import geometry, signal_processing, spectral, ode
+from jwave.geometry import Staggered
 from jax import lax
 from jax import numpy as jnp
 from jax.scipy.sparse.linalg import gmres, bicgstab
@@ -58,7 +59,7 @@ def laplacian_with_pml(
     medium: geometry.Medium,
     omega: float,
     sigma_max: float = 2.0,
-) -> Callable:
+) -> Tuple[Callable, geometry.kGrid]:
     r"""Returns a laplacian operator augmented with a PML. For
     boundary value problems such as the Helmholtz equation.
 
@@ -95,13 +96,15 @@ def laplacian_with_pml(
         ```
     """
     # Building PML gamma function
+    
     gamma, gamma_prime = _get_gamma_functions(grid, medium, omega, sigma_max)
 
     # Building derivative operators
     axis = list(range(len(grid.N)))
     D_ops = []
     for ax in axis:
-        D, grid = spectral.derivative_init(sample_input, grid, staggered=0, axis=ax)
+        D, grid = spectral.derivative_init(sample_input, grid, staggered=Staggered.NONE, axis=ax)
+        
         D_ops.append(D)
 
     degrees = jnp.array([1.0, 2.0])
@@ -122,7 +125,7 @@ def laplacian_with_pml(
             res = res + lapl_term
         return res
 
-    return lapl
+    return lapl, grid
 
 
 def _get_gamma_functions(
@@ -226,12 +229,6 @@ def heterogeneous_laplacian(
     """
     gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
 
-    axis = list(range(sample_input.ndim))
-    D_ops = [
-        spectral.derivative(sample_input, grid, staggered=0, axis=ax, degree=1)
-        for ax in axis
-    ]
-
     # Building derivative operators
     axis = list(range(sample_input.ndim))
     D_ops = []
@@ -239,81 +236,17 @@ def heterogeneous_laplacian(
         D, grid = spectral.derivative_init(sample_input, grid, staggered=0, axis=ax)
         D_ops.append(D)
 
-    degrees = jnp.array([1.0, 2.0])
+    axis = list(range(sample_input.ndim))
 
-    def lapl(field, cmap):
-        axis = list(range(field.ndim))
+    def lapl(field, cmap, grid):
+        # TODO: This for loop probably forces sequential computations. However, it reduces
+        #       the memory requirements. Better parallelization tests are needed
+        res = jnp.zeros_like(field)
+        for ax in axis:
+            res = res + D_ops[ax](cmap * (D_ops[ax](field, grid, 1.) / gamma[ax]), grid, 1.) / gamma[ax]
+        return res
 
-        def deriv(ax):
-            return D_ops[ax](cmap * (D_ops[ax](field) / gamma[ax])) / gamma[ax]
-
-        return jnp.sum(jnp.stack([deriv(ax) for ax in axis]), axis=0)
-
-    return jax.jit(lapl)
-
-
-def generalized_laplacian(
-    sample_input: jnp.ndarray,
-    grid: geometry.kGrid,
-    medium: geometry.Medium,
-    omega: float,
-    sigma_max: float = 1.0,
-) -> Callable:
-    r"""Returns an heterogeneous laplacian operator augmented with a PML:
-
-    ```math
-    \hat \nabla_c^2 = \hat \nabla \cdot(c \hat \nabla)
-    ```
-
-    For boundary value problems such as the Helmholtz equation.
-
-    Args:
-        grid (geometry.kGrid):
-        medium (geometry.Medium):
-        omega (float): The temporal pulsation
-        cmap (jnp.ndarray): The heterogeneous map $`c`$
-        sigma_max (float, optional): [description]
-
-    Returns:
-        Callable: [description]
-
-    !!! example
-        ```python
-        random_seed = jax.random.PRNGKey(42)
-
-        # Generate laplacian
-        grid = kGrid.make_grid(N=(64,64), dx=(0.3, 0.3))
-        c = jnp.ones(N)
-        c = c.at[32:].set(2.0)
-        laplacian = heterogeneous_laplacian(grid, medium, 1.0, c)
-
-        # Apply laplacian
-        field = jnp.random.normal(random_seed, grid.N)
-        L_field = laplacian(field)
-        ```
-    """
-    gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
-
-    # Building derivative operators
-    axis = list(range(len(grid.N)))
-    D_ops = [
-        spectral.derivative(sample_input, grid, staggered=0, axis=ax, degree=1)
-        for ax in axis
-    ]
-
-    def v_derivative_axis(field):
-        return jnp.stack([D_ops[ax](field) for ax in axis])
-
-    def v_derivative(field):
-        return jnp.stack([D_ops[ax](field[ax], ax) for ax in axis])
-
-    def lapl(field, rho0, tau, omega):
-        inv_rho_nabla_p = v_derivative_axis(field)
-        rho_nabla = rho0 * jnp.sum(v_derivative(inv_rho_nabla_p), axis=0)
-        nabla_rho = jnp.sum(v_derivative_axis(rho0) * inv_rho_nabla_p, axis=0)
-        return rho_nabla + 1j * omega * tau * (rho_nabla + nabla_rho)
-
-    return jax.jit(lapl)
+    return lapl, grid
 
 
 def get_helmholtz_operator(
@@ -358,12 +291,13 @@ def get_helmholtz_operator(
         residual = linear_op(field)
         ```
     """
-    laplacian = laplacian_with_pml(sample_input, grid, medium, omega)
+    laplacian, grid = laplacian_with_pml(sample_input, grid, medium, omega)
+    
 
-    def helmholtz_operator(x, omega, medium):
-        return laplacian(x) + x * ((omega / medium.sound_speed) ** 2)
-
-    return helmholtz_operator
+    def helmholtz_operator(x, omega, medium, grid):
+        return laplacian(x, grid) + x * ((omega / medium.sound_speed) ** 2)
+    
+    return helmholtz_operator, grid
 
 
 def get_helmholtz_operator_density(
@@ -386,13 +320,13 @@ def get_helmholtz_operator_density(
     Returns:
         [type]: [description]
     """
-    h_laplacian = heterogeneous_laplacian(sample_input, grid, medium, omega)
+    h_laplacian, grid = heterogeneous_laplacian(sample_input, grid, medium, omega)
 
-    def helmholtz_operator(x, omega, medium):
-        laplacian = medium.density * h_laplacian(x, 1.0 / medium.density)
+    def helmholtz_operator(x, omega, medium, grid):
+        laplacian = medium.density * h_laplacian(x, 1.0 / medium.density, grid)
         return laplacian + x * ((omega / medium.sound_speed) ** 2)
 
-    return helmholtz_operator
+    return helmholtz_operator, grid
 
 
 def get_helmholtz_operator_attenuation(
@@ -415,14 +349,14 @@ def get_helmholtz_operator_attenuation(
     Returns:
         [type]: [description]
     """
-    laplacian = laplacian_with_pml(sample_input, grid, medium, omega)
+    laplacian, grid = laplacian_with_pml(sample_input, grid, medium, omega)
 
-    def helmholtz_operator(x, omega, medium):
-        return laplacian(x) + x * (
+    def helmholtz_operator(x, omega, medium, grid):
+        return laplacian(x, grid) + x * (
             ((1 + 1j * medium.attenuation) * omega / medium.sound_speed) ** 2
         )
 
-    return helmholtz_operator
+    return helmholtz_operator, grid
 
 
 def get_helmholtz_operator_general(
@@ -445,15 +379,14 @@ def get_helmholtz_operator_general(
     Returns:
         [type]: [description]
     """
-    h_laplacian = heterogeneous_laplacian(sample_input, grid, medium, omega)
+    h_laplacian, grid = heterogeneous_laplacian(sample_input, grid, medium, omega)
 
-    def helmholtz_operator(x, omega, medium):
-        return medium.density * h_laplacian(x, 1.0 / medium.density) + x * (
+    def helmholtz_operator(x, omega, medium, grid):
+        return medium.density * h_laplacian(x, 1.0 / medium.density, grid) + x * (
             ((1 + 1j * medium.attenuation) * (omega / medium.sound_speed)) ** 2
         )
 
-    return helmholtz_operator
-
+    return helmholtz_operator, grid
 
 def solve_helmholtz(
     grid: geometry.kGrid,
@@ -511,14 +444,16 @@ def solve_helmholtz(
     if guess is None:
         guess = jnp.zeros(shape=grid.N, dtype=jnp.complex64)  # TODO: proper zeros init
 
+    # Operators and scaling
     if medium.density is None and medium.attenuation is None:
-        helmholtz_operator = get_helmholtz_operator(guess, grid, medium, omega)
+        helmholtz_operator, grid = get_helmholtz_operator(guess, grid, medium, omega)
+        
 
         def scale_src(src, omega):
             return -1j * omega * src
 
     elif medium.density is None:  # Heterogeneous attenuation
-        helmholtz_operator = get_helmholtz_operator_attenuation(
+        helmholtz_operator, grid = get_helmholtz_operator_attenuation(
             guess, grid, medium, omega
         )
 
@@ -526,22 +461,20 @@ def solve_helmholtz(
             return ((omega ** 2) * medium.attenuation - 1j * omega) * src
 
     elif medium.attenuation is None:  # General case
-        helmholtz_operator = get_helmholtz_operator_density(guess, grid, medium, omega)
+        helmholtz_operator, grid = get_helmholtz_operator_density(guess, grid, medium, omega)
 
         def scale_src(src, omega):
             return -1j * omega * src
 
     else:
-        helmholtz_operator = get_helmholtz_operator_general(guess, grid, medium, omega)
+        helmholtz_operator, grid = get_helmholtz_operator_general(guess, grid, medium, omega)
 
         def scale_src(src, omega):
             return ((omega ** 2) * medium.attenuation - 1j * omega) * src
 
-    # Fixing parameters
-    linear_op = partial(helmholtz_operator, omega=omega, medium=medium)
-
     # Iterative solver
     params = {
+        "grid": grid,
         "src": src,
         "guess": guess,
         "medium": medium,
@@ -555,7 +488,7 @@ def solve_helmholtz(
         },
     }
 
-    # Returns operator and parameters if solver is None
+    # Returns operator and parameters if method is None
     if method is None:
         return params, [helmholtz_operator, scale_src]
 
@@ -564,9 +497,9 @@ def solve_helmholtz(
 
         def solver(params):
             linear_op = partial(
-                helmholtz_operator, omega=params["omega"], medium=params["medium"]
+                helmholtz_operator, omega=params["omega"], medium=params["medium"], grid=params["grid"]
             )
-            src = scale_src(params["omega"], params["src"])
+            src = scale_src(params["src"], params["omega"])
             return gmres(
                 linear_op,
                 src,  # jnp.reshape(src, (-1,)),
@@ -580,8 +513,8 @@ def solve_helmholtz(
     elif method == "bicgstab":
 
         def solver(params):
-            linear_op = partial(helmholtz_operator, omega=omega, medium=medium)
-            src = scale_src(params["omega"], params["src"])
+            linear_op = partial(helmholtz_operator, omega=params["omega"], medium=params["medium"], grid=params["grid"])
+            src = scale_src(params["src"], params["omega"])
             return bicgstab(
                 linear_op,
                 src,  # jnp.reshape(src, (-1,)),
