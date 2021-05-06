@@ -14,6 +14,8 @@ nav:
   - Models:
     - Helmholtz solver: helmholtz_notes.md
   - Examples:
+    - Spectral:
+      - Taking derivatives: examples/spectral_operators.ipynb
     - Simulations:
       - Monopole source in homogeneous media: examples/monopole_homogeneous.ipynb
       - Monopole sources in heterogeneous media: examples/monopole_heterogeneous.ipynb
@@ -28,7 +30,6 @@ nav:
       - Full wave inversion: examples/FWI.ipynb
   - API: 
     - geometry: api_geometry.md
-    - matlab: api_matlab.md
     - ode: api_ode.md
     - physics: api_physics.md
     - signal_processing: api_signal_processing.md
