@@ -46,6 +46,15 @@
         show_root_heading: true
         show_source: true
 
+::: jwave.geometry.Staggered
+    handler: python
+    selection:
+        members:
+            -
+    rendering:
+        show_root_heading: true
+        show_source: true
+
 ::: jwave.geometry.TimeAxis
     handler: python
     selection:
