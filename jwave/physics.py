@@ -623,15 +623,15 @@ def simulate_wave_propagation(
     # Integrate wave equation
     N = grid.N
     if guess is None:
-        u0 = jnp.zeros((len(N), *N))
-        rho0 = jnp.zeros((len(N), *N))
+        u0 = jnp.zeros((len(N), *N), dtype=c_sq.dtype)
+        rho0 = jnp.zeros((len(N), *N), dtype=c_sq.dtype)
     else:
         u0 = guess[0]
         rho0 = guess[1]
 
     acoustic_params = {"rho_0": medium.density, "c_sq": c_sq}
 
-    sample_input = jnp.zeros(N)
+    sample_input = jnp.zeros_like(c_sq)
     d_velocity_dt = velocity_update_fun(sample_input, grid)
     d_density_dt = density_update_fun(sample_input, grid)
 

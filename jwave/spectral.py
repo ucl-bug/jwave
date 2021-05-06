@@ -59,7 +59,7 @@ def derivative_with_k_op(x, grid, staggered, axis):
     domain_axes = list(range(-1, -n_dims, -1))
 
     # Make fft
-    if x.dtype != jnp.complex64 or x.dtype != jnp.complex128:
+    if not ("complex" in str(x.dtype)):
         # Use real fft
         Fx = eval_shape(lambda x: jnp.fft.rfftn(x, axes=domain_axes), x)
         K = K[axis, : Fx.shape[0]]
@@ -70,7 +70,6 @@ def derivative_with_k_op(x, grid, staggered, axis):
             )
 
     else:
-
         def deriv_fun(x):
             return jnp.fft.ifftn(
                 K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes
