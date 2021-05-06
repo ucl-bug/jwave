@@ -13,7 +13,6 @@ def derivative_init(
     grid: geometry.kGrid,
     sample_input: jnp.ndarray,
     axis: int = -1,
-    degree: float = 1,
     staggered: Staggered = Staggered.NONE,
     kspace_op: bool = False,
 ) -> Tuple[Callable, geometry.kGrid]:
@@ -22,10 +21,10 @@ def derivative_init(
     Args:
         grid (geometry.kGrid): Reference grid
         x (jnp.ndarray): Sample input signal, for shape and dtype evaluation
-        axis (int, optional): Axis on which the derivative is performed. Defaults to 
+        axis (int, optional): Axis on which the derivative is performed. Defaults to
             the last axis.
         degree (float, optional): Degree of the derivative operator.
-        staggered (Staggered, optional): Staggered flag. 
+        staggered (Staggered, optional): Staggered flag.
         kspace_op (bool, optional): If `True`, uses a modified derivative corrected by
             the k-space operator.
 
@@ -44,27 +43,19 @@ def derivative_init(
                 "You asked for a derivative with kspace operator but the kGrid object "
                 + "has an empty k_with_kspaceop field. Did you call grid.apply_kspace_operator first?"
             )
-        if degree != 1:
-            raise ValueError(
-                "Only first order derivatives can be evaluated with kspace correction "
-                + "but you asked for degree {}".format(degree)
-            )
 
     # Building the derivative operator
     if kspace_op:
         derivative_operator = _derivative_with_k_op(sample_input, staggered, axis)
     else:
-        derivative_operator = _plain_derivative(sample_input, staggered, axis, degree)
+        derivative_operator = _plain_derivative(sample_input, staggered, axis)
 
     return derivative_operator, grid
 
 
 def _derivative_with_k_op(
-    sample_x: jnp.ndarray, 
-    staggered: Staggered, 
-    axis: int
+    sample_x: jnp.ndarray, staggered: Staggered, axis: int
 ) -> Callable:
-
     def deriv_fun(x: jnp.ndarray, grid: geometry.kGrid) -> jnp.ndarray:
         # Selecting operator
         K = 1j * grid.k_with_kspaceop[staggered]
@@ -74,22 +65,25 @@ def _derivative_with_k_op(
 
         # Choose FFT and filter according to signal domain (real or complex)
         if "complex" in str(x.dtype):
-            return jnp.fft.ifftn(K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes)
+            return jnp.fft.ifftn(
+                K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes
+            )
         else:
-            Fx = eval_shape(lambda signal: jnp.fft.rfftn(signal, axes=domain_axes), sample_x)
+            Fx = eval_shape(
+                lambda signal: jnp.fft.rfftn(signal, axes=domain_axes), sample_x
+            )
             K = K[axis, : Fx.shape[0]]
-            return jnp.fft.irfftn(K * jnp.fft.rfftn(x, axes=domain_axes), axes=domain_axes)
-    
+            return jnp.fft.irfftn(
+                K * jnp.fft.rfftn(x, axes=domain_axes), axes=domain_axes
+            )
+
     return deriv_fun
 
-def _plain_derivative(
-    sample_x: jnp.ndarray,
-    staggered: Staggered,
-    axis: int,
-    degree: float
-) -> Callable:
 
-    def deriv_fun(x: jnp.ndarray, grid:geometry.kGrid) -> jnp.ndarray:
+def _plain_derivative(
+    sample_x: jnp.ndarray, staggered: Staggered, axis: int
+) -> Callable:
+    def deriv_fun(x: jnp.ndarray, grid: geometry.kGrid, degree: float) -> jnp.ndarray:
         # Select operator
         k = 1j * grid.k_vec[staggered][axis]
         k = k ** degree
@@ -109,9 +103,9 @@ def _plain_derivative(
         # Use real or complex fft
         Fx = ffts[0](x, axis=-1)
         dx = ffts[1](k * Fx, axis=-1, n=x.shape[-1])
-        
+
         # Back to original axis
         dx = jnp.moveaxis(dx, -1, axis)
         return dx
-    
+
     return deriv_fun

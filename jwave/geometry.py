@@ -16,10 +16,11 @@ class Staggered(IntEnum):
         NONE: Unstaggered
         FORWARD: Staggered forward
         BACKWARD: Staggered backward
-    """    
+    """
     NONE = 0
     FORWARD = 1
     BACKWARD = 2
+
 
 class kGrid(NamedTuple):
     r"""
@@ -56,7 +57,9 @@ class kGrid(NamedTuple):
 
     @property
     def has_staggered_grid(self):
-        return (self.k_vec[Staggered.BACKWARD] is not None) and (self.k_vec[Staggered.FORWARD] is not None)
+        return (self.k_vec[Staggered.BACKWARD] is not None) and (
+            self.k_vec[Staggered.FORWARD] is not None
+        )
 
     @staticmethod
     def make_grid(N, dx):
@@ -85,7 +88,7 @@ class kGrid(NamedTuple):
             return jnp.fft.fftfreq(n, d) * 2 * jnp.pi
 
         k_vec_plain = [k_axis(n, delta) for n, delta in zip(N, dx)]
-        k_vec = [None]*3
+        k_vec = [None] * 3
         k_vec[Staggered.NONE] = k_vec_plain
         cell_area = reduce(lambda x, y: x * y, dx)
 
@@ -96,7 +99,7 @@ class kGrid(NamedTuple):
             cell_area=cell_area,
             k_with_kspaceop=None,
             space_axis=axis,
-            k_magnitude=None
+            k_magnitude=None,
         )
 
     def add_staggered_grid(self):
@@ -118,7 +121,7 @@ class kGrid(NamedTuple):
                     zip(self.k_vec[Staggered.NONE], self.dx),
                 )
             )
-            k_vec[Staggered.FORWARD] =  list(
+            k_vec[Staggered.FORWARD] = list(
                 map(
                     lambda x: x[0] * jnp.exp(-1j * x[0] * x[1] / 2),
                     zip(self.k_vec[Staggered.NONE], self.dx),
@@ -170,7 +173,7 @@ class kGrid(NamedTuple):
         modified_kgrid_forward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
 
         # Update grid
-        k_with_kspaceop = [None]*3
+        k_with_kspaceop = [None] * 3
         k_with_kspaceop[Staggered.NONE] = modified_kgrid
         k_with_kspaceop[Staggered.FORWARD] = modified_kgrid_forward
         k_with_kspaceop[Staggered.BACKWARD] = modified_kgrid_backward
@@ -178,22 +181,26 @@ class kGrid(NamedTuple):
 
     def __str__(self):
         string = "kGrid Object:\n"
-        string += ('-'*(len(string)-2)) + '\n'
+        string += ("-" * (len(string) - 2)) + "\n"
         string += "N: {}\n".format(self.N)
         string += "dx: {}\n".format(self.dx)
         string += "cell_area: {}\n".format(self.cell_area)
         string += "space_axis: {}\n".format(nested_arrays_to_shape(self.space_axis))
         string += "k_vec: {}\n".format(nested_arrays_to_shape(self.k_vec))
-        string += "k_with_kspaceop: {}\n".format(nested_arrays_to_shape(self.k_with_kspaceop))
+        string += "k_with_kspaceop: {}\n".format(
+            nested_arrays_to_shape(self.k_with_kspaceop)
+        )
         return string
+
 
 def nested_arrays_to_shape(nested):
     if type(nested) == list or type(nested) == tuple:
         return [nested_arrays_to_shape(x) for x in nested]
     try:
-        return "(s) "+ str(nested.shape)
+        return "(s) " + str(nested.shape)
     except:
         return str(nested)
+
 
 class Medium(NamedTuple):
     r"""
