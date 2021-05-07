@@ -67,8 +67,8 @@ def test_if_simple_problem_runs():
 
     fields = physics.simulate_wave_propagation(grid, medium, time_array, sources)
 
-def test_big_wave_simulation():
-    N = (256, 256)
+def test_long_wave_simulation_for_nans():
+    N = (64, 64)
     dx = (0.5, 0.5)
     cfl = 0.1
 
@@ -79,10 +79,10 @@ def test_big_wave_simulation():
         sound_speed=jnp.ones(N),
         density=jnp.ones(N),
         attenuation=0.0,
-        pml_size=20
+        pml_size=15
     )
 
-    time_array = geometry.TimeAxis.from_kgrid(grid, medium, cfl=cfl, t_end=50.)
+    time_array = geometry.TimeAxis.from_kgrid(grid, medium, cfl=cfl, t_end=100.)
 
     # define a source point
     from jwave.signal_processing import apply_ramp
@@ -105,7 +105,7 @@ def test_big_wave_simulation():
     )
 
     source_signals = jnp.stack([s1])
-    source_positions = ([100], [100])
+    source_positions = ([24], [24])
 
     sources = geometry.Sources(positions=source_positions, signals=source_signals)
 
@@ -113,6 +113,8 @@ def test_big_wave_simulation():
     from jwave.physics import simulate_wave_propagation
     fields = simulate_wave_propagation(grid, medium, time_array, sources)
 
+    assert not jnp.any(jnp.isnan(fields[0]))
+    assert not jnp.any(jnp.isnan(fields[1]))
 
 def test_backprop_in_wave_equation_for_nans():
 
@@ -152,7 +154,7 @@ if __name__ == "__main__":
     #detect_nans()
 
     #with disable_jit():
-    test_big_wave_simulation()
+    test_long_wave_simulation_for_nans()
     test_if_simple_problem_runs()
     test_backprop_in_wave_equation_for_nans()
     test_if_helmholtz_problem_runs()
