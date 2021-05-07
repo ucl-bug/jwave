@@ -3,6 +3,23 @@ from functools import reduce
 import jax
 from typing import NamedTuple, Tuple, List
 import numpy as np
+from jwave.utils import safe_sinc
+from enum import IntEnum
+
+
+class Staggered(IntEnum):
+    r"""Staggering flags as enumerated constants. This makes sure
+    that we are consistent when asking staggered computations
+    across different spectral functions
+
+    Attributes:
+        NONE: Unstaggered
+        FORWARD: Staggered forward
+        BACKWARD: Staggered backward
+    """
+    NONE = 0
+    FORWARD = 1
+    BACKWARD = 2
 
 
 class kGrid(NamedTuple):
@@ -13,18 +30,18 @@ class kGrid(NamedTuple):
         N (Tuple[int]): grid dimensions
         dx (Tuple[int]): spatial sampling
         k_vec (List[jnp.ndarray]):
-        k_staggered (dict):
+        k_staggered (List[jnp.ndarray]):
         k_with_kspaceop (dict):
         space_axis (List[jnp.ndarray]):
 
     """
     N: Tuple[int]
     dx: Tuple[float]
-    k_vec: List[jnp.ndarray]
+    k_vec: List[List[jnp.ndarray]]
     cell_area: float
-    k_staggered: dict
-    k_with_kspaceop: dict
+    k_with_kspaceop: List[jnp.ndarray]
     space_axis: List[jnp.ndarray]
+    k_magnitude: jnp.ndarray
 
     @property
     def domain_size(self):
@@ -37,6 +54,16 @@ class kGrid(NamedTuple):
 
         """
         return list(map(lambda x, y: x * y, zip(self.N, self.dx)))
+
+    @property
+    def has_staggered_grid(self):
+        return (self.k_vec[Staggered.BACKWARD] is not None) and (
+            self.k_vec[Staggered.FORWARD] is not None
+        )
+    
+    @property
+    def has_kspace_grid(self):
+        return self.k_with_kspaceop is not None
 
     @staticmethod
     def make_grid(N, dx):
@@ -64,7 +91,9 @@ class kGrid(NamedTuple):
         def k_axis(n, d):
             return jnp.fft.fftfreq(n, d) * 2 * jnp.pi
 
-        k_vec = [k_axis(n, delta) for n, delta in zip(N, dx)]
+        k_vec_plain = [k_axis(n, delta) for n, delta in zip(N, dx)]
+        k_vec = [None] * 3
+        k_vec[Staggered.NONE] = k_vec_plain
         cell_area = reduce(lambda x, y: x * y, dx)
 
         return kGrid(
@@ -72,13 +101,14 @@ class kGrid(NamedTuple):
             dx=dx,
             k_vec=k_vec,
             cell_area=cell_area,
-            k_staggered=None,
             k_with_kspaceop=None,
             space_axis=axis,
+            k_magnitude=None,
         )
 
-    def to_staggered(self):
-        r"""Produces a copy of the grid with the staggered vectors field set
+    def add_staggered_grid(self):
+        r"""Produces a copy of the grid with the staggered vectors field set.
+        Returns itself if a `k_staggered` grid is already defined.
 
         !!! example
             ```python
@@ -87,24 +117,26 @@ class kGrid(NamedTuple):
             ```
 
         """
-        tuple_to_dict = self._asdict()
-        tuple_to_dict["k_staggered"] = {
-            "backward": list(
+        if not self.has_staggered_grid:
+            k_vec = [None]*3
+            k_vec[Staggered.NONE] = self.k_vec[Staggered.NONE]
+            k_vec[Staggered.BACKWARD] = list(
                 map(
                     lambda x: x[0] * jnp.exp(1j * x[0] * x[1] / 2),
-                    zip(self.k_vec, self.dx),
+                    zip(self.k_vec[Staggered.NONE], self.dx),
                 )
-            ),
-            "forward": list(
+            )
+            k_vec[Staggered.FORWARD] = list(
                 map(
                     lambda x: x[0] * jnp.exp(-1j * x[0] * x[1] / 2),
-                    zip(self.k_vec, self.dx),
+                    zip(self.k_vec[Staggered.NONE], self.dx),
                 )
-            ),
-        }
-        return kGrid(**tuple_to_dict)
+            )
+            return self._replace(k_vec=k_vec)
+        else:
+            return self
 
-    def apply_kspace_operator(self, c_ref, dt):
+    def apply_kspace_operator(self, c_ref, dt, force=False):
         r"""Modifies the k-vectors used for derivative calculation
         by applying the k-space operator (see [k-Wave](www.k-wave.org))
 
@@ -130,29 +162,52 @@ class kGrid(NamedTuple):
             ```
 
         """
-        assert self.k_staggered
-        tuple_to_dict = self._asdict()
+        assert self.has_staggered_grid
 
-        K = jnp.stack(jnp.meshgrid(*self.k_vec, indexing="ij"))
-        # k_magnitude = jnp.sqrt(jnp.sum(K ** 2, 0))
+        if (not self.has_kspace_grid) or force:
+            K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.NONE], indexing="ij"))
+            k_magnitude = jnp.sqrt(jnp.sum(K ** 2, 0))
 
-        # TODO: Check why it seems to work better without k_space_op
-        k_space_op = 1.0  # safe_sinc(c_ref * k_magnitude * dt/(2*jnp.pi))
-        modified_kgrid = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
+            # TODO: Check why it seems to work better without k_space_op
+            k_space_op = safe_sinc(c_ref * k_magnitude * dt / (2 * jnp.pi))  # 1.0  #
+            modified_kgrid = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
 
-        # Making staggered versions
-        K = jnp.stack(jnp.meshgrid(*self.k_staggered["backward"], indexing="ij"))
-        modified_kgrid_backward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
-        K = jnp.stack(jnp.meshgrid(*self.k_staggered["forward"], indexing="ij"))
-        modified_kgrid_forward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
+            # Making staggered versions
+            K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.BACKWARD], indexing="ij"))
+            modified_kgrid_backward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
+            K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.FORWARD], indexing="ij"))
+            modified_kgrid_forward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
 
-        # Update grid
-        tuple_to_dict["k_with_kspaceop"] = {
-            "plain": modified_kgrid,
-            "backward": modified_kgrid_backward,
-            "forward": modified_kgrid_forward,
-        }
-        return kGrid(**tuple_to_dict)
+            # Update grid
+            k_with_kspaceop = [None] * 3
+            k_with_kspaceop[Staggered.NONE] = modified_kgrid
+            k_with_kspaceop[Staggered.FORWARD] = modified_kgrid_forward
+            k_with_kspaceop[Staggered.BACKWARD] = modified_kgrid_backward
+            return self._replace(k_with_kspaceop=k_with_kspaceop)
+        else:
+            return self
+
+    def __str__(self):
+        string = "kGrid Object:\n"
+        string += ("-" * (len(string) - 2)) + "\n"
+        string += "N: {}\n".format(self.N)
+        string += "dx: {}\n".format(self.dx)
+        string += "cell_area: {}\n".format(self.cell_area)
+        string += "space_axis: {}\n".format(nested_arrays_to_shape(self.space_axis))
+        string += "k_vec: {}\n".format(nested_arrays_to_shape(self.k_vec))
+        string += "k_with_kspaceop: {}\n".format(
+            nested_arrays_to_shape(self.k_with_kspaceop)
+        )
+        return string
+
+
+def nested_arrays_to_shape(nested):
+    if type(nested) == list or type(nested) == tuple:
+        return [nested_arrays_to_shape(x) for x in nested]
+    try:
+        return "(s) " + str(nested.shape)
+    except:
+        return str(nested)
 
 
 class Medium(NamedTuple):
@@ -302,4 +357,4 @@ class TimeAxis(NamedTuple):
             t_end = jnp.sqrt(
                 sum((x[-1] - x[0]) ** 2 for x in grid.space_axis)
             ) / jnp.min(medium.sound_speed)
-        return TimeAxis(dt=dt, t_end=t_end)
+        return TimeAxis(dt=np.array(dt), t_end=np.array(t_end))

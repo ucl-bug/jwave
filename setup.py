@@ -12,7 +12,7 @@ setup(
     description="Fast differentiable pseudospectral acoustic simulations",
     author="Antonio Stanziola, UCL BUG",
     author_email="a.stanziola@ucl.ac.uk",
-    packages=find_packages(exclude=["docs", "jwave/matlab.py"]),
+    packages=find_packages(exclude=["docs"]),
     package_data={"jwave": ["py.typed"]},
     python_requires=">=3.7",
     install_requires=open("requirements.txt", "r").readlines(),
@@ -22,6 +22,7 @@ setup(
     url="https://bug.medphys.ucl.ac.uk/",
     license="GNU Lesser General Public License (LGPL)",
     classifiers=[
-        "Programming Language :: Python :: 3.7"
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8"
     ],
 )

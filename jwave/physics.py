@@ -1,9 +1,12 @@
 from jwave import geometry, signal_processing, spectral, ode
+from jwave.geometry import Staggered
 from jax import lax
 from jax import numpy as jnp
 from jax.scipy.sparse.linalg import gmres, bicgstab
 from jax.tree_util import tree_map
 from typing import Tuple, Callable
+from numpy import arange as nparange
+from time import time
 
 from functools import partial
 import jax
@@ -51,8 +54,12 @@ def get_time_domain_pml(
 
 
 def laplacian_with_pml(
-    grid: geometry.kGrid, medium: geometry.Medium, omega: float, sigma_max: float = 2.0
-) -> Callable:
+    sample_input: jnp.ndarray,
+    grid: geometry.kGrid,
+    medium: geometry.Medium,
+    omega: float,
+    sigma_max: float = 2.0,
+) -> Tuple[Callable, geometry.kGrid]:
     r"""Returns a laplacian operator augmented with a PML. For
     boundary value problems such as the Helmholtz equation.
 
@@ -89,142 +96,35 @@ def laplacian_with_pml(
         ```
     """
     # Building PML gamma function
+    
     gamma, gamma_prime = _get_gamma_functions(grid, medium, omega, sigma_max)
 
-    def derivative(field, ax, order):
-        return spectral.derivative(
-            field, grid, 0, "complex", ax, degree=order
-        )  # 0 is for "unstaggered"
+    # Building derivative operators
+    axis = list(range(len(grid.N)))
+    D_ops = []
+    for ax in axis:
+        D, grid = spectral.derivative_init(sample_input, grid, staggered=Staggered.NONE, axis=ax)
+        D_ops.append(D)
 
-    def lapl(field):
-        axis = list(range(field.ndim))
+    degrees = jnp.array([1.0, 2.0])
 
-        def deriv(ax):
-            return derivative(field, ax, 2) / (gamma[ax] ** 2) - gamma_prime[
-                ax
-            ] * derivative(field, ax, 1) / (gamma[ax] ** 3)
+    # Constructing laplacian operator. Note that the
+    def lapl(field, grid):
+        res = jnp.zeros_like(field)
+        for ax in axis:
+            # Returns the first and second order derivatives
+            derivatives = jax.vmap(D_ops[ax], in_axes=(None, None, 0))(
+                field, grid, degrees
+            )
+            D_ax = derivatives[0]
+            D2_ax = derivatives[1]
+            lapl_term = D2_ax / (gamma[ax] ** 2) - gamma_prime[ax] * D_ax / (
+                gamma[ax] ** 3
+            )
+            res = res + lapl_term
+        return res
 
-        return jnp.sum(jnp.stack([deriv(ax) for ax in axis]), axis=0)
-
-    return jax.jit(lapl)
-
-
-def heterogeneous_laplacian(
-    grid: geometry.kGrid,
-    medium: geometry.Medium,
-    omega: float,
-    sigma_max: float = 1.0,
-) -> Callable:
-    r"""Returns an heterogeneous laplacian operator augmented with a PML:
-
-    ```math
-    \hat \nabla_c^2 = \hat \nabla \cdot(c \hat \nabla)
-    ```
-
-    For boundary value problems such as the Helmholtz equation.
-
-    Args:
-        grid (geometry.kGrid):
-        medium (geometry.Medium):
-        omega (float): The temporal pulsation
-        cmap (jnp.ndarray): The heterogeneous map $`c`$
-        sigma_max (float, optional): [description]
-
-    Returns:
-        Callable: [description]
-
-    !!! example
-        ```python
-        random_seed = jax.random.PRNGKey(42)
-
-        # Generate laplacian
-        grid = kGrid.make_grid(N=(64,64), dx=(0.3, 0.3))
-        c = jnp.ones(N)
-        c = c.at[32:].set(2.0)
-        laplacian = heterogeneous_laplacian(grid, medium, 1.0, c)
-
-        # Apply laplacian
-        field = jnp.random.normal(random_seed, grid.N)
-        L_field = laplacian(field)
-        ```
-    """
-    gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
-
-    def derivative(field, ax):
-        return spectral.derivative(
-            field, grid, 0, "complex", ax, degree=1
-        )  # 0 is for "unstaggered"
-
-    def lapl(field, cmap):
-        axis = list(range(field.ndim))
-
-        def deriv(ax):
-            return derivative(cmap * (derivative(field, ax) / gamma[ax]), ax) / gamma[ax]
-
-        return jnp.sum(jnp.stack([deriv(ax) for ax in axis]), axis=0)
-
-    return jax.jit(lapl)
-
-
-def generalized_laplacian(
-    grid: geometry.kGrid,
-    medium: geometry.Medium,
-    omega: float,
-    sigma_max: float = 1.0,
-) -> Callable:
-    r"""Returns an heterogeneous laplacian operator augmented with a PML:
-
-    ```math
-    \hat \nabla_c^2 = \hat \nabla \cdot(c \hat \nabla)
-    ```
-
-    For boundary value problems such as the Helmholtz equation.
-
-    Args:
-        grid (geometry.kGrid):
-        medium (geometry.Medium):
-        omega (float): The temporal pulsation
-        cmap (jnp.ndarray): The heterogeneous map $`c`$
-        sigma_max (float, optional): [description]
-
-    Returns:
-        Callable: [description]
-
-    !!! example
-        ```python
-        random_seed = jax.random.PRNGKey(42)
-
-        # Generate laplacian
-        grid = kGrid.make_grid(N=(64,64), dx=(0.3, 0.3))
-        c = jnp.ones(N)
-        c = c.at[32:].set(2.0)
-        laplacian = heterogeneous_laplacian(grid, medium, 1.0, c)
-
-        # Apply laplacian
-        field = jnp.random.normal(random_seed, grid.N)
-        L_field = laplacian(field)
-        ```
-    """
-    gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
-
-    def derivative(field, ax):
-        # 0 is for "unstaggered"
-        return spectral.derivative(field, grid, 0, "complex", ax, degree=1) / gamma[ax]
-
-    def v_derivative_axis(field, axis):
-        return jnp.stack([derivative(field, ax) for ax in axis])
-
-    def v_derivative(field, axis):
-        return jnp.stack([derivative(field[ax], ax) for ax in axis])
-
-    def lapl(field, rho0, tau, omega):
-        axis = list(range(field.ndim))
-        inv_rho_nabla_p = v_derivative_axis(field, axis)
-        rho_nabla = rho0 * jnp.sum(v_derivative(inv_rho_nabla_p, axis), axis=0)
-        nabla_rho = jnp.sum(v_derivative_axis(rho0, axis) * inv_rho_nabla_p, axis=0)
-        return rho_nabla + 1j * omega * tau * (rho_nabla + nabla_rho)
-
-    return jax.jit(lapl)
+    return lapl, grid
 
 
 def _get_gamma_functions(
@@ -251,6 +151,9 @@ def _get_gamma_functions(
     Returns:
         [type]: [description]
     """
+    # TODO: This uses meshgrid to duplicate the PML function across the various dimensions.
+    #       it would be better to use broadcasting to reduce memory requirements.
+
     # Building PML gamma function
     axis = [
         jnp.linspace(-n / 2 + dx / 2, n / 2 - dx / 2, n).astype(jnp.float32) * dx
@@ -283,7 +186,74 @@ def _get_gamma_functions(
     return lax.stop_gradient((gamma, gamma_prime))  # Non differentiabl
 
 
-def get_helmholtz_operator(grid: geometry.kGrid, medium: geometry.Medium, omega: float):
+def heterogeneous_laplacian(
+    sample_input: jnp.ndarray,
+    grid: geometry.kGrid,
+    medium: geometry.Medium,
+    omega: float,
+    sigma_max: float = 1.0,
+) -> Callable:
+    r"""Returns an heterogeneous laplacian operator augmented with a PML:
+
+    ```math
+    \hat \nabla_c^2 = \hat \nabla \cdot(c \hat \nabla)
+    ```
+
+    For boundary value problems such as the Helmholtz equation.
+
+    Args:
+        grid (geometry.kGrid):
+        medium (geometry.Medium):
+        omega (float): The temporal pulsation
+        cmap (jnp.ndarray): The heterogeneous map $`c`$
+        sigma_max (float, optional): [description]
+
+    Returns:
+        Callable: [description]
+
+    !!! example
+        ```python
+        random_seed = jax.random.PRNGKey(42)
+
+        # Generate laplacian
+        grid = kGrid.make_grid(N=(64,64), dx=(0.3, 0.3))
+        c = jnp.ones(N)
+        c = c.at[32:].set(2.0)
+        laplacian = heterogeneous_laplacian(grid, medium, 1.0, c)
+
+        # Apply laplacian
+        field = jnp.random.normal(random_seed, grid.N)
+        L_field = laplacian(field)
+        ```
+    """
+    gamma, _ = _get_gamma_functions(grid, medium, omega, sigma_max)
+
+    # Building derivative operators
+    axis = list(range(sample_input.ndim))
+    D_ops = []
+    for ax in axis:
+        D, grid = spectral.derivative_init(sample_input, grid, staggered=0, axis=ax)
+        D_ops.append(D)
+
+    axis = list(range(sample_input.ndim))
+
+    def lapl(field, cmap, grid):
+        # TODO: This for loop probably forces sequential computations. However, it reduces
+        #       the memory requirements. Better parallelization tests are needed
+        res = jnp.zeros_like(field)
+        for ax in axis:
+            res = res + D_ops[ax](cmap * (D_ops[ax](field, grid, 1.) / gamma[ax]), grid, 1.) / gamma[ax]
+        return res
+
+    return lapl, grid
+
+
+def get_helmholtz_operator(
+    sample_input: jnp.ndarray,
+    grid: geometry.kGrid,
+    medium: geometry.Medium,
+    omega: float,
+):
     r"""Returns the standard Helmholtz operator that evaluates
 
     ```math
@@ -320,16 +290,20 @@ def get_helmholtz_operator(grid: geometry.kGrid, medium: geometry.Medium, omega:
         residual = linear_op(field)
         ```
     """
-    laplacian = laplacian_with_pml(grid, medium, omega)
+    laplacian, grid = laplacian_with_pml(sample_input, grid, medium, omega)
+    
 
-    def helmholtz_operator(x, omega, medium):
-        return laplacian(x) + x * ((omega / medium.sound_speed) ** 2)
-
-    return helmholtz_operator
+    def helmholtz_operator(x, omega, medium, grid):
+        return laplacian(x, grid) + x * ((omega / medium.sound_speed) ** 2)
+    
+    return helmholtz_operator, grid
 
 
 def get_helmholtz_operator_density(
-    grid: geometry.kGrid, medium: geometry.Medium, omega: float
+    sample_input: jnp.ndarray,
+    grid: geometry.kGrid,
+    medium: geometry.Medium,
+    omega: float,
 ):
     r"""Returns the standard Helmholtz operator
 
@@ -345,17 +319,20 @@ def get_helmholtz_operator_density(
     Returns:
         [type]: [description]
     """
-    h_laplacian = heterogeneous_laplacian(grid, medium, omega)
+    h_laplacian, grid = heterogeneous_laplacian(sample_input, grid, medium, omega)
 
-    def helmholtz_operator(x, omega, medium):
-        laplacian = medium.density * h_laplacian(x, 1.0 / medium.density)
+    def helmholtz_operator(x, omega, medium, grid):
+        laplacian = medium.density * h_laplacian(x, 1.0 / medium.density, grid)
         return laplacian + x * ((omega / medium.sound_speed) ** 2)
 
-    return helmholtz_operator
+    return helmholtz_operator, grid
 
 
 def get_helmholtz_operator_attenuation(
-    grid: geometry.kGrid, medium: geometry.Medium, omega: float
+    sample_input: jnp.ndarray,
+    grid: geometry.kGrid,
+    medium: geometry.Medium,
+    omega: float,
 ):
     r"""Returns the standard Helmholtz operator
 
@@ -371,19 +348,21 @@ def get_helmholtz_operator_attenuation(
     Returns:
         [type]: [description]
     """
-    laplacian = laplacian_with_pml(grid, medium, omega)
+    laplacian, grid = laplacian_with_pml(sample_input, grid, medium, omega)
 
-    def helmholtz_operator(x, omega, medium):
-        print(x.shape, medium.attenuation.shape)
-        return laplacian(x) + x * (
+    def helmholtz_operator(x, omega, medium, grid):
+        return laplacian(x, grid) + x * (
             ((1 + 1j * medium.attenuation) * omega / medium.sound_speed) ** 2
         )
 
-    return helmholtz_operator
+    return helmholtz_operator, grid
 
 
 def get_helmholtz_operator_general(
-    grid: geometry.kGrid, medium: geometry.Medium, omega: float
+    sample_input: jnp.ndarray,
+    grid: geometry.kGrid,
+    medium: geometry.Medium,
+    omega: float,
 ):
     r"""Returns the standard Helmholtz operator
 
@@ -399,15 +378,14 @@ def get_helmholtz_operator_general(
     Returns:
         [type]: [description]
     """
-    g_laplacian = generalized_laplacian(grid, medium, omega)
+    h_laplacian, grid = heterogeneous_laplacian(sample_input, grid, medium, omega)
 
-    def helmholtz_operator(x, omega, medium):
-        return g_laplacian(x, medium.density, medium.attenuation, omega) + x * (
-            (omega / medium.sound_speed) ** 2
+    def helmholtz_operator(x, omega, medium, grid):
+        return medium.density * h_laplacian(x, 1.0 / medium.density, grid) + x * (
+            ((1 + 1j * medium.attenuation) * (omega / medium.sound_speed)) ** 2
         )
 
-    return helmholtz_operator
-
+    return helmholtz_operator, grid
 
 def solve_helmholtz(
     grid: geometry.kGrid,
@@ -415,13 +393,12 @@ def solve_helmholtz(
     src: jnp.ndarray,
     omega: float,
     guess=None,
-    method="bicgstab",
+    method="gmres",
     restart=10,
     tol=1e-5,
     solve_method="batched",
     maxiter=None,
-    *args,
-    **kwgs
+    solve_problem=True,
 ) -> jnp.ndarray:
     r"""Solves the Helmholtz equation
 
@@ -461,69 +438,132 @@ def solve_helmholtz(
         ```
     """
     # Choosing the cheapest Helmholtz operator for the given problem
-    if medium.density is None and medium.attenuation is None:
-        helmholtz_operator = get_helmholtz_operator(grid, medium, omega)
-        src = -1j * omega * src
-    elif medium.density is None:  # Heterogeneous attenuation
-        helmholtz_operator = get_helmholtz_operator_attenuation(grid, medium, omega)
-        src = ((omega ** 2) * medium.attenuation - 1j * omega) * src
-    elif medium.attenuation is None:  # General case
-        helmholtz_operator = get_helmholtz_operator_density(grid, medium, omega)
-        src = -1j * omega * src
-    else:
-        helmholtz_operator = get_helmholtz_operator_general(grid, medium, omega)
-        src = ((omega ** 2) * medium.attenuation - 1j * omega) * src
-
-    # Fixing parameters
-    linear_op = partial(helmholtz_operator, omega=omega, medium=medium)
 
     # Default guess
     if guess is None:
         guess = jnp.zeros(shape=grid.N, dtype=jnp.complex64)  # TODO: proper zeros init
 
+    # Operators and scaling
+    if medium.density is None and medium.attenuation is None:
+        helmholtz_operator, grid = get_helmholtz_operator(guess, grid, medium, omega)
+        
+        def scale_src(src, omega):
+            return -1j * omega * src
+
+    elif medium.density is None:  # Heterogeneous attenuation
+        helmholtz_operator, grid = get_helmholtz_operator_attenuation(
+            guess, grid, medium, omega
+        )
+
+        def scale_src(src, omega):
+            return ((omega ** 2) * medium.attenuation - 1j * omega) * src
+
+    elif medium.attenuation is None:  # General case
+        helmholtz_operator, grid = get_helmholtz_operator_density(guess, grid, medium, omega)
+
+        def scale_src(src, omega):
+            return -1j * omega * src
+
+    else:
+        helmholtz_operator, grid = get_helmholtz_operator_general(guess, grid, medium, omega)
+
+        def scale_src(src, omega):
+            return ((omega ** 2) * medium.attenuation - 1j * omega) * src
+
     # Iterative solver
+    params = {
+        "grid": grid,
+        "src": src,
+        "guess": guess,
+        "medium": medium,
+        "omega": omega,
+        "solver_params": {
+            "tol": tol,
+            "restart": restart,
+            "solve_method": solve_method,
+            "restart": restart,
+            "maxiter": maxiter,
+        },
+    }
+
+    # Returns operator and parameters if method is None
+    if method is None:
+        return params, [helmholtz_operator, scale_src]
+
+    # Construct solver
     if method == "gmres":
-        field, _ = gmres(
-            linear_op,
-            src,  # jnp.reshape(src, (-1,)),
-            x0=guess,  # jnp.reshape(guess, (-1,)),
-            tol=tol,
-            solve_method=solve_method,
-            restart=restart,
-            maxiter=maxiter,
-            **kwgs,
-        )
+
+        def solver(params):
+            linear_op = partial(
+                helmholtz_operator, omega=params["omega"], medium=params["medium"], grid=params["grid"]
+            )
+            src = scale_src(params["src"], params["omega"])
+            return gmres(
+                linear_op,
+                src,  # jnp.reshape(src, (-1,)),
+                x0=params["guess"],  # jnp.reshape(guess, (-1,)),
+                tol=params["solver_params"]["tol"],
+                solve_method=params["solver_params"]["solve_method"],
+                restart=params["solver_params"]["restart"],
+                maxiter=params["solver_params"]["maxiter"],
+            )[0]
+
     elif method == "bicgstab":
-        field, _ = bicgstab(
-            linear_op,
-            src,  # jnp.reshape(src, (-1,)),
-            x0=guess,  # jnp.reshape(guess, (-1,)),
-            tol=tol,
-            maxiter=maxiter,
-            M=None,
-        )
 
-    return field
+        def solver(params):
+            linear_op = partial(helmholtz_operator, omega=params["omega"], medium=params["medium"], grid=params["grid"])
+            src = scale_src(params["src"], params["omega"])
+            return bicgstab(
+                linear_op,
+                src,  # jnp.reshape(src, (-1,)),
+                x0=params["guess"],  # jnp.reshape(guess, (-1,)),
+                tol=params["solver_params"]["tol"],
+                maxiter=params["solver_params"]["maxiter"],
+            )[0]
 
-
-def d_velocity_dt(rho, c_sq, grid, rho_0):
-    p = c_sq * jnp.sum(rho, 0)
-
-    du = jax.vmap(
-        lambda ax: spectral.derivative_with_k_op(p, grid, -1, "real", ax), 0, 0
-    )(jnp.arange(-rho.shape[0], 0, 1))
-    return -du / rho_0
+    if solve_problem:
+        return solver(params)
+    else:
+        return params, solver
 
 
-def d_density_dt(u, grid, rho_0):
-    return (
-        -rho_0
-        * jax.vmap(
-            lambda x, ax: spectral.derivative_with_k_op(x, grid, 1, "real", ax),
-            (0, 0),
-            0,
-        )(u, jnp.arange(-u.shape[0], 0, 1)).real
+def velocity_update_fun(sample_input, grid):
+    axes = nparange(-len(grid.N), 0, 1)
+    
+    deriv, grid = spectral.derivative_init(
+        sample_input, 
+        grid, 
+        staggered=Staggered.BACKWARD, 
+        axis=axes,
+        kspace_op=True
     )
+
+    def d_velocity_dt(rho, c_sq, rho_0, grid):
+        p = c_sq * jnp.sum(rho, 0)
+        dp = deriv(p, grid)
+        return -dp / rho_0
+
+    return d_velocity_dt, grid
+
+
+def density_update_fun(sample_input, grid):
+    axes = nparange(-len(grid.N), 0, 1)
+    deriv_funcs = []
+    for ax in axes:
+        D, grid = spectral.derivative_init(
+            sample_input,
+            grid,
+            staggered=Staggered.FORWARD,
+            axis=ax,
+            kspace_op=True
+        )
+        deriv_funcs.append(D)
+
+    def d_density_dt(u, rho_0, grid):
+        diag_grad_u = jnp.stack([f(u[ax], grid) for f, ax in zip(deriv_funcs, axes)])
+        return -rho_0 * diag_grad_u
+
+    return d_density_dt, grid
 
 
 def simulate_wave_propagation(
@@ -555,8 +595,8 @@ def simulate_wave_propagation(
         [type]: [description]
     """
     # Adds the k-space operator to the derivative filters
-    grid = grid.to_staggered()
-    grid = grid.apply_kspace_operator(jnp.amin(medium.sound_speed), time_array.dt)
+    grid = grid.add_staggered_grid()
+    grid = grid.apply_kspace_operator(jnp.amin(medium.sound_speed), time_array.dt, force=False)
 
     # Making functions for ODE solver
     c_sq = medium.sound_speed ** 2
@@ -565,7 +605,7 @@ def simulate_wave_propagation(
     # Get PML
     pml_alpha = get_time_domain_pml(
         medium.pml_size,
-        alpha_max=5 / (min(grid.dx) / jnp.amin(medium.sound_speed)),
+        alpha_max=4,  # 5 / (min(grid.dx) / jnp.amin(medium.sound_speed)),
         dimensions=grid.N,
     )
 
@@ -575,58 +615,98 @@ def simulate_wave_propagation(
     # Represents sensors as a measurement operator on the whole field
     measurement_operator = senstor_to_operator(sensors)
 
+    # Scale mass sources
+    c_sq_at_sources = jnp.expand_dims(c_sq[sources.positions], axis=-1)
+    source_signals = (
+        sources.signals * 2 / (c_sq_at_sources * grid.dx[0])
+    )  # TODO: different scalings for non-isotropic grids
+
     # Get steps to be saved
     if output_t_axis is None:
         output_t_axis = time_array
-        output_steps = output_t_axis
-        t = jnp.arange(0, output_t_axis.t_end, output_t_axis.dt)
+        t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)
     else:
-        t = jnp.arange(0, output_t_axis.t_end, output_t_axis.dt)
-    output_steps = (t / output_t_axis.dt).astype(jnp.int32)
+        t = jnp.arange(0, output_t_axis.t_end + output_t_axis.dt, output_t_axis.dt)
+    output_steps = (t / dt).astype(jnp.int32)
 
     # Integrate wave equation
     N = grid.N
     if guess is None:
-        u0 = jnp.zeros((len(N), *N))
-        rho0 = jnp.zeros((len(N), *N))
+        u0 = jnp.zeros((len(N), *N), dtype=c_sq.dtype)
+        rho0 = jnp.zeros((len(N), *N), dtype=c_sq.dtype)
     else:
         u0 = guess[0]
         rho0 = guess[1]
 
-    params = {"rho_0": medium.density, "c_sq": c_sq}
+    acoustic_params = {"rho_0": medium.density, "c_sq": c_sq}
 
-    def du_dt(params, rho, t):
-        rho_0 = params["rho_0"]
-        c_sq = params["c_sq"]
-        return d_velocity_dt(rho, c_sq, grid, rho_0)
+    sample_input = jnp.zeros_like(c_sq)
+    d_velocity_dt, grid = velocity_update_fun(sample_input, grid)
+    d_density_dt, grid = density_update_fun(sample_input, grid)
 
-    def drho_dt(params, u, t):
-        # Make source term
-        rho_0 = params["rho_0"]
-        rho_update = d_density_dt(u, grid, rho_0)
+    # Parameters dictionary
+    params = {
+        "acoustic_params": acoustic_params,
+        "source_signals": source_signals,
+        "initial_wavefields": {"u0": u0, "rho0": rho0},
+        "grid": grid
+    }
 
-        src = jnp.zeros(rho_update.shape[1:])
-        idx = (t / dt).round().astype(jnp.int32)
-        signals = sources.signals[:, idx]
+    # Building solver function
+    def solver_function(params):
+        acoustic_params = params["acoustic_params"]
+        source_signals = params["source_signals"]
+        u0 = params["initial_wavefields"]["u0"]
+        rho0 = params["initial_wavefields"]["rho0"]
+        grid = params["grid"]
 
-        src = src.at[sources.positions].add(signals)
-        return rho_update + signal_processing.smooth(src) / rho_update.shape[0]
+        # Function to integrate
+        def get_src_map(idx):
+            src = jnp.zeros(N)
+            signals = source_signals[:, idx] / len(N)
+            src = src.at[sources.positions].add(signals)
+            return src
 
-    # Checkpoint functions to save memory if requested
-    fields = ode.generalized_semi_implicit_euler(
-        params,
-        du_dt,
-        drho_dt,
-        measurement_operator,
-        decay_fact,
-        u0,
-        rho0,
-        dt,
-        output_steps,
-        backprop,
-        checkpoint,
-    )
-    return fields
+        def du_dt(params, rho, t):
+            rho_0 = params["rho_0"]
+            c_sq = params["c_sq"]
+            return d_velocity_dt(rho, c_sq, rho_0, grid)
+
+        def drho_dt(params, u, t):
+            # Make source term
+            rho_0 = params["rho_0"]
+            rho_update = d_density_dt(u, rho_0, grid)
+
+            idx = (t / dt).round().astype(jnp.int32)
+            src = get_src_map(idx)
+
+            return rho_update + src
+
+        # Integrate
+        fields = ode.generalized_semi_implicit_euler(
+            acoustic_params,
+            du_dt,
+            drho_dt,
+            measurement_operator,
+            decay_fact,
+            u0,
+            rho0,
+            dt,
+            output_steps,
+            backprop,
+            checkpoint,
+        )
+
+        return fields
+
+    if method is None:
+        return solver_function, params
+    elif method == "spectral":
+        return solver_function(params)
+    else:
+        raise NotImplementedError(
+            "Only spectral method is implemented, not {}".format(method)
+        )
 
 
 def senstor_to_operator(sensors):

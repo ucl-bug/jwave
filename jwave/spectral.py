@@ -1,196 +1,112 @@
 import jax.numpy as jnp
-from jax import jit
+from jax import jit, eval_shape
 from functools import partial
+from typing import Callable, Tuple, Union
 from jwave import geometry
+from jwave.geometry import Staggered
 
 # TODO: Use map / fori / scan instead of for loops
 # TODO: speed tests
 
 
-def diag_nabla_with_k_op(
-    x: jnp.ndarray, grid: geometry.kGrid, staggered: int, domain: str
-):
-    r = []
-    for i in range(x.shape[0]):
-        r.append(derivative_with_k_op(x[i], grid, staggered, domain, i))
-    return jnp.stack(r, axis=0)
-
-
-def derivative(
-    x: jnp.ndarray,
+def derivative_init(
+    sample_input: jnp.ndarray,
     grid: geometry.kGrid,
-    staggered: int,
-    domain: str,
-    axis: int,
-    kspace_op=False,
-    degree: int = 1,
-) -> jnp.ndarray:
-    """Evaluates the spatial derivative of an n-dimensional
-    array using spectral methods.
+    axis: int = -1,
+    staggered: Staggered = Staggered.NONE,
+    kspace_op: bool = False,
+) -> Tuple[Callable, geometry.kGrid]:
+    """[summary]
 
     Args:
-        x (jnp.ndarray): [description]
-        grid (geometry.kGrid): [description]
-        staggered (int): [description]
-        domain (str): [description]
-        axis (int): [description]
-        kspace_op (Bool, optional): [description]. Defaults to False.
-        degree (int, optional): [description]. Defaults to 1.
+        grid (geometry.kGrid): Reference grid
+        x (jnp.ndarray): Sample input signal, for shape and dtype evaluation
+        axis (int, optional): Axis on which the derivative is performed. Defaults to
+            the last axis.
+        degree (float, optional): Degree of the derivative operator.
+        staggered (Staggered, optional): Staggered flag.
+        kspace_op (bool, optional): If `True`, uses a modified derivative corrected by
+            the k-space operator.
 
     Returns:
-        jnp.ndarray: [description]
+        Returns the spectral derivative operator `D` as
+            first output and the updated `grid` object as second output. The function is
+            used as `dy = D(y, grid)`, where the input signal `y` must have the same
+            shape and type as `x`
     """
+    # Update and check the grid object
+    
+    if staggered != Staggered.NONE:
+        grid = grid.add_staggered_grid()
     if kspace_op:
-        # TODO: warn user about the fact that the degree and parameter
-        # is ignored
-        dx = derivative_with_k_op(x, grid, staggered, domain, axis)
+        if grid.k_with_kspaceop is None:
+            raise AssertionError(
+                "You asked for a derivative with kspace operator but the kGrid object "
+                + "has an empty k_with_kspaceop field. Did you call grid.apply_kspace_operator first?"
+            )
+
+    # Building the derivative operator
+    if kspace_op:
+        derivative_operator = _derivative_with_k_op(sample_input, staggered, axis)
     else:
-        dx = plain_derivative(x, grid, staggered, domain, axis, degree)
-    return dx
+        derivative_operator = _plain_derivative(sample_input, staggered, axis)
+
+    return derivative_operator, grid
 
 
-# --------------------------------------------
-def derivative_with_k_op(x, grid, staggered, domain, axis):
-    # Selecting operator
-    if staggered == 0:
-        K = 1j * grid.k_with_kspaceop["plain"]
-    elif staggered == -1:
-        K = 1j * grid.k_with_kspaceop["backward"]
-    elif staggered == 1:
-        K = 1j * grid.k_with_kspaceop["forward"]
+def _derivative_with_k_op(
+    sample_x: jnp.ndarray, staggered: Staggered, axis: Union[int, Tuple[int]]
+) -> Callable:
+    def deriv_fun(x: jnp.ndarray, grid: geometry.kGrid) -> jnp.ndarray:
+        # Selecting operator
+        K = 1j * grid.k_with_kspaceop[staggered]
 
-    n_dims = len(K) + 1
-    domain_axes = list(range(-1, -n_dims, -1))
+        n_dims = len(K) + 1
+        domain_axes = list(range(-1, -n_dims, -1))
 
-    return _derivative_with_k_op(x, K[axis], domain_axes, domain)
+        # Choose FFT and filter according to signal domain (real or complex)
+        if "complex" in str(x.dtype):
+            return jnp.fft.ifftn(
+                K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes
+            )
+        else:
+            Fx = eval_shape(
+                lambda signal: jnp.fft.rfftn(signal, axes=domain_axes), sample_x
+            )
+            K = K[axis, : Fx.shape[0]]
+            return jnp.fft.irfftn(
+                K * jnp.fft.rfftn(x, axes=domain_axes), axes=domain_axes
+            )
 
-
-# @partial(jax.custom_vjp, nondiff_argnums=(2, 3))
-def _derivative_with_k_op(x, K, domain_axes, domain):
-    # Switch fft according to signal domain (real, complex)
-    Fx = jnp.fft.fftn(x, axes=domain_axes)
-    k = K
-    kx = jnp.fft.ifftn(k * Fx, axes=domain_axes)
-    if domain == "real":
-        return kx.real
-    else:
-        return kx
-
-
-"""
-# VJP rule ready, but crashes with linear_transpose() required
-# by GMRES
-def _derivative_with_k_op_fwd(x, k, domain_axes, domain):
-    dx = _derivative_with_k_op(x, k, domain_axes, domain)
-    return dx, (k,)
+    return deriv_fun
 
 
-def _derivative_with_k_op_bwd(domain_axes, domain, res, g):
-    k = res[0]
-    # Only first order derivative can be computed, hence
-    # the minus sign
-    grad_x = -_derivative_with_k_op(g, k, domain_axes, domain)
-    return (grad_x, jnp.zeros_like(k))
+def _plain_derivative(
+    sample_x: jnp.ndarray, staggered: Staggered, axis: int
+) -> Callable:
+    def deriv_fun(x: jnp.ndarray, grid: geometry.kGrid, degree: float) -> jnp.ndarray:
+        # Select operator
+        k = 1j * grid.k_vec[staggered][axis]
+        k = k ** degree
 
+        if "complex" in str(sample_x.dtype):
+            ffts = [jnp.fft.fft, jnp.fft.ifft]
+        else:
+            ffts = [jnp.fft.rfft, jnp.fft.irfft]
+            x0 = jnp.moveaxis(sample_x, axis, -1)
+            Fx = eval_shape(lambda x: ffts[0](x, axis=-1), x0)
+            k = k[: Fx.shape[-1]]
 
-_derivative_with_k_op.defvjp(
-    _derivative_with_k_op_fwd, _derivative_with_k_op_bwd
-)
-"""
-# --------------------------------------------
+        # Work on last axis for elementwise product broadcasting
+        # TODO: This may be very inefficient: https://github.com/google/jax/issues/2972
+        x = jnp.moveaxis(x, axis, -1)
 
+        # Use real or complex fft
+        Fx = ffts[0](x, axis=-1)
+        dx = ffts[1](k * Fx, axis=-1, n=x.shape[-1])
 
-def plain_derivative(x, grid, staggered, domain, axis, degree):
-    # Work on last axis for elementwise product broadcasting
-    x = jnp.moveaxis(x, axis, -1)
+        # Back to original axis
+        dx = jnp.moveaxis(dx, -1, axis)
+        return dx
 
-    # Spectral derivative
-    if staggered == 0:
-        k = 1j * grid.k_vec[axis]
-    elif staggered == -1:
-        k = 1j * grid.k_staggered["backward"][axis]
-    elif staggered == 1:
-        k = 1j * grid.k_staggered["forward"][axis]
-
-    dx = _derivative_algorithm_last_axis(x, k, degree, domain)
-
-    # Back to original axis
-    kx = jnp.moveaxis(dx, -1, axis)
-    return kx
-
-
-# @partial(jax.custom_vjp, nondiff_argnums=(2,3))
-def _derivative_algorithm_last_axis(x, k, degree, domain):
-    k = k ** degree
-    Fx = jnp.fft.fft(x, axis=-1)
-    kx = jnp.fft.ifft(k * Fx, axis=-1)
-    if domain == "real":
-        return kx.real
-    else:
-        return kx
-
-
-"""
-# VJP rule ready, but crashes with linear_transpose() required
-# by GMRES
-def _derivative_algorithm_last_axis_fwd(x, k, degree, domain):
-    k = k ** degree
-    if domain == "real":
-        Fx = jnp.fft.rfft(x, axis=-1)
-        k_short = k[: Fx.shape[-1]]
-        dx = jnp.fft.irfft(k_short * Fx, axis=-1)
-    else:
-        dx = jnp.fft.ifft(k * jnp.fft.fft(x, axis=-1), axis=-1)
-    return dx, (k,)
-
-
-def _derivative_algorithm_last_axis_bwd(degree, domain, res, g):
-    k, = res
-    sign = (-1.0) ** degree
-    grad_x = sign * _derivative_algorithm_last_axis(g, k, 1, domain)
-    grad_k = jnp.zeros_like(
-        k
-    )  # Cant differentiate the k vector TODO: remove constraint
-    return (grad_x, grad_k)
-
-
-_derivative_algorithm_last_axis.defvjp(
-    _derivative_algorithm_last_axis_fwd, _derivative_algorithm_last_axis_bwd
-)
-"""
-
-# --------------------------------------------
-
-
-@partial(jit, static_argnums=(2, 3))
-def gradient(x, grid, staggered, domain):
-    grads = []
-    for i in range(len(x.shape)):
-        grads.append(derivative(x, i, grid, staggered, domain))
-    return jnp.stack(grads)
-
-
-@partial(jit, static_argnums=(2, 3))
-def laplacian(x, grid, staggered, domain):
-    L = jnp.zeros_like(x)
-    for ax in range(len(x.shape)):
-        L += derivative(
-            derivative(x, ax, grid, staggered, domain), ax, grid, staggered, domain
-        )
-    return L
-
-
-@partial(jit, static_argnums=(2, 3))
-def divergence(x, grid, staggered, domain):
-    div = jnp.zeros_like(x[0])
-    for i in range(x.shape[0]):
-        div += derivative(x[i], i, grid, staggered, domain)
-    return div
-
-
-@partial(jit, static_argnums=(2, 3))
-def diag_nabla(x, grid, staggered, domain):
-    r = []
-    for i in range(x.shape[0]):
-        r.append(derivative(x[i], grid, staggered, domain, i))
-    return jnp.stack(r, axis=0)
+    return deriv_fun

@@ -26,14 +26,6 @@ If you want to run the notebooks, you should also install the following packages
 pip install jupyter, tqdm
 ```
 
-A lot of functionality is still missing compared to `kWave`, expecially in terms of functions constructing objects. If you want to use some `kWave` methods from python (for example the `kArray` class implementing off-grid sources), you should install the MATLAB engine for python. For example:
-```bash
-conda activate myenv
-module load Matlab/2019a
-cd /apps/software/Matlab/R2019a/extern/engines/python/
-python setup.py build --build-base=$(mktemp -d) install
-```
-
 ## :bookmark_tabs:  Access documentation
 To access the documentation, you need to first forward the port 8000 of the machine you are connecting to.
 In your local bash, type
