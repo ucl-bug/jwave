@@ -65,7 +65,53 @@ def test_if_simple_problem_runs():
     source_positions = ([12], [12])
     sources = geometry.Sources(positions=source_positions, signals=source_signals)
 
-    _ = physics.simulate_wave_propagation(grid, medium, time_array, sources)
+    fields = physics.simulate_wave_propagation(grid, medium, time_array, sources)
+
+def test_big_wave_simulation():
+    N = (256, 256)
+    dx = (0.5, 0.5)
+    cfl = 0.1
+
+    grid = geometry.kGrid.make_grid(N, dx)
+
+    # Physical properties
+    medium = geometry.Medium(
+        sound_speed=jnp.ones(N),
+        density=jnp.ones(N),
+        attenuation=0.0,
+        pml_size=20
+    )
+
+    time_array = geometry.TimeAxis.from_kgrid(grid, medium, cfl=cfl, t_end=50.)
+
+    # define a source point
+    from jwave.signal_processing import apply_ramp
+
+    source_freq = .3
+    source_mag = 5/time_array.dt
+
+    def gaussian_window(signal, time, mu, sigma):
+        return signal*jnp.exp(
+            -(t-mu)**2/sigma**2
+        )
+
+    t = jnp.arange(0, time_array.t_end, time_array.dt)
+    s1 = source_mag * jnp.sin(2 * jnp.pi * source_freq * t)
+    s1 = gaussian_window(
+        apply_ramp(s1, time_array.dt, source_freq),
+        t,
+        10,
+        3
+    )
+
+    source_signals = jnp.stack([s1])
+    source_positions = ([100], [100])
+
+    sources = geometry.Sources(positions=source_positions, signals=source_signals)
+
+    # Simulate
+    from jwave.physics import simulate_wave_propagation
+    fields = simulate_wave_propagation(grid, medium, time_array, sources)
 
 
 def test_backprop_in_wave_equation_for_nans():
@@ -102,6 +148,11 @@ def test_backprop_in_wave_equation_for_nans():
 
 
 if __name__ == "__main__":
+    #from jwave._develop import detect_nans
+    #detect_nans()
+
+    #with disable_jit():
+    test_big_wave_simulation()
     test_if_simple_problem_runs()
     test_backprop_in_wave_equation_for_nans()
     test_if_helmholtz_problem_runs()

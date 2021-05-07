@@ -543,7 +543,6 @@ def velocity_update_fun(sample_input, grid):
     def d_velocity_dt(rho, c_sq, rho_0, grid):
         p = c_sq * jnp.sum(rho, 0)
         dp = deriv(p, grid)
-        print(p.shape, dp.shape)
         return -dp / rho_0
 
     return d_velocity_dt, grid
@@ -556,15 +555,14 @@ def density_update_fun(sample_input, grid):
         D, grid = spectral.derivative_init(
             sample_input,
             grid,
-            Staggered.FORWARD,
-            ax,
+            staggered=Staggered.FORWARD,
+            axis=ax,
             kspace_op=True
         )
         deriv_funcs.append(D)
 
     def d_density_dt(u, rho_0, grid):
         diag_grad_u = jnp.stack([f(u[ax], grid) for f, ax in zip(deriv_funcs, axes)])
-        print(u.shape, diag_grad_u.shape)
         return -rho_0 * diag_grad_u
 
     return d_density_dt, grid
@@ -581,7 +579,6 @@ def simulate_wave_propagation(
     backprop=False,
     guess=None,
     checkpoint=False,
-    get_function=False,
 ):
     """Simulates wave propagation
 
@@ -704,10 +701,14 @@ def simulate_wave_propagation(
 
         return fields
 
-    if get_function:
+    if method is None:
         return solver_function, params
-    else:
+    elif method == "spectral":
         return solver_function(params)
+    else:
+        raise NotImplementedError(
+            "Only spectral method is implemented, not {}".format(method)
+        )
 
 
 def senstor_to_operator(sensors):
