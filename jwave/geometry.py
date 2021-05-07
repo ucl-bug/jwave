@@ -63,7 +63,7 @@ class kGrid(NamedTuple):
     
     @property
     def has_kspace_grid(self):
-        return self.k_with_kspaceop[Staggered.NONE]
+        return self.k_with_kspaceop is not None
 
     @staticmethod
     def make_grid(N, dx):
