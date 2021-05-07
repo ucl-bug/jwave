@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from jax import jit, eval_shape
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 from jwave import geometry
 from jwave.geometry import Staggered
 
@@ -55,7 +55,7 @@ def derivative_init(
 
 
 def _derivative_with_k_op(
-    sample_x: jnp.ndarray, staggered: Staggered, axis: int
+    sample_x: jnp.ndarray, staggered: Staggered, axis: Union[int, Tuple[int]]
 ) -> Callable:
     def deriv_fun(x: jnp.ndarray, grid: geometry.kGrid) -> jnp.ndarray:
         # Selecting operator

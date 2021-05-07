@@ -531,27 +531,43 @@ def solve_helmholtz(
 
 def velocity_update_fun(sample_input, grid):
     axes = nparange(-len(grid.N), 0, 1)
-    deriv = spectral.derivative_with_k_op(sample_input, grid, -1, axes)
+    
+    deriv, grid = spectral.derivative_init(
+        sample_input, 
+        grid, 
+        staggered=Staggered.BACKWARD, 
+        axis=axes,
+        kspace_op=True
+    )
 
-    def d_velocity_dt(rho, c_sq, rho_0):
+    def d_velocity_dt(rho, c_sq, rho_0, grid):
         p = c_sq * jnp.sum(rho, 0)
-        dp = deriv(p)
+        dp = deriv(p, grid)
+        print(p.shape, dp.shape)
         return -dp / rho_0
 
-    return d_velocity_dt
+    return d_velocity_dt, grid
 
 
 def density_update_fun(sample_input, grid):
     axes = nparange(-len(grid.N), 0, 1)
-    deriv_funcs = [
-        spectral.derivative_with_k_op(sample_input, grid, 1, ax) for ax in axes
-    ]
+    deriv_funcs = []
+    for ax in axes:
+        D, grid = spectral.derivative_init(
+            sample_input,
+            grid,
+            Staggered.FORWARD,
+            ax,
+            kspace_op=True
+        )
+        deriv_funcs.append(D)
 
-    def d_density_dt(u, rho_0):
-        diag_grad_u = jnp.stack([f(u[ax]) for f, ax in zip(deriv_funcs, axes)])
+    def d_density_dt(u, rho_0, grid):
+        diag_grad_u = jnp.stack([f(u[ax], grid) for f, ax in zip(deriv_funcs, axes)])
+        print(u.shape, diag_grad_u.shape)
         return -rho_0 * diag_grad_u
 
-    return d_density_dt
+    return d_density_dt, grid
 
 
 def simulate_wave_propagation(
@@ -584,7 +600,7 @@ def simulate_wave_propagation(
         [type]: [description]
     """
     # Adds the k-space operator to the derivative filters
-    grid = grid.to_staggered()
+    grid = grid.add_staggered_grid()
     grid = grid.apply_kspace_operator(jnp.amin(medium.sound_speed), time_array.dt)
 
     # Making functions for ODE solver
@@ -630,14 +646,15 @@ def simulate_wave_propagation(
     acoustic_params = {"rho_0": medium.density, "c_sq": c_sq}
 
     sample_input = jnp.zeros_like(c_sq)
-    d_velocity_dt = velocity_update_fun(sample_input, grid)
-    d_density_dt = density_update_fun(sample_input, grid)
+    d_velocity_dt, grid = velocity_update_fun(sample_input, grid)
+    d_density_dt, grid = density_update_fun(sample_input, grid)
 
     # Parameters dictionary
     params = {
         "acoustic_params": acoustic_params,
         "source_signals": source_signals,
         "initial_wavefields": {"u0": u0, "rho0": rho0},
+        "grid": grid
     }
 
     # Building solver function
@@ -646,6 +663,7 @@ def simulate_wave_propagation(
         source_signals = params["source_signals"]
         u0 = params["initial_wavefields"]["u0"]
         rho0 = params["initial_wavefields"]["rho0"]
+        grid = params["grid"]
 
         # Function to integrate
         def get_src_map(idx):
@@ -657,12 +675,12 @@ def simulate_wave_propagation(
         def du_dt(params, rho, t):
             rho_0 = params["rho_0"]
             c_sq = params["c_sq"]
-            return d_velocity_dt(rho, c_sq, rho_0)
+            return d_velocity_dt(rho, c_sq, rho_0, grid)
 
         def drho_dt(params, u, t):
             # Make source term
             rho_0 = params["rho_0"]
-            rho_update = d_density_dt(u, rho_0)
+            rho_update = d_density_dt(u, rho_0, grid)
 
             idx = (t / dt).round().astype(jnp.int32)
             src = get_src_map(idx)
