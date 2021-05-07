@@ -60,6 +60,10 @@ class kGrid(NamedTuple):
         return (self.k_vec[Staggered.BACKWARD] is not None) and (
             self.k_vec[Staggered.FORWARD] is not None
         )
+    
+    @property
+    def has_kspace_grid(self):
+        return self.k_with_kspaceop[Staggered.NONE]
 
     @staticmethod
     def make_grid(N, dx):
@@ -114,7 +118,8 @@ class kGrid(NamedTuple):
 
         """
         if not self.has_staggered_grid:
-            k_vec = self.k_vec
+            k_vec = [None]*3
+            k_vec[Staggered.NONE] = self.k_vec[Staggered.NONE]
             k_vec[Staggered.BACKWARD] = list(
                 map(
                     lambda x: x[0] * jnp.exp(1j * x[0] * x[1] / 2),
@@ -131,7 +136,7 @@ class kGrid(NamedTuple):
         else:
             return self
 
-    def apply_kspace_operator(self, c_ref, dt):
+    def apply_kspace_operator(self, c_ref, dt, force=False):
         r"""Modifies the k-vectors used for derivative calculation
         by applying the k-space operator (see [k-Wave](www.k-wave.org))
 
@@ -159,25 +164,28 @@ class kGrid(NamedTuple):
         """
         assert self.has_staggered_grid
 
-        K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.NONE], indexing="ij"))
-        k_magnitude = jnp.sqrt(jnp.sum(K ** 2, 0))
+        if (not self.has_kspace_grid) or force:
+            K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.NONE], indexing="ij"))
+            k_magnitude = jnp.sqrt(jnp.sum(K ** 2, 0))
 
-        # TODO: Check why it seems to work better without k_space_op
-        k_space_op = safe_sinc(c_ref * k_magnitude * dt / (2 * jnp.pi))  # 1.0  #
-        modified_kgrid = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
+            # TODO: Check why it seems to work better without k_space_op
+            k_space_op = safe_sinc(c_ref * k_magnitude * dt / (2 * jnp.pi))  # 1.0  #
+            modified_kgrid = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
 
-        # Making staggered versions
-        K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.BACKWARD], indexing="ij"))
-        modified_kgrid_backward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
-        K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.FORWARD], indexing="ij"))
-        modified_kgrid_forward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
+            # Making staggered versions
+            K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.BACKWARD], indexing="ij"))
+            modified_kgrid_backward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
+            K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.FORWARD], indexing="ij"))
+            modified_kgrid_forward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
 
-        # Update grid
-        k_with_kspaceop = [None] * 3
-        k_with_kspaceop[Staggered.NONE] = modified_kgrid
-        k_with_kspaceop[Staggered.FORWARD] = modified_kgrid_forward
-        k_with_kspaceop[Staggered.BACKWARD] = modified_kgrid_backward
-        return self._replace(k_with_kspaceop=k_with_kspaceop)
+            # Update grid
+            k_with_kspaceop = [None] * 3
+            k_with_kspaceop[Staggered.NONE] = modified_kgrid
+            k_with_kspaceop[Staggered.FORWARD] = modified_kgrid_forward
+            k_with_kspaceop[Staggered.BACKWARD] = modified_kgrid_backward
+            return self._replace(k_with_kspaceop=k_with_kspaceop)
+        else:
+            return self
 
     def __str__(self):
         string = "kGrid Object:\n"

@@ -104,7 +104,6 @@ def laplacian_with_pml(
     D_ops = []
     for ax in axis:
         D, grid = spectral.derivative_init(sample_input, grid, staggered=Staggered.NONE, axis=ax)
-        
         D_ops.append(D)
 
     degrees = jnp.array([1.0, 2.0])
@@ -448,7 +447,6 @@ def solve_helmholtz(
     if medium.density is None and medium.attenuation is None:
         helmholtz_operator, grid = get_helmholtz_operator(guess, grid, medium, omega)
         
-
         def scale_src(src, omega):
             return -1j * omega * src
 
@@ -598,7 +596,7 @@ def simulate_wave_propagation(
     """
     # Adds the k-space operator to the derivative filters
     grid = grid.add_staggered_grid()
-    grid = grid.apply_kspace_operator(jnp.amin(medium.sound_speed), time_array.dt)
+    grid = grid.apply_kspace_operator(jnp.amin(medium.sound_speed), time_array.dt, force=False)
 
     # Making functions for ODE solver
     c_sq = medium.sound_speed ** 2
