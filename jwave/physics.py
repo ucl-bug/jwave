@@ -351,10 +351,8 @@ def get_helmholtz_operator_attenuation(
     laplacian, grid = laplacian_with_pml(sample_input, grid, medium, omega)
 
     def helmholtz_operator(x, omega, medium, grid):
-        return laplacian(x, grid) + x * (
-            ((1 + 1j * medium.attenuation) * omega / medium.sound_speed) ** 2
-        )
-
+        k = omega / medium.sound_speed
+        return laplacian(x, grid) + x * k*(k+1j*medium.attenuation)
     return helmholtz_operator, grid
 
 
@@ -381,9 +379,9 @@ def get_helmholtz_operator_general(
     h_laplacian, grid = heterogeneous_laplacian(sample_input, grid, medium, omega)
 
     def helmholtz_operator(x, omega, medium, grid):
-        return medium.density * h_laplacian(x, 1.0 / medium.density, grid) + x * (
-            ((1 + 1j * medium.attenuation) * (omega / medium.sound_speed)) ** 2
-        )
+        k = omega / medium.sound_speed
+        L = medium.density * h_laplacian(x, 1.0 / medium.density, grid)
+        return L + x * k*(k+1j*medium.attenuation)
 
     return helmholtz_operator, grid
 
@@ -456,7 +454,8 @@ def solve_helmholtz(
         )
 
         def scale_src(src, omega):
-            return ((omega ** 2) * medium.attenuation - 1j * omega) * src
+            #return ((omega ** 2) * medium.attenuation - 1j * omega) * src
+            return -1j * omega * src
 
     elif medium.attenuation is None:  # General case
         helmholtz_operator, grid = get_helmholtz_operator_density(guess, grid, medium, omega)
@@ -468,8 +467,9 @@ def solve_helmholtz(
         helmholtz_operator, grid = get_helmholtz_operator_general(guess, grid, medium, omega)
 
         def scale_src(src, omega):
-            return ((omega ** 2) * medium.attenuation - 1j * omega) * src
-
+            #return ((omega ** 2) * medium.attenuation - 1j * omega) * src
+            return -1j * omega * src
+            
     # Iterative solver
     params = {
         "grid": grid,
