@@ -60,7 +60,7 @@ class kGrid(NamedTuple):
         return (self.k_vec[Staggered.BACKWARD] is not None) and (
             self.k_vec[Staggered.FORWARD] is not None
         )
-    
+
     @property
     def has_kspace_grid(self):
         return self.k_with_kspaceop is not None
@@ -118,7 +118,7 @@ class kGrid(NamedTuple):
 
         """
         if not self.has_staggered_grid:
-            k_vec = [None]*3
+            k_vec = [None] * 3
             k_vec[Staggered.NONE] = self.k_vec[Staggered.NONE]
             k_vec[Staggered.BACKWARD] = list(
                 map(
@@ -174,7 +174,9 @@ class kGrid(NamedTuple):
 
             # Making staggered versions
             K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.BACKWARD], indexing="ij"))
-            modified_kgrid_backward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
+            modified_kgrid_backward = jax.tree_util.tree_map(
+                lambda x: x * k_space_op, K
+            )
             K = jnp.stack(jnp.meshgrid(*self.k_vec[Staggered.FORWARD], indexing="ij"))
             modified_kgrid_forward = jax.tree_util.tree_map(lambda x: x * k_space_op, K)
 
@@ -357,4 +359,4 @@ class TimeAxis(NamedTuple):
             t_end = jnp.sqrt(
                 sum((x[-1] - x[0]) ** 2 for x in grid.space_axis)
             ) / jnp.min(medium.sound_speed)
-        return TimeAxis(dt=np.array(dt), t_end=np.array(t_end))
+        return TimeAxis(dt=float(dt), t_end=float(t_end))
