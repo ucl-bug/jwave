@@ -35,7 +35,7 @@ def derivative_init(
             shape and type as `x`
     """
     # Update and check the grid object
-    
+
     if staggered != Staggered.NONE:
         grid = grid.add_staggered_grid()
     if kspace_op:
