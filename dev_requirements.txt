@@ -1,13 +1,6 @@
 pytest
-coverage
-jupyter
-tqdm
-mkdocs
+matplotlib
+mkdocs-material
 mkdocs-jupyter
 mkdocstrings
-mkdocs-material
-markdown-katex
-mkdocs-coverage
-coverage-badge
-pybadges
-auto-changelog
+mkdocs-mermaid2-plugin

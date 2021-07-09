@@ -1,3 +1,3 @@
 jax
 jaxlib
-matplotlib
+sympy

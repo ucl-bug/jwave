@@ -9,7 +9,7 @@ __version__ = _dct["__version__"]
 setup(
     name="jwave",
     version=__version__,
-    description="Fast differentiable pseudospectral acoustic simulations",
+    description="A library for machine learning research in acoustic simulations",
     author="Antonio Stanziola, UCL BUG",
     author_email="a.stanziola@ucl.ac.uk",
     packages=find_packages(exclude=["docs"]),
@@ -23,6 +23,7 @@ setup(
     license="GNU Lesser General Public License (LGPL)",
     classifiers=[
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8"
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9"
     ],
 )
