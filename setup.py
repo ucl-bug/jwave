@@ -15,9 +15,9 @@ setup(
     packages=find_packages(exclude=["docs"]),
     package_data={"jwave": ["py.typed"]},
     python_requires=">=3.7",
-    install_requires=open("requirements.txt", "r").readlines(),
+    install_requires=open(".setup/requirements.txt", "r").readlines(),
     extras_require={
-        "dev": open("dev_requirements.txt", "r").readlines(),
+        "dev": open(".setup/dev_requirements.txt", "r").readlines(),
     },
     url="https://bug.medphys.ucl.ac.uk/",
     license="GNU Lesser General Public License (LGPL)",
