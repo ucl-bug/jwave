@@ -1,6 +1,5 @@
 from typing import Callable
 
-
 class Operator(object):
     def __init__(self, name: str):
         self.name = name
@@ -8,16 +7,12 @@ class Operator(object):
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
             for arg in args:
-                try:
-                    return  getattr(arg.discretization, self.name)(*args, **kwargs)
-                except:
-                    continue
+                if not isinstance(arg, float) and not isinstance(arg, int):
+                    return getattr(arg.discretization, self.name)(*args, **kwargs)
         else:
             for arg in kwargs.values():
-                try:
-                    return  getattr(arg.discretization, self.name)(*args, **kwargs)
-                except:
-                    continue
+                if not isinstance(arg, float) and not isinstance(arg, int):
+                    return getattr(arg.discretization, self.name)(*args, **kwargs)
 
         raise RuntimeError(f"Operator {self.name} not found")
 

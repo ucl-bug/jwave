@@ -1,5 +1,6 @@
 from jwave.geometry import Domain
 from jwave.core import make_op, Discretization, Field
+from jwave import primitives as pr
 from jwave import spectral
 from functools import reduce, wraps
 from jax import random, vmap, jvp
@@ -42,89 +43,22 @@ class Arbitrary(Discretization):
         self._get_fun = get_fun
         self._init_params = init_params
         self.domain = domain
-        self.params["coordinate_grid"] = self.domain.grid
-
-    def update_params(self, name, value):
-        if name in self.params.keys():
-            raise ValueError("Parameter {} already exists".format(name))
-        self.params[name] = value
-
-    @staticmethod
-    def add(u,v):
-        f_u = u.discretization.get_field()
-        f_v = v.discretization.get_field()
-        def get_fun(dp, up, x):
-            return f_u(dp,up[0],x) + f_v(dp,up[1],x)
-        return _join_parameter_fun(get_fun, u, v)
     
     @staticmethod    
-    def add_scalar(u, number):
-        # Make get function
-        f_u = u.discretization.get_field()
-        get_fun = lambda dp, up, x: f_u(dp,up,x) + number
-        return _constant_param_fun(get_fun, u)
+    def add_scalar(u, scalar, independent_params=True):
+        primitive = pr.AddScalar(
+            independent_params = independent_params, 
+            scalar = scalar, 
+        )
+        return primitive(u)
 
-    @staticmethod
-    def elementwise(u, function):
-        f_u = u.discretization.get_field()
-        get_fun = lambda dp, up, x: function(f_u(dp,up,x))
-        return _constant_param_fun(get_fun, u)
-
-    @staticmethod
-    def derivative(u, axis):
-        f_u = u.discretization.get_field()
-        ndim = u.discretization.domain
-        tangents = jnp.zeros((ndim,))
-        tangents = tangents.at[axis].set(1.)
-        def get_fun(dp, up, x):
-            fun = lambda position: f_u(dp,up,position)
-            return jvp(fun, x, tangents)
-        return _constant_param_fun(get_fun, u)
-    
-    @staticmethod
-    def invert( u):
-        f_u = u.discretization.get_field()
-        get_fun = lambda dp, up, x: -f_u(dp,up,x)
-        param_fun = lambda u_p: u_p
-        op = _build_arbitrary_operator(get_fun, param_fun, u.discretization.domain)
-        return op(u)
-    
-    @staticmethod
-    def mul(u,v):
-        f_u = u.discretization.get_field()
-        f_v = v.discretization.get_field()
-        get_fun = lambda dp, up, x: f_u(dp,up[0],x)*f_v(dp,up[1],x)
-        return _join_parameter_fun(get_fun, u, v)
-    
-    @staticmethod
-    def mul_scalar(u, number):
-        f_u = u.discretization.get_field()
-        get_fun = lambda dp, up, x: f_u(dp,up,x)*number
-        return _constant_param_fun(get_fun, u)
-    
-    @staticmethod
-    def power( u, v):
-        f_u = u.discretization.get_field()
-        f_v = v.discretization.get_field()
-        get_fun = lambda dp, up, x: f_u(dp,up[0],x)**f_v(dp,up[1],x)
-        return _join_parameter_fun(get_fun, u, v)
-    
-    @staticmethod
-    def power_scalar( u, number):
-        f_u = u.discretization.get_field()
-        get_fun = lambda dp, up, x: f_u(dp,up,x)**number
-        return _constant_param_fun(get_fun, u)
-
-
-    @staticmethod
-    def apply_on_grid(fun):
+    def apply_on_grid(self, fun):
         '''Returns a function applied on a grid'''
-        def _f_on_grid(discr_params, field_params):
-            grid = discr_params["coordinate_grid"]
-            return fun(field_params, grid)
+        def _f_on_grid(field_params):
+            return fun(field_params, self.domain.grid)
         return _f_on_grid
 
-    def vmap_over_grid(self, fun, domain, vaxes):
+    def vmap_over_grid(self, fun):
         '''V-maps a function to work on a grid of values'''
         ndims = len(self.domain.N)
         for _ in range(ndims):
@@ -132,8 +66,8 @@ class Arbitrary(Discretization):
         return fun
 
     def get_field(self):
-        def f(discr_params, params, x):
-            return self._get_fun(discr_params, params, x)
+        def f(params, x):
+            return self._get_fun(params, x)
         return f
 
     def get_field_on_grid(self):
@@ -154,69 +88,16 @@ class Linear(Arbitrary):
     def init_params(self, seed):
         return random.uniform(seed, self.domain.N)
 
-    def add(self, u, v):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='add')
-        def _fun(u,v):
-            return u+v
-        return _fun(u,v)
-
-    def add_scalar(self, u, number):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='add_scalar')
-        def _fun(u):
-            return u+number
-        out_field = _fun(u)
-        return out_field
-
-    def invert(self, u):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='invert')
-        def _fun(u):
-            return -u
-        return _fun(u)
-
-    def mul_scalar(self, u, number):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='mul_scalar')
-        def _fun(u):
-            return u*number
-        out_field = _fun(u)
-        return out_field
+    def add_scalar(self,  u, scalar, independent_params=True):
+        primitive = pr.AddScalarLinear(
+            scalar=scalar, 
+            independent_params=independent_params
+        )
+        return primitive(u)
 
 class GridBased(Linear):
     def __init__(self, domain):
         self.domain = domain
-
-    def elementwise(self, u, function):
-        discr = self.__class__(u.discretization.domain)
-        name = f"elementwise_{function.__name__}"
-        @make_op(out_discr=discr, name=name)
-        def _fun(u):
-            return function(u)
-        return _fun(u)
-    
-    def mul(self, u, v):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='mul')
-        def _fun(u,v):
-            return u+v
-        return _fun(u,v)
-
-    def power(self, u, v):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='power')
-        def _fun(u,v):
-            return u**v
-        return _fun(u,v)
-
-    def power_scalar(self, u, number):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='power_scalar')
-        def _fun(u):
-            return u**number
-        out_field = _fun(u)
-        return out_field
 
 class FiniteDifferences(GridBased):
     """This discretization doesn't implement the `get_field()` method.
@@ -244,53 +125,6 @@ class FiniteDifferences(GridBased):
 
         # Initialize parameters
         self.params["coordinate_grid"] = self.domain.grid
-
-    def derivative(self, u: Field, axis: int) -> Field:
-        """Computes the derivative of a field.
-
-        Args:
-            u (Field): The field to be differentiated.
-            axis (int): The axis to differentiate.
-
-        Returns:
-            Field: The derivative of the field.
-        """
-        # Initializes finite differences stencil and
-        # adds it to the discretization parameters
-        order = 1
-        stencil_size = self.accuracy + 1
-        stencil = self._get_stencil(
-            self.accuracy, 
-            self.domain.dx[axis],
-            deriv_order=order
-        )
-        kernel_dims =  tuple([1, 1] + [stencil_size]*self.domain.ndim)
-        kernel = jnp.zeros(kernel_dims)
-
-        slices = [self.accuracy//2]*self.domain.ndim
-        slices[axis]  =  slice(None)
-        slices = [slice(None), 0] + slices
-        slices = tuple(slices)
-        kernel = kernel.at[slices].set(stencil)
-
-        kernel_params_name = f"kernel_D1_axis_{axis}"
-        self.params[kernel_params_name] = kernel
-
-        # Generating and applying operator
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name=f"derivative_axis_{axis}")
-        def _fun(d_params, u):
-            p = d_params[kernel_params_name]
-            print(p)
-            u = jnp.expand_dims(jnp.expand_dims(u, 0), 0) 
-            return u
-
-    def mul(self, u, v):
-        discr = self.__class__(u.discretization.domain)
-        @make_op(out_discr=discr, name='mul')
-        def _fun(u,v):
-            return u+v
-        return _fun(u,v)
 
     @staticmethod
     def _get_analytic_stencil(accuracy, deriv_order = 1, staggered = [0,1]):
@@ -389,9 +223,9 @@ class FourierSeries(GridBased):
             else:
                 first_dim_size = self.domain.N[0]
                 interp_fun = lambda k, s, x: spectral.rfft_interp(k,s,x,first_dim_size)/V
-
-            def f(discr_params, field_params, x):
-                k = discr_params["freq_grid"]
+            
+            def f(field_params, x):
+                k = self._freq_grid
                 spectrum = fftfun(field_params, axes = self._domain_axis)
                 return interp_fun(k, spectrum, x)
 

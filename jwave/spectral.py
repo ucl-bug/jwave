@@ -40,7 +40,7 @@ def rfft_interp(
     spectrum_missing = jnp.conj(spectrum[...,1:-end_val])
     phase = jnp.exp(-1j*jnp.sum(k_missing*x,axis=-1)) # TODO: This general minus sign is odd
     second_half = jnp.sum(spectrum_missing*phase)
-    return (first_half + second_half).real
+    return jnp.reshape((first_half + second_half).real, (1,))
 
 def fft_interp(
     k: jnp.ndarray, 
@@ -66,7 +66,7 @@ def fft_interp(
     Returns:
         float: [description]
     """    
-    return jnp.sum((spectrum)*jnp.exp(1j*jnp.sum(k*x,axis=-1)))
+    return jnp.reshape(jnp.sum((spectrum)*jnp.exp(1j*jnp.sum(k*x,axis=-1))), (1,))
 
 def make_filter_fun(domain: Domain, axis: Union[int, Tuple[int]]):
     r'''If axis is an integer, filtering is applied along the given axis. If

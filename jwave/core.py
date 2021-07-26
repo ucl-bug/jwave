@@ -1,13 +1,12 @@
 from jwave.geometry import Domain
 from jwave import operators as jops
-from typing import Callable, NamedTuple, List
+from typing import List, Union, Any
 from collections.abc import Iterable
 from functools import wraps
 from hashids import Hashids
 
 class Discretization(object):
     domain: Domain
-    params: dict = {}
 
     def init_params(self, seed):
         return 0
@@ -15,10 +14,37 @@ class Discretization(object):
     def __repr__(self):
         return self.__class__.__name__
 
+class Globals(object):
+    def __init__(self):
+        self.dict = {
+            "shared": {}, 
+            "independent": {}
+        }
+        
+    def get(self, group = None, key = None):
+        if group is None and key is None:
+            return self.dict
+        return self.dict[group][key]
+    
+    def set(self, key: str, value: Any, group: str):
+        if group == "shared":
+            if key not in self.dict["shared"].keys():
+                self.dict["shared"][key] = value
+            else:
+                print(f"{key} already exists in shared Globals, skipping")
+        elif group == "independent":
+            if key not in self.dict["independent"].keys():
+                self.dict["independent"][key] = value
+            else:
+                raise ValueError(f"{key} already exists in independent Globals!")
+
+    def __repr__(self):
+        return f"{self.dict}"
+
 class Tracer(object):
     def __init__(self):
         self.input_fields= {}
-        self.discretization_params= {}
+        self.globals = Globals()
         self.operations= {}
         self._counter = 0
         self._hash = Hashids()
@@ -34,38 +60,22 @@ class Tracer(object):
     def add_operation(self, op):
         self.operations[op.yelds.name] = op
 
-    def add_discretization(self, discr):
-        for param in discr.params.keys():
-            if param not in self.discretization_params.keys():
-                self.discretization_params[param] = discr.params[param]
-
     def construct_function(self, sorted_graph: dict, names: List[str]):
         concrete_ops = {}
 
-        # Materialize constants
-        for op in self.operations.keys():
-            const = [k for k in self.operations[op].const.keys()]
-            for c in const:
-                if c in sorted_graph:
-                    concrete_ops[c] = self.operations[op].const[c]
-
-        def f(discrete_params, field_params):
+        def f(global_params, field_params):
             # Add used inputs
             for field_name in field_params.keys():
                 if field_name in sorted_graph:
                     concrete_ops[field_name] = field_params[field_name]
 
-            # Add used discretization parameters
-            for d_param in self.discretization_params:
-                if d_param in sorted_graph:
-                    concrete_ops[d_param] = discrete_params[d_param]
-
             # Compose operations present in the sorted grap
             for op_name in self.operations.keys():
                 if op_name in sorted_graph:
                     op = self.operations[op_name]
-                    args = [concrete_ops[n] for n in op.args]
-                    concrete_ops[op_name] = op.fun(*args)
+                    args = [concrete_ops[n] for n in op.inputs]
+                    op_params = global_params[op.param_kind][op.params]
+                    concrete_ops[op_name] = op.fun(op_params, *args)
 
             # Output requested parameters
             outputs = []
@@ -77,7 +87,7 @@ class Tracer(object):
     @staticmethod
     def _filter_unneded_ops(operations: dict, out_fields: List[str]):
         op_keys = [k for k in operations.keys()]
-        op_args = [k.args for k in operations.values()]
+        op_args = [k.inputs for k in operations.values()]
         stack = out_fields
         out_set = []
         while stack:    
@@ -94,9 +104,8 @@ class Tracer(object):
         ops = ["- " + str(x)+"\n" for x in self.operations.values()]
         ops = ''.join(ops)
         input_keys = tuple([*self.input_fields.keys()])
-        discr_keys = tuple([*self.discretization_params.keys()])
         string = f"Input fields: {input_keys}\n\n"
-        string += f"Discretization parameters: {discr_keys}\n\n"
+        string += f"Globals: {self.globals}\n\n"
         string += f"Operations:\n{ops}"
         return string
 
@@ -105,6 +114,12 @@ class Field(object):
         self.params=params
         self.discretization=discretization
         self.name=name
+
+    def __call__(self, x):
+        return self.discretization.get_field()(self.params, x)
+
+    def get_field(self):
+        return self.discretization.get_field()
 
     def init_params(self, seed):
         return self.discretization.init_params(seed)
@@ -167,36 +182,23 @@ class TracedField(Field):
 
     def get_field(self):
         f = self.discretization.get_field()
-        def wrapped_f(discr_params, input_params, x):
-            new_params = self.preprocess_params(discr_params, input_params)
-            return f(discr_params, new_params, x)
+        def wrapped_f(global_params, input_params, x):
+            new_params = self.preprocess_params(global_params, input_params)
+            return f(new_params, x)
+        wrapped_f.__name__ = f.__name__
         return wrapped_f
 
     def get_field_on_grid(self):
         f = self.discretization.get_field_on_grid()
-        def wrapped_f(discr_params, input_params):
-            new_params = self.preprocess_params(discr_params, input_params)
-            return f(discr_params, new_params)
+        def wrapped_f(global_params, input_params):
+            new_params = self.preprocess_params(global_params, input_params)
+            return f(new_params)
+        wrapped_f.__name__ = f.__name__
         return wrapped_f
 
-class Operation(NamedTuple):
-    '''A concrete operation of the computational graph'''
-    fun: Callable
-    args: dict
-    const: dict
-    yelds: TracedField
-
-    def __repr__(self):
-        keys = tuple(self.args)
-        constants = ["{}: {}".format(a,b) for a,b in zip(self.const.keys(), self.const.values())]
-        if len(constants) > 0:
-            return f"{self.yelds.name}: {self.yelds.discretization} <-- {self.fun.__name__} {keys} | {constants}"
-        else:
-            return f"{self.yelds.name}: {self.yelds.discretization} <-- {self.fun.__name__} {keys}"
-
 class DiscretizedOperator(object):
-    def __init__(self, discr_params, preprocess_func, fields, global_preprocess, tracer):
-        self.discr_params = discr_params
+    def __init__(self, global_params, preprocess_func, fields, global_preprocess, tracer):
+        self.globals = global_params
         self.preprocess_func = preprocess_func
         self.fields = fields
         self.global_preprocess = global_preprocess
@@ -207,21 +209,24 @@ class DiscretizedOperator(object):
         names = [x.name for x in self.fields]
         return f"DiscretizedOperator :: {discr}, {names} \n\n {self.tracer}"
 
+    def get_global_params(self):
+        return self.tracer.globals.get()
+
     def get_field(self, idx=-1):
         '''idx=-1 means all fields'''
         if idx != -1:
             f = self.fields[idx].discretization.get_field()
             preprocess = self.preprocess_func[idx]
-            def wrapped_f(discr_params, input_params, x):
-                new_params = preprocess(discr_params, input_params)
-                return f(discr_params, new_params, x)
+            def wrapped_f(global_params,input_params, x):
+                new_params = preprocess(global_params,input_params)
+                return f(new_params, x)
             return wrapped_f
         else:
             preprocess = self.global_preprocess
             f_all = [f.discretization.get_field() for f in self.fields]
-            def wrapped_f(discr_params, input_params, x):
-                all_new_params = preprocess(discr_params, input_params)
-                return [f(discr_params, all_new_params[i], x) for i,f in enumerate(f_all)]
+            def wrapped_f(global_params,input_params, x):
+                all_new_params = preprocess(global_params, input_params)
+                return [f(all_new_params[i], x) for i,f in enumerate(f_all)]
             return wrapped_f
 
     def get_field_on_grid(self, idx=-1):
@@ -266,8 +271,10 @@ def operator(has_aux=False, debug=False):
                 out_fields = (out_fields,)
             
             # Register discretization parameters
+            '''
             for f in out_fields:
                 tracer.add_discretization(f.discretization)
+            '''
             
             # Generates jax function for each output variable
             out_names = [x.name for x in out_fields]
@@ -289,7 +296,7 @@ def operator(has_aux=False, debug=False):
             global_preprocess = tracer.construct_function(sorted_graph, out_names)
 
             output = DiscretizedOperator(
-                discr_params = tracer.discretization_params,
+                global_params = tracer.globals,
                 preprocess_func = p_func,
                 fields = fields,
                 global_preprocess = global_preprocess,
