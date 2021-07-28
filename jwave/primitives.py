@@ -42,16 +42,19 @@ class Primitive(object):
         primitive_parameters, output_discretization = self.setup(field)
 
         # Adds the parameters to the globals
-        if self.independent_params:
-            name = f"{self.name}_{counter}"
-            tracer.globals.set(name, primitive_parameters, "independent")
-            param_kind = "independent"
-            params = primitive_parameters
+        if primitive_parameters is None:
+            params = {}
         else:
-            name = self.name
-            tracer.globals.set(name, primitive_parameters, "shared")
-            param_kind = "shared"
-            params = primitive_parameters
+            if self.independent_params:
+                name = f"{self.name}_{counter}"
+                tracer.globals.set(name, primitive_parameters, "independent")
+                param_kind = "independent"
+                params = primitive_parameters
+            else:
+                name = self.name
+                tracer.globals.set(name, primitive_parameters, "shared")
+                param_kind = "shared"
+                params = primitive_parameters
 
         # Extract discrete transform parameters
         fun = self.discrete_transform()
@@ -111,3 +114,46 @@ class AddScalarLinear(Primitive):
         new_discretization = field.discretization
         parameters = {"scalar": self.scalar}
         return parameters, new_discretization
+
+class AddField(Primitive):
+    def __init__(self, name="AddField", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_1_params, field_2_params):
+            return [field_1_params, field_2_params]
+        f.__name__ = self.name
+        return f
+        
+    def setup(self, field_1, field_2):
+        # Must have the same domain
+        assert field_1.domain == field_2.domain
+
+        def get_field(p_joined, x):
+            [p1, p2] = p_joined
+            return field_1.discretization.get_field()(p1,x) + field_1.discretization.get_field()(p2,x)
+
+        new_discretization = discretization.Arbitrary(
+            field_1.discretization.domain,
+            get_field,
+            no_init
+        )
+
+        return None, new_discretization
+
+class AddFieldLinearSame(Primitive):
+    def __init__(self, name="AddFieldLinearSame", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_1_params, field_2_params):
+            return field_1_params + field_2_params
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field_1, field_2):
+        assert field_1.domain == field_2.domain
+        assert type(field_1.discretization) == type(field_2.discretization)
+
+        new_discretization = field_1.discretization
+        return None, new_discretization

@@ -1,3 +1,4 @@
 jax
 jaxlib
 sympy
+hashids
