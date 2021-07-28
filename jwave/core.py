@@ -74,7 +74,10 @@ class Tracer(object):
                 if op_name in sorted_graph:
                     op = self.operations[op_name]
                     args = [concrete_ops[n] for n in op.inputs]
-                    op_params = global_params[op.param_kind][op.params]
+                    if op.param_kind != "none":
+                        op_params = global_params[op.param_kind][op.params]
+                    else:
+                        op_params = {}
                     concrete_ops[op_name] = op.fun(op_params, *args)
 
             # Output requested parameters
@@ -234,16 +237,16 @@ class DiscretizedOperator(object):
         if idx != -1:
             f = self.fields[idx].discretization.get_field_on_grid()
             preprocess = self.preprocess_func[idx]
-            def wrapped_f(discr_params, input_params):
-                new_params = preprocess(discr_params, input_params)
-                return f(discr_params, new_params)
+            def wrapped_f(global_params, input_params):
+                new_params = preprocess(global_params, input_params)
+                return f(global_params, new_params)
             return wrapped_f
         else:
             preprocess = self.global_preprocess
             f_all = [f.discretization.get_field_on_grid() for f in self.fields]
-            def wrapped_f(discr_params, input_params):
-                all_new_params = preprocess(discr_params, input_params)
-                return [f(discr_params, all_new_params[i]) for i,f in enumerate(f_all)]
+            def wrapped_f(global_params, input_params):
+                all_new_params = preprocess(global_params, input_params)
+                return [f(global_params, all_new_params[i]) for i,f in enumerate(f_all)]
             return wrapped_f
 
 def operator(has_aux=False, debug=False):
@@ -306,43 +309,4 @@ def operator(has_aux=False, debug=False):
             return output
 
         return wrapper
-    return decorator
-
-def make_op(out_discr, static_argnums=[], name=None):
-    r'''Transforms a function into an operation, which is a single operator,
-    registered in the computational graph'''
-    def decorator(fun):
-        def wrapped_fun(*args, **kwargs):
-            assert len(kwargs.keys()) == 0  # Only positional arguments
-            # Get the tracer
-            for u in args:
-                if hasattr(u, 'tracer'):
-                    tracer = u.tracer
-                    break
-                
-            # Add field names to inputs
-            constants = {}
-            inputs = []
-            for i, arg in enumerate(args):
-                # register constants
-                if i in static_argnums:
-                    const_name = f"_c_{tracer.counter()}"
-                    constants[const_name] = arg
-                else:
-                    inputs.append(arg.name)
-
-            # Construct output field 
-            if name is None:
-                f_name = f"{fun.__name__}"
-            else:
-                f_name = name
-            u_name = f"_{tracer.counter()}"
-            outfield = TracedField(out_discr, {}, tracer, u_name)
-
-            # Add operation to the computational graph
-            fun.__name__ = f_name
-            op = Operation(fun, inputs, constants, outfield)
-            tracer.add_operation(op)
-            return outfield
-        return wrapped_fun
     return decorator

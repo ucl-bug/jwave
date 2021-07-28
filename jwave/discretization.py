@@ -9,35 +9,6 @@ from typing import Callable
 from sympy import symbols, Function, factorial, ZeroMatrix
 import numpy as np
 
-def _build_arbitrary_operator(
-    get_fun, 
-    parameter_fun, 
-    domain, 
-    parameter_fun_name='_',
-    static_argnums=[]
-):
-    # Make get function
-    def init_params(seed):
-        raise NotImplementedError("Please initialize the parameters of the input fields instead.")
-    discretization = Arbitrary(domain, get_fun, init_params)
-
-    # Preprocess parameters function
-    _fun = make_op(discretization, static_argnums, name=parameter_fun_name)(parameter_fun)
-    return _fun
-
-def _constant_param_fun(get_fun, u):
-    param_fun = lambda u_p: u_p
-    op = _build_arbitrary_operator(
-        get_fun, param_fun, u.discretization.domain, parameter_fun_name='identity')
-    return op(u)
-
-def _join_parameter_fun(get_fun, u, v):
-    param_fun = lambda u_p, v_p: [u_p, v_p]
-    op = _build_arbitrary_operator(
-        get_fun, param_fun, u.discretization.domain, parameter_fun_name='join')
-    return op(u,v)
-
-
 class Arbitrary(Discretization):
     def __init__(self, domain: Domain, get_fun: Callable, init_params: Callable):
         self._get_fun = get_fun
@@ -51,6 +22,10 @@ class Arbitrary(Discretization):
             scalar = scalar, 
         )
         return primitive(u)
+
+    def add(self, u, v, independent_params=True):
+        primitive = pr.AddField()
+        return primitive(u, v)
 
     def apply_on_grid(self, fun):
         '''Returns a function applied on a grid'''
@@ -94,6 +69,10 @@ class Linear(Arbitrary):
             independent_params=independent_params
         )
         return primitive(u)
+
+    def add(self, u, v, independent_params=True):
+        primitive = pr.AddFieldLinearSame()
+        return primitive(u, v)
 
 class GridBased(Linear):
     def __init__(self, domain):
