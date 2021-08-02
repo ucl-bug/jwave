@@ -44,6 +44,8 @@ class Primitive(object):
         # Adds the parameters to the globals
         if primitive_parameters is None:
             params = {}
+            name = self.name
+            param_kind = "none"
         else:
             if self.independent_params:
                 name = f"{self.name}_{counter}"
@@ -196,5 +198,45 @@ class AddFieldLinearSame(BinaryPrimitive):
         assert field_1.discretization.domain == field_2.discretization.domain
         assert type(field_1.discretization) == type(field_2.discretization)
 
+        new_discretization = field_1.discretization
+        return None, new_discretization
+
+class Elementwise(Primitive):
+    def __init__(self, callable, name="Elementwise", independent_params=True):
+        super().__init__(name, independent_params)
+        self.callable = callable
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        '''New arbitrary discretization'''
+
+        def get_field(p, x):
+            return self.callable(field.discretization.get_field()(p,x))
+
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain,
+            get_field,
+            no_init
+        )
+
+        return None, new_discretization
+
+class ElementwiseOnGrid(Primitive):
+    def __init__(self, callable, name="ElementwiseOnGrid", independent_params=True):
+        super().__init__(name, independent_params)
+        self.callable = callable
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return self.callable(field_params)
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field_1):
         new_discretization = field_1.discretization
         return None, new_discretization

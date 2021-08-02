@@ -1,9 +1,9 @@
 from jwave.geometry import Domain
-from jwave.core import make_op, Discretization, Field
+from jwave.core import Discretization, Field
 from jwave import primitives as pr
 from jwave import spectral
-from functools import reduce, wraps
-from jax import random, vmap, jvp
+from functools import reduce
+from jax import random, vmap
 from jax import numpy as jnp
 from typing import Callable
 from sympy import symbols, Function, factorial, ZeroMatrix
@@ -26,6 +26,10 @@ class Arbitrary(Discretization):
     def add(self, u, v, independent_params=True):
         primitive = pr.AddField()
         return primitive(u, v)
+
+    def elementwise(self, u, callable):
+        primitive = pr.Elementwise(callable)
+        return primitive(u)
 
     def apply_on_grid(self, fun):
         '''Returns a function applied on a grid'''
@@ -78,87 +82,9 @@ class GridBased(Linear):
     def __init__(self, domain):
         self.domain = domain
 
-class FiniteDifferences(GridBased):
-    """This discretization doesn't implement the `get_field()` method.
-    That is because, while Lagrange polynomials or truncated series expansions
-    can be used to describe continously a field in the neighbourood of a grid point,
-    the interpolating function between gridded values is not uniquely defined.
-
-    However, it can still be used to evaluate an operator as long as we only require
-    the grid values.
-    
-    Due to the lack of `get_field()` method, this discretization cannot be mixed 
-    with other discretizations (including arbitrary ones)."""
-    def __init__(self, domain: Domain, dims=1, accuracy=2):
-        r"""
-        Args:
-            domain (Domain): 
-            dims (int, optional): Defaults to 1.
-            accuracy (int, optional): Defaults to 2.
-        """
-        self.domain = domain
-        # internal parameters
-        self.accuracy = accuracy
-        self.dims = dims
-        self.is_field_complex = False
-
-        # Initialize parameters
-        self.params["coordinate_grid"] = self.domain.grid
-
-    @staticmethod
-    def _get_analytic_stencil(accuracy, deriv_order = 1, staggered = [0,1]):
-        # TODO: add reference
-        """Returns a `order` accurate stencil for the second derivative."""
-        assert accuracy % 2 == 0
-        n_points = accuracy + 1
-        
-        assert deriv_order < n_points
-        assert n_points % 2 == 1
-        order = n_points - 1
-        x, h = symbols('x, h')
-        f = Function('f')
-        
-        dh = (h*staggered[0])/staggered[1]
-        
-        def TaylorExpansion(point=h, order=4, dh=0):
-            return sum(point**i/factorial(i) * f(x).diff(x, i) for i in range(order+1))
-
-        grid_points = np.arange(-(n_points-1)/2, (n_points-1)/2 + 1).astype(int)  +dh
-
-        coef_matrix = ZeroMatrix(n_points, n_points).as_mutable()
-
-        for p, h_coef in zip(range(n_points), grid_points):
-
-            expansion = TaylorExpansion(h_coef * h, order, dh)
-
-            for derivative in range(order + 1):
-                term =  f(x).diff(x, derivative)
-                coef_matrix[derivative, p] = expansion.coeff(term)
-        
-        derivative_vector = ZeroMatrix(order + 1, 1).as_mutable()
-        derivative_vector[deriv_order, 0] = 1
-
-        return coef_matrix.inv() @ derivative_vector, h
-
-    @staticmethod
-    def _get_stencil(accuracy, dx, deriv_order = 1, staggered = [0,1]):
-        S, h = FiniteDifferences._get_analytic_stencil(accuracy, deriv_order, staggered)
-        stencil = np.asarray(S.subs(h, dx)).astype(float)[:,0]
-        return stencil
-
-    def get_field_on_grid(self):
-        r"""Returns a function `f(discretization_parameters, field_parameters)` 
-        which samples the field at the grid points defined
-        by `self.domain` 
-
-        Returns:
-            Callable: 
-        """        
-        r"""
-        """
-        def f(_, field_params):
-            return field_params
-        return f
+    def elementwise(self, u, callable):
+        primitive = pr.ElementwiseOnGrid(callable)
+        return primitive(u)
 
 class FourierSeries(GridBased):
     def __init__(self, domain, dims=1):
