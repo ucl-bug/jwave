@@ -251,3 +251,91 @@ class ElementwiseOnGrid(Primitive):
     def setup(self, field_1):
         new_discretization = field_1.discretization
         return None, new_discretization
+
+class MultiplyScalar(Primitive):
+    def __init__(self, scalar, name="MultiplyScalar", independent_params=True):
+        super().__init__(name, independent_params)
+        self.scalar = scalar
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return [field_params, op_params["scalar"]]
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """New arbitrary discretization"""
+        parameters = {"scalar": self.scalar}
+
+        def get_field(p_joined, x):
+            p, scalar = p_joined
+            return field.discretization.get_field()(p, x)*scalar
+
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain, get_field, no_init
+        )
+
+        return parameters, new_discretization
+
+class MultiplyScalarLinear(Primitive):
+    def __init__(self, scalar, name="MultiplyScalarLinear", independent_params=True):
+        super().__init__(name, independent_params)
+        self.scalar = scalar
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params*op_params["scalar"]
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """Same discretization family as the input"""
+        new_discretization = field.discretization
+        parameters = {"scalar": self.scalar}
+        return parameters, new_discretization
+
+class PowerScalar(Primitive):
+    def __init__(self, scalar, name="PowerScalar", independent_params=True):
+        super().__init__(name, independent_params)
+        self.scalar = scalar
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return [field_params, op_params["scalar"]]
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """New arbitrary discretization"""
+        parameters = {"scalar": self.scalar}
+
+        def get_field(p_joined, x):
+            p, scalar = p_joined
+            return field.discretization.get_field()(p, x)**scalar
+
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain, get_field, no_init
+        )
+
+        return parameters, new_discretization
+
+class PowerScalarLinear(Primitive):
+    def __init__(self, scalar, name="PowerScalarLinear", independent_params=True):
+        super().__init__(name, independent_params)
+        self.scalar = scalar
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params**op_params["scalar"]
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """Same discretization family as the input"""
+        new_discretization = field.discretization
+        parameters = {"scalar": self.scalar}
+        return parameters, new_discretization

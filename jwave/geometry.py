@@ -41,6 +41,7 @@ class Domain(NamedTuple):
                 return jnp.arange(0, n) * delta - delta * (n - 1) / 2
 
         axis = [_make_axis(n, delta) for n, delta in zip(self.N, self.dx)]
+        axis = [ax - jnp.mean(ax) for ax in axis]
         return axis
 
     @property

@@ -250,7 +250,7 @@ class DiscretizedOperator(object):
 
             def wrapped_f(global_params, input_params):
                 new_params = preprocess(global_params, input_params)
-                return f(global_params, new_params)
+                return f(new_params)
 
             return wrapped_f
         else:
@@ -260,7 +260,7 @@ class DiscretizedOperator(object):
             def wrapped_f(global_params, input_params):
                 all_new_params = preprocess(global_params, input_params)
                 return [
-                    f(global_params, all_new_params[i]) for i, f in enumerate(f_all)
+                    f(all_new_params[i]) for i, f in enumerate(f_all)
                 ]
 
             return wrapped_f

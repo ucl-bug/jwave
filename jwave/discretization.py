@@ -44,7 +44,7 @@ class Arbitrary(Discretization):
         """V-maps a function to work on a grid of values"""
         ndims = len(self.domain.N)
         for _ in range(ndims):
-            fun = vmap(fun, in_axes=(None, None, 0))
+            fun = vmap(fun, in_axes=(None, 0))
         return fun
 
     def get_field(self):
@@ -54,11 +54,45 @@ class Arbitrary(Discretization):
         return f
 
     def get_field_on_grid(self):
-        fun = self.vmap_over_grid(self._get_fun, self.domain, (None, 0))
+        fun = self.vmap_over_grid(self._get_fun)
         return self.apply_on_grid(fun)
+
+    @staticmethod
+    def power_scalar(u, scalar, independent_params=True):
+        primitive = pr.PowerScalar(
+            independent_params=independent_params,
+            scalar=scalar,
+        )
+        return primitive(u)
+
+    @staticmethod
+    def mul_scalar(u, scalar, independent_params=True):
+        primitive = pr.MultiplyScalar(
+            independent_params=independent_params,
+            scalar=scalar,
+        )
+        return primitive(u)
 
     def random_field(self, seed):
         return self._init_params(seed, self.domain)
+
+
+class Coordinate(Arbitrary):
+    def __init__(self, domain):
+        self.domain = domain
+
+    def init_params(self, seed):
+        return {}
+
+    def get_field(self):
+        def f(params, x):
+            return x
+        return f
+
+    def get_field_on_grid(self):
+        def f(params):
+            return self.domain.grid
+        return f
 
 
 class Linear(Arbitrary):
@@ -85,6 +119,18 @@ class GridBased(Linear):
 
     def elementwise(self, u, callable):
         primitive = pr.ElementwiseOnGrid(callable)
+        return primitive(u)
+
+    def power_scalar(self, u, scalar, independent_params=True):
+        primitive = pr.PowerScalarLinear(
+            scalar=scalar, independent_params=independent_params
+        )
+        return primitive(u)
+
+    def mul_scalar(self, u, scalar, independent_params=True):
+        primitive = pr.MultiplyScalarLinear(
+            scalar=scalar, independent_params=independent_params
+        )
         return primitive(u)
 
 
