@@ -114,6 +114,10 @@ class Tracer(object):
         return string
 
 
+def is_numeric(x):
+    return (type(x) == int)+(type(x) == float)+(type(x) == complex)
+
+
 class Field(object):
     def __init__(self, discretization, name, params):
         self.params = params
@@ -130,19 +134,19 @@ class Field(object):
         return self.discretization.init_params(seed)
 
     def __add__(self, other):
-        if type(other) == int or type(other) == float:
+        if is_numeric(other):
             return jops.add_scalar(self, other)
         else:
             return jops.add(self, other)
 
     def __mul__(self, other):
-        if type(other) == int or type(other) == float:
+        if is_numeric(other):
             return jops.mul_scalar(self, other)
         else:
             return jops.mul(self, other)
 
     def __pow__(self, other):
-        if type(other) == int or type(other) == float:
+        if is_numeric(other):
             return jops.power_scalar(self, other)
         else:
             return jops.power(self, other)
