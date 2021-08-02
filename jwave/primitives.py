@@ -3,13 +3,14 @@ from jwave import discretization
 from typing import Callable, NamedTuple, List, Any
 from jax import random
 
+
 def no_init(*args, **kwargs):
-    raise RuntimeError(
-        "Can't initialize a field resulting from applying an operator"
-    )
+    raise RuntimeError("Can't initialize a field resulting from applying an operator")
+
 
 class Operator(NamedTuple):
-    '''A concrete operation of the computational graph'''
+    """A concrete operation of the computational graph"""
+
     fun: Callable
     inputs: List[str]
     params: Any
@@ -20,21 +21,22 @@ class Operator(NamedTuple):
         keys = tuple(self.inputs)
         return f"{self.yelds.name}: {self.yelds.discretization} <-- {self.fun.__name__} {keys} | ({self.param_kind}) {self.params}"
 
+
 class Primitive(object):
     def __init__(self, name=None, independent_params=True):
         self.name = name
         self.independent_params = independent_params
 
     def discrete_transform(self):
-        '''To be implemented in childs'''
+        """To be implemented in childs"""
         return Callable
-    
+
     def setup(self, field):
-        '''To be implemented in childs'''
+        """To be implemented in childs"""
         return dict, Discretization
 
     def __call__(self, field):
-        '''Returns an operation stored in the computational graph'''
+        """Returns an operation stored in the computational graph"""
         tracer = field.tracer
         counter = tracer.counter()
 
@@ -71,6 +73,7 @@ class Primitive(object):
         tracer.add_operation(op)
 
         return outfield
+
 
 class BinaryPrimitive(Primitive):
     def __init__(self, *args, **kwargs):
@@ -114,32 +117,33 @@ class BinaryPrimitive(Primitive):
 
         return outfield
 
+
 class AddScalar(Primitive):
     def __init__(self, scalar, name="AddScalar", independent_params=True):
         super().__init__(name, independent_params)
         self.scalar = scalar
-    
+
     def discrete_transform(self):
         def f(op_params, field_params):
             return [field_params, op_params["scalar"]]
+
         f.__name__ = self.name
         return f
 
     def setup(self, field):
-        '''New arbitrary discretization'''
+        """New arbitrary discretization"""
         parameters = {"scalar": self.scalar}
 
         def get_field(p_joined, x):
             p, scalar = p_joined
-            return field.discretization.get_field()(p,x) + scalar
+            return field.discretization.get_field()(p, x) + scalar
 
         new_discretization = discretization.Arbitrary(
-            field.discretization.domain,
-            get_field,
-            no_init
+            field.discretization.domain, get_field, no_init
         )
 
         return parameters, new_discretization
+
 
 class AddScalarLinear(Primitive):
     def __init__(self, scalar, name="AddScalarLinear", independent_params=True):
@@ -149,14 +153,16 @@ class AddScalarLinear(Primitive):
     def discrete_transform(self):
         def f(op_params, field_params):
             return field_params + op_params["scalar"]
+
         f.__name__ = self.name
         return f
-    
+
     def setup(self, field):
-        '''Same discretization family as the input'''
+        """Same discretization family as the input"""
         new_discretization = field.discretization
         parameters = {"scalar": self.scalar}
         return parameters, new_discretization
+
 
 class AddField(BinaryPrimitive):
     def __init__(self, name="AddField", independent_params=True):
@@ -165,24 +171,26 @@ class AddField(BinaryPrimitive):
     def discrete_transform(self):
         def f(op_params, field_1_params, field_2_params):
             return [field_1_params, field_2_params]
+
         f.__name__ = self.name
         return f
-        
+
     def setup(self, field_1, field_2):
         # Must have the same domain
         assert field_1.discretization.domain == field_2.discretization.domain
 
         def get_field(p_joined, x):
             [p1, p2] = p_joined
-            return field_1.discretization.get_field()(p1,x) + field_1.discretization.get_field()(p2,x)
+            return field_1.discretization.get_field()(
+                p1, x
+            ) + field_1.discretization.get_field()(p2, x)
 
         new_discretization = discretization.Arbitrary(
-            field_1.discretization.domain,
-            get_field,
-            no_init
+            field_1.discretization.domain, get_field, no_init
         )
 
         return None, new_discretization
+
 
 class AddFieldLinearSame(BinaryPrimitive):
     def __init__(self, name="AddFieldLinearSame", independent_params=True):
@@ -191,6 +199,7 @@ class AddFieldLinearSame(BinaryPrimitive):
     def discrete_transform(self):
         def f(op_params, field_1_params, field_2_params):
             return field_1_params + field_2_params
+
         f.__name__ = self.name
         return f
 
@@ -201,6 +210,7 @@ class AddFieldLinearSame(BinaryPrimitive):
         new_discretization = field_1.discretization
         return None, new_discretization
 
+
 class Elementwise(Primitive):
     def __init__(self, callable, name="Elementwise", independent_params=True):
         super().__init__(name, independent_params)
@@ -209,22 +219,22 @@ class Elementwise(Primitive):
     def discrete_transform(self):
         def f(op_params, field_params):
             return field_params
+
         f.__name__ = self.name
         return f
 
     def setup(self, field):
-        '''New arbitrary discretization'''
+        """New arbitrary discretization"""
 
         def get_field(p, x):
-            return self.callable(field.discretization.get_field()(p,x))
+            return self.callable(field.discretization.get_field()(p, x))
 
         new_discretization = discretization.Arbitrary(
-            field.discretization.domain,
-            get_field,
-            no_init
+            field.discretization.domain, get_field, no_init
         )
 
         return None, new_discretization
+
 
 class ElementwiseOnGrid(Primitive):
     def __init__(self, callable, name="ElementwiseOnGrid", independent_params=True):
@@ -234,6 +244,7 @@ class ElementwiseOnGrid(Primitive):
     def discrete_transform(self):
         def f(op_params, field_params):
             return self.callable(field_params)
+
         f.__name__ = self.name
         return f
 

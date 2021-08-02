@@ -8,9 +8,9 @@ from sympy import symbols, Function, factorial, ZeroMatrix
 
 
 class Domain(NamedTuple):
-    r'''A rectangular domain.'''
+    r"""A rectangular domain."""
     N: Tuple[int]
-    dx:  Tuple[float]
+    dx: Tuple[float]
 
     @property
     def size(self):
@@ -41,7 +41,7 @@ class Domain(NamedTuple):
                 return jnp.arange(0, n) * delta - delta * (n - 1) / 2
 
         axis = [_make_axis(n, delta) for n, delta in zip(self.N, self.dx)]
-        return  axis
+        return axis
 
     @property
     def origin(self):
@@ -53,12 +53,13 @@ class Domain(NamedTuple):
 
     @property
     def grid(self):
-        '''Returns a grid of spatial position, of size
+        """Returns a grid of spatial position, of size
         `Nx x Ny x Nz x ... x num_axis` such that the element
         `[x1,x2,x3, .., :]` is a coordinate vector.
-        '''
+        """
         axis = self.spatial_axis
         return self._make_grid_from_axis(axis)
+
 
 class Staggered(IntEnum):
     r"""Staggering flags as enumerated constants. This makes sure
