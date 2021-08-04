@@ -4,6 +4,7 @@ import jax
 from jax import numpy as jnp
 from jwave.core import operator, Field
 from jwave.discretization import Arbitrary, RealFourierSeries
+from jwave import operators as jops
 from jax import numpy as jnp
 from jax.experimental import stax
 
@@ -28,6 +29,15 @@ fourier_discr = RealFourierSeries(domain)
 fourier_field = fourier_discr.random_field(seed)
 u_fourier = Field(fourier_discr, params=fourier_field, name='u')
 
+def _apply_operator(op):
+    out_field = op(u=u_arbitrary)
+    global_params = out_field.get_global_params()
+    out_field.get_field(0)(global_params, {"u": arbitrary_field}, x)
+
+    out_field = op(u=u_fourier)
+    global_params = out_field.get_global_params()
+    _ = out_field.get_field(0)(global_params, {"u": fourier_field}, x)
+
 def test_call():
     """This can't be jitted"""
     u_arbitrary(x)
@@ -41,16 +51,16 @@ def test_add_scalar():
     @operator()
     def op(u):
         return u + 1.
+    _apply_operator(op)
 
-    out_field = op(u=u_arbitrary)
-    global_params = out_field.get_global_params()
-    out_field.get_field(0)(global_params, {"u": arbitrary_field}, x)
+def test_several():
+    @operator()
+    def op(u):
+        Tanh = jops.elementwise(jnp.tanh)
+        return Tanh(u) + u + 2*u 
+    _apply_operator(op)
 
-    out_field = op(u=u_fourier)
-    global_params = out_field.get_global_params()
-    _ = out_field.get_field(0)(global_params, {"u": fourier_field}, x)
 
+# This is for debugging
 if __name__ == '__main__':
-    test_call()
-    test_get_field()
-    test_add_scalar()
+    test_several()

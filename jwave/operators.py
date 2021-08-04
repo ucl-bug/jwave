@@ -24,17 +24,14 @@ div = Operator("div")
 invert = Operator("invert")
 mul = Operator("mul")
 mul_scalar = Operator("mul_scalar")
+div = Operator("div")
+div_scalar = Operator("div_scalar")
 power = Operator("power")
 power_scalar = Operator("power_scalar")
+reciprocal = Operator("reciprocal")
 
-
-class derivative(Operator):
-    def __init__(self, axis):
-        self.axis = axis
-
-    def __call__(self, u):
-        return u.discrertization.derivative(u, self.axis)
-
+gradient = Operator("gradient")
+nabla_dot = Operator("nabla_dot")
 
 class elementwise(Operator):
     def __init__(self, func: Callable):

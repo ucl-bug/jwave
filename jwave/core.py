@@ -139,6 +139,12 @@ class Field(object):
         else:
             return jops.add(self, other)
 
+    def __truediv__(self, other):
+        if is_numeric(other):
+            return jops.div_scalar(self, other)
+        else:
+            return jops.div(self, other)
+
     def __mul__(self, other):
         if is_numeric(other):
             return jops.mul_scalar(self, other)
@@ -156,6 +162,10 @@ class Field(object):
 
     def __rmul__(self, other):
         return self * other
+
+    def __rtruediv__(self, other):
+        self = jops.reciprocal(self)
+        return self*other
 
     def __rsub__(self, other):
         self = jops.invert(self)

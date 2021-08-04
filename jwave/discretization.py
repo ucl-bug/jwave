@@ -58,8 +58,8 @@ class Arbitrary(Discretization):
         return self.apply_on_grid(fun)
 
     @staticmethod
-    def power_scalar(u, scalar, independent_params=True):
-        primitive = pr.PowerScalar(
+    def div_scalar(u, scalar, independent_params=True):
+        primitive = pr.DivideByScalar(
             independent_params=independent_params,
             scalar=scalar,
         )
@@ -73,8 +73,19 @@ class Arbitrary(Discretization):
         )
         return primitive(u)
 
+    @staticmethod
+    def power_scalar(u, scalar, independent_params=True):
+        primitive = pr.PowerScalar(
+            independent_params=independent_params,
+            scalar=scalar,
+        )
+        return primitive(u)
+
     def random_field(self, seed):
         return self._init_params(seed, self.domain)
+
+    def reciprocal(self, u):
+        return pr.Reciprocal()(u)
 
 
 class Coordinate(Arbitrary):
@@ -112,6 +123,22 @@ class Linear(Arbitrary):
         primitive = pr.AddFieldLinearSame()
         return primitive(u, v)
 
+    def div_scalar(self, u, scalar, independent_params=True):
+        primitive = pr.DivideByScalarLinear(
+            scalar=scalar, independent_params=independent_params
+        )
+        return primitive(u)
+
+    def mul_scalar(self, u, scalar, independent_params=True):
+        primitive = pr.MultiplyScalarLinear(
+            scalar=scalar, independent_params=independent_params
+        )
+        return primitive(u)
+
+    def mul(self, u, v, independent_params=True):
+        primitive = pr.MultiplyOnGrid()
+        return primitive(u, v)
+
 
 class GridBased(Linear):
     def __init__(self, domain):
@@ -127,12 +154,8 @@ class GridBased(Linear):
         )
         return primitive(u)
 
-    def mul_scalar(self, u, scalar, independent_params=True):
-        primitive = pr.MultiplyScalarLinear(
-            scalar=scalar, independent_params=independent_params
-        )
-        return primitive(u)
-
+    def reciprocal(self, u):
+        return pr.ReciprocalOnGrid()(u)
 
 class FourierSeries(GridBased):
     def __init__(self, domain, dims=1):
@@ -148,6 +171,12 @@ class FourierSeries(GridBased):
         # is the best idea.
         self.params = {}
         self.params["freq_grid"] = self._freq_grid
+
+    def gradient(self, u):
+        return pr.FFTGradient()(u)
+
+    def nabla_dot(self, u):
+        return pr.FFTNablaDot()(u)
 
     @property
     def _freq_grid(self):
@@ -189,7 +218,7 @@ class FourierSeries(GridBased):
         return f
 
     def get_field_on_grid(self):
-        def _sample_on_grid(_, field_params):
+        def _sample_on_grid(field_params):
             return field_params
 
         return _sample_on_grid
@@ -203,6 +232,13 @@ class FourierSeries(GridBased):
             return random.normal(rng, self.domain.N, dtype)
         else:
             return random.normal(rng, [self.dims] + [*self.domain.N], dtype)
+
+    def empty_field(self):
+        params = jnp.zeros([*self.domain.N] + [self.dims])
+        if self.is_field_complex:
+            return params + 0j
+        else:
+            return params
 
 
 class RealFourierSeries(FourierSeries):

@@ -1,7 +1,8 @@
 from jwave.core import TracedField, Discretization
-from jwave import discretization
+from jwave import discretization, spectral
 from typing import Callable, NamedTuple, List, Any
 from jax import random
+from jax import numpy as jnp
 
 
 def no_init(*args, **kwargs):
@@ -180,10 +181,10 @@ class AddField(BinaryPrimitive):
         assert field_1.discretization.domain == field_2.discretization.domain
 
         def get_field(p_joined, x):
-            [p1, p2] = p_joined
+            p1, p2 = p_joined
             return field_1.discretization.get_field()(
                 p1, x
-            ) + field_1.discretization.get_field()(p2, x)
+            ) + field_2.discretization.get_field()(p2, x)
 
         new_discretization = discretization.Arbitrary(
             field_1.discretization.domain, get_field, no_init
@@ -210,6 +211,23 @@ class AddFieldLinearSame(BinaryPrimitive):
         new_discretization = field_1.discretization
         return None, new_discretization
 
+class MultiplyOnGrid(BinaryPrimitive):
+    def __init__(self, name="MultiplyOnGrid", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_1_params, field_2_params):
+            return field_1_params * field_2_params
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field_1, field_2):
+        assert field_1.discretization.domain == field_2.discretization.domain
+        assert type(field_1.discretization) == type(field_2.discretization)
+
+        new_discretization = field_1.discretization
+        return None, new_discretization
 
 class Elementwise(Primitive):
     def __init__(self, callable, name="Elementwise", independent_params=True):
@@ -250,6 +268,153 @@ class ElementwiseOnGrid(Primitive):
 
     def setup(self, field_1):
         new_discretization = field_1.discretization
+        return None, new_discretization
+
+
+class DivideByScalar(Primitive):
+    def __init__(self, scalar, name="DivideByScalar", independent_params=True):
+        super().__init__(name, independent_params)
+        self.scalar = scalar
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return [field_params, op_params["scalar"]]
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """New arbitrary discretization"""
+        parameters = {"scalar": self.scalar}
+
+        def get_field(p_joined, x):
+            p, scalar = p_joined
+            return field.discretization.get_field()(p, x)/scalar
+
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain, get_field, no_init
+        )
+
+        return parameters, new_discretization
+
+class DivideByScalarLinear(Primitive):
+    def __init__(self, scalar, name="DivideByScalarLinear", independent_params=True):
+        super().__init__(name, independent_params)
+        self.scalar = scalar
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params/op_params["scalar"]
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """Same discretization family as the input"""
+        new_discretization = field.discretization
+        parameters = {"scalar": self.scalar}
+        return parameters, new_discretization
+
+class FFTGradient(Primitive):
+    def __init__(self, name="FFTGradient", independent_params=False):
+        super().__init__(name, independent_params)
+    
+    def setup(self, field):
+        new_discretization = field.discretization
+        k_vec = field.discretization._freq_axis
+        parameters = {"k_vec": k_vec}
+        return parameters, new_discretization
+
+    def discrete_transform(self):
+
+        def f(op_params, field_params):
+            k_vec = op_params["k_vec"]
+            u = field_params[...,0]
+            ndim = len(field_params.shape)-1
+            
+            def single_grad(axis, u):
+                u = jnp.moveaxis(u, axis, -1)
+                Fx = jnp.fft.fft(u, axis=-1)
+                iku = 1j*Fx*k_vec[axis]
+                du = jnp.fft.ifft(iku, axis=-1)
+                return jnp.moveaxis(du, -1, axis)
+
+            return jnp.stack([single_grad(i, u) for i in range(ndim)], axis=-1)
+        f.__name__ = self.name
+
+        return f        
+
+class FFTNablaDot(Primitive):
+    def __init__(self, name="FFTNablaDot", independent_params=False):
+        super().__init__(name, independent_params)
+    
+    def setup(self, field):
+        new_discretization = field.discretization
+        k_vec = field.discretization._freq_axis
+        parameters = {"k_vec": k_vec}
+        return parameters, new_discretization
+
+    def discrete_transform(self):
+
+        def f(op_params, field_params):
+            k_vec = op_params["k_vec"]
+            ndim = len(field_params.shape)-1
+            
+            res = jnp.zeros_like(field_params[...,0])
+            def single_grad(axis, u):
+                u = jnp.moveaxis(u, axis, -1)
+                Fx = jnp.fft.fft(u, axis=-1)
+                iku = 1j*Fx*k_vec[axis]
+                du = jnp.fft.ifft(iku, axis=-1)
+                return jnp.moveaxis(du, -1, axis)
+
+            for ax in range(ndim):
+                res = res + single_grad(ax, field_params[...,ax])
+            return res
+
+        f.__name__ = self.name
+
+        return f        
+
+
+
+
+class Reciprocal(Primitive):
+    def __init__(self, name="Reciprocal", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """New arbitrary discretization"""
+
+        def get_field(p, x):
+            return 1./field.discretization.get_field()(p, x)
+
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain, get_field, no_init
+        )
+
+        return None, new_discretization
+
+class ReciprocalOnGrid(Primitive):
+    def __init__(self, name="ReciprocalOnGrid", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return 1./field_params
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """Same discretization family as the input"""
+        new_discretization = field.discretization
         return None, new_discretization
 
 class MultiplyScalar(Primitive):
