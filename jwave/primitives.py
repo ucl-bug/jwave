@@ -211,6 +211,26 @@ class AddFieldLinearSame(BinaryPrimitive):
         new_discretization = field_1.discretization
         return None, new_discretization
 
+class MultiplyFields(BinaryPrimitive):
+    def __init__(self, name="MultiplyFields", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_1_params, field_2_params):
+            return [field_1_params, field_2_params]
+        f.__name__ = self.name
+        return f
+    
+    def setup(self, field_1, field_2):
+        def get_field(p_joined, x):
+            p1, p2 = p_joined
+            return field_1.discretization.get_field()(p1, x) * field_2.discretization.get_field()(p2, x)
+
+        new_discretization = discretization.Arbitrary(
+            field_1.discretization.domain, get_field, no_init
+        )
+        return None, new_discretization
+
 class MultiplyOnGrid(BinaryPrimitive):
     def __init__(self, name="MultiplyOnGrid", independent_params=True):
         super().__init__(name, independent_params)
@@ -227,6 +247,20 @@ class MultiplyOnGrid(BinaryPrimitive):
         assert type(field_1.discretization) == type(field_2.discretization)
 
         new_discretization = field_1.discretization
+        return None, new_discretization
+
+class SumOverDimsOnGrid(Primitive):
+    def __init__(self, name="SumOverDimsOnGrid", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):  
+        def f(op_params, field_params):
+            return jnp.sum(field_params, axis=-1)
+        f.__name__ = self.name
+        return f
+    
+    def setup(self, field):
+        new_discretization = field.discretization
         return None, new_discretization
 
 class Elementwise(Primitive):
@@ -371,12 +405,37 @@ class FFTNablaDot(Primitive):
             for ax in range(ndim):
                 res = res + single_grad(ax, field_params[...,ax])
             return res
-
         f.__name__ = self.name
-
         return f        
 
+class FFTDiagJacobian(Primitive):
+    def __init__(self, name="FFTDiagJacobian", independent_params=False):
+        super().__init__(name, independent_params)
 
+    def setup(self, field):
+        new_discretization = field.discretization
+        k_vec = field.discretization._freq_axis
+        parameters = {"k_vec": k_vec}
+        return parameters, new_discretization
+    
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            k_vec = op_params["k_vec"]
+            ndim = len(field_params.shape)-1
+
+            res = jnp.zeros_like(field_params)
+            def single_grad(axis, u):
+                u = jnp.moveaxis(u, axis, -1)
+                Fx = jnp.fft.fft(u, axis=-1)
+                iku = 1j*Fx*k_vec[axis]
+                du = jnp.fft.ifft(iku, axis=-1)
+                return jnp.moveaxis(du, -1, axis)
+            
+            for ax in range(ndim):
+                res = res.at[...,ax].set(single_grad(ax, field_params[...,ax]))
+            return res
+        f.__name__ = self.name
+        return f
 
 
 class Reciprocal(Primitive):

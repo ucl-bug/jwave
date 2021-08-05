@@ -32,6 +32,8 @@ reciprocal = Operator("reciprocal")
 
 gradient = Operator("gradient")
 nabla_dot = Operator("nabla_dot")
+diag_jacobian = Operator("diag_jacobian")
+sum_over_dims = Operator("sum_over_dims")
 
 class elementwise(Operator):
     def __init__(self, func: Callable):

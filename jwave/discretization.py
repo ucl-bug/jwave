@@ -32,6 +32,9 @@ class Arbitrary(Discretization):
         primitive = pr.Elementwise(callable)
         return primitive(u)
 
+    def mul(self, u, v):
+        return pr.MultiplyFields()(u, v)
+
     def apply_on_grid(self, fun):
         """Returns a function applied on a grid"""
 
@@ -157,6 +160,9 @@ class GridBased(Linear):
     def reciprocal(self, u):
         return pr.ReciprocalOnGrid()(u)
 
+    def sum_over_dims(self, u):
+        return pr.SumOverDimsOnGrid()(u)
+
 class FourierSeries(GridBased):
     def __init__(self, domain, dims=1):
         self.domain = domain
@@ -177,6 +183,9 @@ class FourierSeries(GridBased):
 
     def nabla_dot(self, u):
         return pr.FFTNablaDot()(u)
+
+    def diag_jacobian(self, u):
+        return pr.FFTDiagJacobian()(u)
 
     @property
     def _freq_grid(self):
