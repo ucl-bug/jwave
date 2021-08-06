@@ -88,6 +88,28 @@ class Arbitrary(Discretization):
     def reciprocal(self, u):
         return pr.Reciprocal()(u)
 
+class UniformField(Arbitrary):
+    def __init__(self, domain: Domain):
+        self.domain = domain
+
+    def random_field(self, seed):
+        return random.uniform(seed)
+
+    def empty_field(self):
+        return 0.0
+
+    def from_scalar(self, scalar):
+        return scalar
+
+    def get_field(self):
+        def f(params, x):
+            return params
+        return f
+    
+    def get_field_on_grid(self):
+        def f(params, x):
+            return params
+        return f
 
 class Coordinate(Arbitrary):
     def __init__(self, domain):
@@ -131,6 +153,9 @@ class Linear(Arbitrary):
             scalar=scalar, independent_params=independent_params
         )
         return primitive(u)
+
+    def invert(self,u):
+        return pr.InvertLinear()(u)
 
     def mul_scalar(self, u, scalar, independent_params=True):
         primitive = pr.MultiplyScalarLinear(

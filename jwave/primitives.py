@@ -120,7 +120,6 @@ class BinaryPrimitive(Primitive):
 
         return outfield
 
-
 class AddScalar(Primitive):
     def __init__(self, scalar, name="AddScalar", independent_params=True):
         super().__init__(name, independent_params)
@@ -213,7 +212,6 @@ class AddFieldLinearSame(BinaryPrimitive):
         new_discretization = field_1.discretization
         return None, new_discretization
 
-
 class MultiplyFields(BinaryPrimitive):
     def __init__(self, name="MultiplyFields", independent_params=True):
         super().__init__(name, independent_params)
@@ -263,7 +261,7 @@ class SumOverDimsOnGrid(Primitive):
 
     def discrete_transform(self):
         def f(op_params, field_params):
-            return jnp.sum(field_params, axis=-1)
+            return jnp.sum(field_params, axis=-1, keepdims=True)
 
         f.__name__ = self.name
         return f
@@ -478,6 +476,22 @@ class Reciprocal(Primitive):
 
         return None, new_discretization
 
+
+class InvertLinear(Primitive):
+    def __init__(self, name="InvertLinear", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return -field_params
+
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """Same discretization family as the input"""
+        new_discretization = field.discretization
+        return None, new_discretization
 
 class ReciprocalOnGrid(Primitive):
     def __init__(self, name="ReciprocalOnGrid", independent_params=True):
