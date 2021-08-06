@@ -1,5 +1,4 @@
 from jax import numpy as jnp
-from jax import eval_shape
 from typing import Tuple, Union
 from jwave.geometry import Domain
 

@@ -1,7 +1,6 @@
 from jwave.core import TracedField, Discretization
-from jwave import discretization, spectral
+from jwave import discretization
 from typing import Callable, NamedTuple, List, Any
-from jax import random
 from jax import numpy as jnp
 
 
@@ -20,7 +19,10 @@ class Operator(NamedTuple):
 
     def __repr__(self):
         keys = tuple(self.inputs)
-        return f"{self.yelds.name}: {self.yelds.discretization} <-- {self.fun.__name__} {keys} | ({self.param_kind}) {self.params}"
+        return (
+            f"{self.yelds.name}: {self.yelds.discretization} "
+            + f"<-- {self.fun.__name__} {keys} | ({self.param_kind}) {self.params}"
+        )
 
 
 class Primitive(object):
@@ -206,7 +208,7 @@ class AddFieldLinearSame(BinaryPrimitive):
 
     def setup(self, field_1, field_2):
         assert field_1.discretization.domain == field_2.discretization.domain
-        assert type(field_1.discretization) == type(field_2.discretization)
+        assert isinstance(field_1.discretization, type(field_2.discretization))
 
         new_discretization = field_1.discretization
         return None, new_discretization
@@ -249,7 +251,7 @@ class MultiplyOnGrid(BinaryPrimitive):
 
     def setup(self, field_1, field_2):
         assert field_1.discretization.domain == field_2.discretization.domain
-        assert type(field_1.discretization) == type(field_2.discretization)
+        assert isinstance(field_1.discretization, type(field_2.discretization))
 
         new_discretization = field_1.discretization
         return None, new_discretization

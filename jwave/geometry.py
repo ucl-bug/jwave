@@ -1,10 +1,7 @@
 from jax import numpy as jnp
 from functools import reduce
-import jax
-from typing import NamedTuple, Tuple, List, Dict, Union
-import numpy as np
+from typing import NamedTuple, Tuple
 from enum import IntEnum
-from sympy import symbols, Function, factorial, ZeroMatrix
 
 
 class Domain(NamedTuple):

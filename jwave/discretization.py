@@ -1,13 +1,11 @@
 from jwave.geometry import Domain
-from jwave.core import Discretization, Field
+from jwave.core import Discretization
 from jwave import primitives as pr
 from jwave import spectral
 from functools import reduce
 from jax import random, vmap
 from jax import numpy as jnp
 from typing import Callable
-from sympy import symbols, Function, factorial, ZeroMatrix
-import numpy as np
 
 
 class Arbitrary(Discretization):
@@ -196,7 +194,9 @@ class FourierSeries(GridBased):
 
     @property
     def _freq_axis(self):
-        f = lambda N, dx: jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
+        def f(N, dx):
+            return jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
+
         k_axis = [f(n, delta) for n, delta in zip(self.domain.N, self.domain.dx)]
         if not self.is_field_complex:
             k_axis[-1] = (

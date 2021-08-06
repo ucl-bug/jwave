@@ -1,8 +1,7 @@
 from jwave.geometry import Domain
 from jwave import operators as jops
-from typing import List, Union, Any
+from typing import List, Any
 from collections.abc import Iterable
-from functools import wraps
 from hashids import Hashids
 
 
@@ -280,7 +279,7 @@ class DiscretizedOperator(object):
 
 def operator(has_aux=False, debug=False):
     """Returns a decorator that builds the computational graph of an operator"""
-    if has_aux == True:
+    if has_aux is True:
         raise NotImplementedError(
             "Operator with auxiliary arguments are not currently supported."
         )
@@ -323,7 +322,10 @@ def operator(has_aux=False, debug=False):
                 if debug:
                     print(f"Sorted graph for {out}:\n{sorted_graph}\n")
                 pf = tracer.construct_function(sorted_graph, [out])
-                preprocess_func = lambda x, y: pf(x, y)[0]  # Only need one output
+
+                def preprocess_func(x, y):
+                    return pf(x, y)[0]  # Only need one output
+
                 field = tracer.operations[out].yelds
 
                 p_func.append(preprocess_func)
