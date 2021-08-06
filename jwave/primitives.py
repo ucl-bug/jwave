@@ -360,8 +360,9 @@ class DivideByScalarLinear(Primitive):
 
 
 class FFTGradient(Primitive):
-    def __init__(self, name="FFTGradient", independent_params=False):
+    def __init__(self, real=False, name="FFTGradient", independent_params=False):
         super().__init__(name, independent_params)
+        self.real = real
 
     def setup(self, field):
         new_discretization = field.discretization
@@ -370,6 +371,11 @@ class FFTGradient(Primitive):
         return parameters, new_discretization
 
     def discrete_transform(self):
+        if self.real:
+            ffts = [jnp.fft.rfft, jnp.fft.irfft]
+        else:
+            ffts = [jnp.fft.fft, jnp.fft.ifft]
+
         def f(op_params, field_params):
             k_vec = op_params["k_vec"]
             u = field_params[..., 0]
@@ -377,9 +383,9 @@ class FFTGradient(Primitive):
 
             def single_grad(axis, u):
                 u = jnp.moveaxis(u, axis, -1)
-                Fx = jnp.fft.fft(u, axis=-1)
+                Fx = ffts[0](u, axis=-1)
                 iku = 1j * Fx * k_vec[axis]
-                du = jnp.fft.ifft(iku, axis=-1)
+                du = ffts[1](iku, axis=-1, n=u.shape[-1])
                 return jnp.moveaxis(du, -1, axis)
 
             return jnp.stack([single_grad(i, u) for i in range(ndim)], axis=-1)
@@ -422,8 +428,9 @@ class FFTNablaDot(Primitive):
 
 
 class FFTDiagJacobian(Primitive):
-    def __init__(self, name="FFTDiagJacobian", independent_params=False):
+    def __init__(self, real = False, name="FFTDiagJacobian", independent_params=False):
         super().__init__(name, independent_params)
+        self.real = real
 
     def setup(self, field):
         new_discretization = field.discretization
@@ -432,6 +439,11 @@ class FFTDiagJacobian(Primitive):
         return parameters, new_discretization
 
     def discrete_transform(self):
+        if self.real:
+            ffts = [jnp.fft.rfft, jnp.fft.irfft]
+        else:
+            ffts = [jnp.fft.fft, jnp.fft.ifft]
+
         def f(op_params, field_params):
             k_vec = op_params["k_vec"]
             ndim = len(field_params.shape) - 1
@@ -440,9 +452,9 @@ class FFTDiagJacobian(Primitive):
 
             def single_grad(axis, u):
                 u = jnp.moveaxis(u, axis, -1)
-                Fx = jnp.fft.fft(u, axis=-1)
+                Fx = ffts[0](u, axis=-1)
                 iku = 1j * Fx * k_vec[axis]
-                du = jnp.fft.ifft(iku, axis=-1)
+                du = ffts[1](iku, axis=-1, n=u.shape[-1])
                 return jnp.moveaxis(du, -1, axis)
 
             for ax in range(ndim):
