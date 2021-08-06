@@ -115,7 +115,7 @@ class Tracer(object):
 
 
 def is_numeric(x):
-    return (type(x) == int)+(type(x) == float)+(type(x) == complex)
+    return (type(x) == int) + (type(x) == float) + (type(x) == complex)
 
 
 class Field(object):
@@ -165,7 +165,7 @@ class Field(object):
 
     def __rtruediv__(self, other):
         self = jops.reciprocal(self)
-        return self*other
+        return self * other
 
     def __rsub__(self, other):
         self = jops.invert(self)
@@ -273,9 +273,7 @@ class DiscretizedOperator(object):
 
             def wrapped_f(global_params, input_params):
                 all_new_params = preprocess(global_params, input_params)
-                return [
-                    f(all_new_params[i]) for i, f in enumerate(f_all)
-                ]
+                return [f(all_new_params[i]) for i, f in enumerate(f_all)]
 
             return wrapped_f
 

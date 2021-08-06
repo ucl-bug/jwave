@@ -37,11 +37,11 @@ v_fourier = Field(fourier_discr, params=fourier_field_v, name='v')
 def _apply_operator(op):
     out_field = op(u=u_arbitrary)
     global_params = out_field.get_global_params()
-    out_field.get_field(0)(global_params, {"u": arbitrary_field}, x)
+    out_field.get_field(0)(global_params, {"u": arbitrary_field_u}, x)
 
     out_field = op(u=u_fourier)
     global_params = out_field.get_global_params()
-    _ = out_field.get_field(0)(global_params, {"u": fourier_field}, x)
+    _ = out_field.get_field(0)(global_params, {"u": fourier_field_u}, x)
 
 def _apply_binary_operator(op):
     out_field = op(u=u_arbitrary, v=v_arbitrary)
@@ -67,8 +67,8 @@ def test_call():
     u_fourier(x)
 
 def test_get_field():
-    u_arbitrary.get_field()(arbitrary_field,x)
-    u_fourier.get_field()(fourier_field,x)
+    u_arbitrary.get_field()(arbitrary_field_u,x)
+    u_fourier.get_field()(fourier_field_u,x)
 
 def test_add_scalar():
     @operator()

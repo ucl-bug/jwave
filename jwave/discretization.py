@@ -101,11 +101,13 @@ class Coordinate(Arbitrary):
     def get_field(self):
         def f(params, x):
             return x
+
         return f
 
     def get_field_on_grid(self):
         def f(params):
             return self.domain.grid
+
         return f
 
 
@@ -162,6 +164,7 @@ class GridBased(Linear):
 
     def sum_over_dims(self, u):
         return pr.SumOverDimsOnGrid()(u)
+
 
 class FourierSeries(GridBased):
     def __init__(self, domain, dims=1):
