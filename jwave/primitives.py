@@ -120,6 +120,7 @@ class BinaryPrimitive(Primitive):
 
         return outfield
 
+
 class AddScalar(Primitive):
     def __init__(self, scalar, name="AddScalar", independent_params=True):
         super().__init__(name, independent_params)
@@ -211,6 +212,7 @@ class AddFieldLinearSame(BinaryPrimitive):
 
         new_discretization = field_1.discretization
         return None, new_discretization
+
 
 class MultiplyFields(BinaryPrimitive):
     def __init__(self, name="MultiplyFields", independent_params=True):
@@ -428,7 +430,7 @@ class FFTNablaDot(Primitive):
 
 
 class FFTDiagJacobian(Primitive):
-    def __init__(self, real = False, name="FFTDiagJacobian", independent_params=False):
+    def __init__(self, real=False, name="FFTDiagJacobian", independent_params=False):
         super().__init__(name, independent_params)
         self.real = real
 
@@ -504,6 +506,7 @@ class InvertLinear(Primitive):
         """Same discretization family as the input"""
         new_discretization = field.discretization
         return None, new_discretization
+
 
 class ReciprocalOnGrid(Primitive):
     def __init__(self, name="ReciprocalOnGrid", independent_params=True):

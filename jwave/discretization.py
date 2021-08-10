@@ -88,6 +88,7 @@ class Arbitrary(Discretization):
     def reciprocal(self, u):
         return pr.Reciprocal()(u)
 
+
 class UniformField(Arbitrary):
     def __init__(self, domain: Domain):
         self.domain = domain
@@ -104,12 +105,15 @@ class UniformField(Arbitrary):
     def get_field(self):
         def f(params, x):
             return params
+
         return f
-    
+
     def get_field_on_grid(self):
         def f(params, x):
             return params
+
         return f
+
 
 class Coordinate(Arbitrary):
     def __init__(self, domain):
@@ -154,7 +158,7 @@ class Linear(Arbitrary):
         )
         return primitive(u)
 
-    def invert(self,u):
+    def invert(self, u):
         return pr.InvertLinear()(u)
 
     def mul_scalar(self, u, scalar, independent_params=True):
@@ -220,9 +224,12 @@ class FourierSeries(GridBased):
     @property
     def _freq_axis(self):
         if self.is_field_complex:
+
             def f(N, dx):
                 return jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
+
         else:
+
             def f(N, dx):
                 return jnp.fft.rfftfreq(N, dx) * 2 * jnp.pi
 
