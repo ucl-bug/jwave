@@ -1,4 +1,4 @@
-name: j-Wave
+name: Continous Integration
 
 on:
   push:
