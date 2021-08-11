@@ -1,112 +1,111 @@
-import jax.numpy as jnp
-from jax import jit, eval_shape
-from functools import partial
-from typing import Callable, Tuple, Union
-from jwave import geometry
-from jwave.geometry import Staggered
-
-# TODO: Use map / fori / scan instead of for loops
-# TODO: speed tests
+from jax import numpy as jnp
+from typing import Tuple, Union
+from jwave.geometry import Domain
 
 
-def derivative_init(
-    sample_input: jnp.ndarray,
-    grid: geometry.kGrid,
-    axis: int = -1,
-    staggered: Staggered = Staggered.NONE,
-    kspace_op: bool = False,
-) -> Tuple[Callable, geometry.kGrid]:
-    """[summary]
+def rfft_interp(
+    k: jnp.ndarray, spectrum: jnp.ndarray, x: jnp.ndarray, first_dim_size: int
+) -> float:
+    r"""Calculates the value of a field $`f`$ at an arbitrary position
+    $`x`$ using
+
+    ```math
+    f(x) = \sum_i \hat f e^{ik^\top x}
+    ```
+
+    for real signals. The `spectrum` dimension and content, together
+    with the frequency coordinate grid $`k`$ must conform to
+    [`jax.numpy.fft.rfftn`](https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.fft.rfftn.html).
 
     Args:
-        grid (geometry.kGrid): Reference grid
-        x (jnp.ndarray): Sample input signal, for shape and dtype evaluation
-        axis (int, optional): Axis on which the derivative is performed. Defaults to
-            the last axis.
-        degree (float, optional): Degree of the derivative operator.
-        staggered (Staggered, optional): Staggered flag.
-        kspace_op (bool, optional): If `True`, uses a modified derivative corrected by
-            the k-space operator.
+        k (jnp.ndarray): [description]
+        spectrum (jnp.ndarray): [description]
+        x (jnp.ndarray): [description]
+        first_dim_size (int): [description]
 
     Returns:
-        Returns the spectral derivative operator `D` as
-            first output and the updated `grid` object as second output. The function is
-            used as `dy = D(y, grid)`, where the input signal `y` must have the same
-            shape and type as `x`
+        The field value
     """
-    # Update and check the grid object
 
-    if staggered != Staggered.NONE:
-        grid = grid.add_staggered_grid()
-    if kspace_op:
-        if grid.k_with_kspaceop is None:
-            raise AssertionError(
-                "You asked for a derivative with kspace operator but the kGrid object "
-                + "has an empty k_with_kspaceop field. Did you call grid.apply_kspace_operator first?"
-            )
+    phase = jnp.exp(1j * jnp.sum(k * x, axis=-1))
+    first_half = jnp.sum(spectrum * phase)
 
-    # Building the derivative operator
-    if kspace_op:
-        derivative_operator = _derivative_with_k_op(sample_input, staggered, axis)
+    # Compensate for missing frequency components due to
+    # conjugate simmetry of spectrum
+    end_val = int(first_dim_size % 2 == 1)
+    k_missing = k[..., 1:-end_val, :]
+    spectrum_missing = jnp.conj(spectrum[..., 1:-end_val])
+    phase = jnp.exp(
+        -1j * jnp.sum(k_missing * x, axis=-1)
+    )  # TODO: This general minus sign is odd
+    second_half = jnp.sum(spectrum_missing * phase)
+    return jnp.reshape((first_half + second_half).real, (1,))
+
+
+def fft_interp(k: jnp.ndarray, spectrum: jnp.ndarray, x: jnp.ndarray) -> float:
+    r"""Calculates the value of a field $`f`$ at an arbitrary position
+    $`x`$ using
+
+    ```math
+    f(x) = \sum_i \hat f e^{ik^\top x}
+    ```
+
+    for complex signals. The `spectrum` and the frequency coordinate grid $`k`$ must conform to
+    [`jax.numpy.fft.fftn`](https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.fft.fftn.html).
+
+
+    Args:
+        k (jnp.ndarray): [description]
+        spectrum (jnp.ndarray): [description]
+        x (jnp.ndarray): [description]
+
+    Returns:
+        float: [description]
+    """
+    return jnp.reshape(
+        jnp.sum((spectrum) * jnp.exp(1j * jnp.sum(k * x, axis=-1))), (1,)
+    )
+
+
+def make_filter_fun(domain: Domain, axis: Union[int, Tuple[int]]):
+    r"""If axis is an integer, filtering is applied along the given axis. If
+    instead axis is None, standard Fourier filtering is used. The size of the
+    kernel should be 1D or ND accordingly.
+    """
+
+    # if single axis, move it to the back and use broadcasting
+    if isinstance(axis, int):
+
+        def filter_fun(x: jnp.ndarray, kernel: jnp.ndarray):
+            if "complex" in str(x.dtype):
+                ffts = [jnp.fft.fft, jnp.fft.ifft]
+            else:
+                ffts = [jnp.fft.rfft, jnp.fft.irfft]
+            x = jnp.moveaxis(x, axis, -1)
+
+            # Use real or complex fft
+            Fx = ffts[0](x, axis=-1)
+            dx = ffts[1](kernel * Fx, axis=-1, n=x.shape[-1])
+
+            # Back to original axis
+            dx = jnp.moveaxis(dx, -1, axis)
+            return dx
+
+    elif axis is None:
+        # Standard FFT filtering
+        domain_axes = list(range(-1, -domain.ndim, -1))
+
+        def filter_fun(x: jnp.ndarray, kernel: jnp.ndarray):
+            # Choose FFT and filter according to signal domain (real or complex)
+            if "complex" in str(x.dtype):
+                return jnp.fft.ifftn(
+                    kernel * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes
+                )
+            else:
+                return jnp.fft.irfftn(
+                    kernel * jnp.fft.rfftn(x, axes=domain_axes), axes=domain_axes
+                )
+
     else:
-        derivative_operator = _plain_derivative(sample_input, staggered, axis)
-
-    return derivative_operator, grid
-
-
-def _derivative_with_k_op(
-    sample_x: jnp.ndarray, staggered: Staggered, axis: Union[int, Tuple[int]]
-) -> Callable:
-    def deriv_fun(x: jnp.ndarray, grid: geometry.kGrid) -> jnp.ndarray:
-        # Selecting operator
-        K = 1j * grid.k_with_kspaceop[staggered]
-
-        n_dims = len(K) + 1
-        domain_axes = list(range(-1, -n_dims, -1))
-
-        # Choose FFT and filter according to signal domain (real or complex)
-        if "complex" in str(x.dtype):
-            return jnp.fft.ifftn(
-                K[axis] * jnp.fft.fftn(x, axes=domain_axes), axes=domain_axes
-            )
-        else:
-            Fx = eval_shape(
-                lambda signal: jnp.fft.rfftn(signal, axes=domain_axes), sample_x
-            )
-            K = K[axis, : Fx.shape[0]]
-            return jnp.fft.irfftn(
-                K * jnp.fft.rfftn(x, axes=domain_axes), axes=domain_axes
-            )
-
-    return deriv_fun
-
-
-def _plain_derivative(
-    sample_x: jnp.ndarray, staggered: Staggered, axis: int
-) -> Callable:
-    def deriv_fun(x: jnp.ndarray, grid: geometry.kGrid, degree: float) -> jnp.ndarray:
-        # Select operator
-        k = 1j * grid.k_vec[staggered][axis]
-        k = k ** degree
-
-        if "complex" in str(sample_x.dtype):
-            ffts = [jnp.fft.fft, jnp.fft.ifft]
-        else:
-            ffts = [jnp.fft.rfft, jnp.fft.irfft]
-            x0 = jnp.moveaxis(sample_x, axis, -1)
-            Fx = eval_shape(lambda x: ffts[0](x, axis=-1), x0)
-            k = k[: Fx.shape[-1]]
-
-        # Work on last axis for elementwise product broadcasting
-        # TODO: This may be very inefficient: https://github.com/google/jax/issues/2972
-        x = jnp.moveaxis(x, axis, -1)
-
-        # Use real or complex fft
-        Fx = ffts[0](x, axis=-1)
-        dx = ffts[1](k * Fx, axis=-1, n=x.shape[-1])
-
-        # Back to original axis
-        dx = jnp.moveaxis(dx, -1, axis)
-        return dx
-
-    return deriv_fun
+        raise ValueError("axis should be an integer or None, got {axis}")
+    return filter_fun
