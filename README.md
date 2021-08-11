@@ -11,7 +11,7 @@
 
 j-Wave is a [JAX](https://jax.readthedocs.io/en/stable/)-based package defining a research framework for writing differentiable numerical simulators with arbitrary discretizations. 
 
-The intended use is to build numerical models of physical systems, such as wave propagation, or the numerical solution of partial differential equations, that are easy to customize to the user's research needs. Such models are pure functions that can be included into arbitray differentiable programs written in JAX, such as neural networks.
+The intended use is to build numerical models of physical systems, such as wave propagation, or the numerical solution of partial differential equations, that are easy to customize to the user's research needs. Such models are pure functions that can be included into arbitray differentiable programs written in [JAX](https://jax.readthedocs.io/en/stable/), such as neural networks.
 
 A stronger focus is given to simulations related to biomedical ultrasound.
 
