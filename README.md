@@ -22,7 +22,7 @@ Before installing `jwave`, make sure that [you have installed JAX](https://githu
 Install jwave by `cd` in the repo folder an run
 ```bash
 pip install -r requirements.txt
-pip install -e .
+pip install .
 ```
 
 If you want to run the notebooks, you should also install the following packages
