@@ -27,16 +27,12 @@ def get_fun(params, x):
 
 
 arbitrary_discr = Arbitrary(domain, get_fun, init_params)
-arbitrary_field_u = arbitrary_discr.random_field(seeds[0])
-u_arbitrary = Field(arbitrary_discr, params=arbitrary_field_u, name="u")
-arbitrary_field_v = arbitrary_discr.random_field(seeds[1])
-v_arbitrary = Field(arbitrary_discr, params=arbitrary_field_v, name="v")
+arbitrary_field_u, u_arbitrary = arbitrary_discr.random_field(seeds[0], 'u')
+arbitrary_field_v, v_arbitrary = arbitrary_discr.random_field(seeds[1], 'v')
 
 fourier_discr = RealFourierSeries(domain)
-fourier_field_u = fourier_discr.random_field(seeds[0])
-u_fourier = Field(fourier_discr, params=fourier_field_u, name="u")
-fourier_field_v = fourier_discr.random_field(seeds[1])
-v_fourier = Field(fourier_discr, params=fourier_field_v, name="v")
+fourier_field_u, u_fourier = fourier_discr.random_field(seeds[0], 'u')
+fourier_field_v, v_fourier = fourier_discr.random_field(seeds[1], 'v')
 
 
 def _apply_operator(op):
@@ -109,4 +105,5 @@ def test_two_inputs():
 
 # This is for debugging
 if __name__ == "__main__":
+    test_call()
     test_two_inputs()

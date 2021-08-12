@@ -5,7 +5,6 @@ from jwave.discretization import Coordinate, StaggeredRealFourier, UniformField
 from jwave.utils import join_dicts
 
 from jax import numpy as jnp
-from jax import jit
 from jax.tree_util import tree_map
 
 

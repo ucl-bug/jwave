@@ -261,7 +261,22 @@ class FourierSeries(GridBased):
                 return jnp.fft.rfftfreq(N, dx) * 2 * jnp.pi
 
         k_axis = [f(n, delta) for n, delta in zip(self.domain.N, self.domain.dx)]
+        
         return k_axis
+
+    @property
+    def _cut_freq_axis(self):
+        def f(N, dx):
+            return jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
+
+        k_axis = [f(n, delta) for n, delta in zip(self.domain.N, self.domain.dx)]
+        if not self.is_field_complex:
+            k_axis[-1] = jnp.fft.rfftfreq(self.domain.N[-1], self.domain.dx[-1]) * 2 * jnp.pi
+        return k_axis
+
+    @property
+    def _cut_freq_grid(self):
+        return jnp.stack(jnp.meshgrid(*self._cut_freq_axis, indexing="ij"), axis=-1)
 
     @property
     def _domain_axis(self):
@@ -276,15 +291,15 @@ class FourierSeries(GridBased):
         if self.is_field_complex:
             interp_fun = spectral.fft_interp
         else:
-            first_dim_size = self.domain.N[0]
-            interp_fun = (
-                lambda k, s, x: spectral.rfft_interp(k, s, x, first_dim_size) / V
-            )
+            def interp_fun(k, s, x):
+                return spectral.fft_interp(k, s, x).real
 
         def f(field_params, x):
-            k = self._freq_grid
+            k = self._cut_freq_grid
+            field_params = jnp.moveaxis(field_params, -1, 0)
             spectrum = fftfun(field_params, axes=self._domain_axis)
-            return interp_fun(k, spectrum, x)
+            interp_values = interp_fun(k, spectrum, x)
+            return jnp.moveaxis(interp_values, 0, -1)
 
         return f
 

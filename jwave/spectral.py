@@ -4,7 +4,7 @@ from jwave.geometry import Domain
 
 
 def rfft_interp(
-    k: jnp.ndarray, spectrum: jnp.ndarray, x: jnp.ndarray, first_dim_size: int
+    k: jnp.ndarray, spectrum: jnp.ndarray, x: jnp.ndarray, last_dim_size: int
 ) -> float:
     r"""Calculates the value of a field $`f`$ at an arbitrary position
     $`x`$ using
@@ -32,9 +32,10 @@ def rfft_interp(
 
     # Compensate for missing frequency components due to
     # conjugate simmetry of spectrum
-    end_val = int(first_dim_size % 2 == 1)
+    end_val = int(last_dim_size % 2 == 1)
     k_missing = k[..., 1:-end_val, :]
-    spectrum_missing = jnp.conj(spectrum[..., 1:-end_val])
+    print(k_missing.shape, k.shape)
+    spectrum_missing = jnp.conj(spectrum[..., 1:-end_val, :])
     phase = jnp.exp(
         -1j * jnp.sum(k_missing * x, axis=-1)
     )  # TODO: This general minus sign is odd
