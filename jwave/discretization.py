@@ -30,6 +30,9 @@ class Arbitrary(Discretization):
         primitive = pr.Elementwise(callable)
         return primitive(u)
 
+    def invert(self, u):
+        return pr.Invert()(u)
+
     def mul(self, u, v):
         return pr.MultiplyFields()(u, v)
 
@@ -95,17 +98,20 @@ class Arbitrary(Discretization):
 
 
 class UniformField(Arbitrary):
-    def __init__(self, domain: Domain):
+    def __init__(self, domain: Domain, dims=1):
         self.domain = domain
+        self.dims = dims
 
     def random_field(self, seed):
-        return random.uniform(seed)
+        return random.uniform((self.dims,), seed)
 
     def empty_field(self):
-        return 0.0
+        return jnp.zeros((self.dims,))
 
-    def from_scalar(self, scalar):
-        return scalar
+    def from_scalar(self, scalar, name):
+        params = scalar
+        field = Field(self, params, name)
+        return params, field
 
     def get_field(self):
         def f(params, x):
@@ -114,9 +120,9 @@ class UniformField(Arbitrary):
         return f
 
     def get_field_on_grid(self):
-        def f(params, x):
-            return params
-
+        f = self.get_field()
+        for _ in range(self.dims):
+            f = vmap(f, in_axes=(None, 0))
         return f
 
 
@@ -203,21 +209,24 @@ class GridBased(Linear):
     def sum_over_dims(self, u):
         return pr.SumOverDimsOnGrid()(u)
 
+
 class FiniteDifferences(GridBased):
     def __init__(self, domain):
         self.domain = domain
         self.is_field_complex = True
+
 
 class RealFiniteDifferences(FiniteDifferences):
     def __init__(self, domain):
         super().__init__(domain)
         self.is_field_complex = False
 
+
 class FourierSeries(GridBased):
     def __init__(self, domain, dims=1):
         self.domain = domain
         self.is_field_complex = True
-        self.dims=dims
+        self.dims = dims
 
     @staticmethod
     def gradient(u):
@@ -306,7 +315,7 @@ class RealFourierSeries(FourierSeries):
     def __init__(self, domain, dims=1):
         self.domain = domain
         self.is_field_complex = False
-        self.dims=dims
+        self.dims = dims
 
     @staticmethod
     def gradient(u):
@@ -319,3 +328,16 @@ class RealFourierSeries(FourierSeries):
     @staticmethod
     def diag_jacobian(u):
         return pr.FFTDiagJacobian(real=True)(u)
+
+
+class StaggeredRealFourier(RealFourierSeries):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def staggered_grad(u, c_ref, dt, direction):
+        return pr.FFTStaggeredGrad(c_ref=c_ref, dt=dt, direction=direction)(u)
+
+    @staticmethod
+    def staggered_diag_jacobian(u, c_ref, dt, direction):
+        return pr.FFTStaggeredDiagJacobian(c_ref=c_ref, dt=dt, direction=direction)(u)

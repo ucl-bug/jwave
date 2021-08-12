@@ -97,7 +97,7 @@ class Medium(NamedTuple):
     sound_speed: jnp.ndarray
     density: jnp.ndarray
     attenuation: jnp.ndarray
-    pml_size: int
+    pml_size: float
 
 
 class Sources(NamedTuple):
