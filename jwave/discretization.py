@@ -90,7 +90,7 @@ class Arbitrary(Discretization):
 
     def random_field(self, seed, name):
         params = self._init_params(seed, self.domain)
-        field = Field(self, params, name)
+        field = Field(self, name, params)
         return params, field
 
     def reciprocal(self, u):
@@ -132,7 +132,7 @@ class Coordinate(Arbitrary):
 
     def init_params(self, seed, name):
         params = {}
-        field = Field(self, params, name)
+        field = Field(self, name, params)
         return params, field
 
     def get_field(self):
@@ -300,14 +300,14 @@ class FourierSeries(GridBased):
         else:
             dtype = jnp.float32
         params = random.normal(seed, [*self.domain.N] + [self.dims], dtype)
-        field = Field(self, params, name)
+        field = Field(self, name, params)
         return params, field
 
     def empty_field(self, name):
         params = jnp.zeros([*self.domain.N] + [self.dims])
         if self.is_field_complex:
             params = params + 0j
-        field = Field(self, params, name)
+        field = Field(self, name, params)
         return params, field
 
 

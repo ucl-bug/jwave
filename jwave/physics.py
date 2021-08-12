@@ -5,11 +5,12 @@ from jwave.discretization import Coordinate, StaggeredRealFourier, UniformField
 from jwave.utils import join_dicts
 
 from jax import numpy as jnp
+from jax import jit
 from jax.tree_util import tree_map
 
 
-def td_pml_on_grid(medium: geometry.Medium, dt: float):
-    delta_pml = list(map(lambda x: x / 2 - medium.pml_size, medium.domain.N))
+def td_pml_on_grid(medium: geometry.Medium, dt: float, exponent=2., alpha_max=2.):
+    delta_pml = list(map(lambda x: x / 2 - medium.pml_size, medium.domain.size))
     delta_pml, delta_pml_f = UniformField(medium.domain, len(delta_pml)).from_scalar(
         jnp.asarray(delta_pml), "delta_pml"
     )
@@ -20,7 +21,7 @@ def td_pml_on_grid(medium: geometry.Medium, dt: float):
     def X_pml(X, delta_pml):
         diff = (jops.elementwise(jnp.abs)(X) + (-1.0) * delta_pml) / (medium.pml_size)
         on_pml = jops.elementwise(lambda x: jnp.where(x > 0, x, 0))(diff)
-        alpha = 2 * (on_pml ** 4)
+        alpha = alpha_max * (on_pml ** exponent)
         exp_val = jops.elementwise(jnp.exp)((-1) * alpha * dt / 2)
         return exp_val
 
@@ -36,7 +37,7 @@ def ongrid_wave_propagation(
     medium: geometry.Medium,
     time_array: geometry.TimeAxis,
     sources: geometry.Sources,
-    discretization: StaggeredRealFourier,
+    discretization= StaggeredRealFourier,
     sensors=None,
     output_t_axis=None,
     backprop=False,
@@ -79,12 +80,12 @@ def ongrid_wave_propagation(
     discr_1D = discretization(medium.domain)
     discr_ND = discretization(medium.domain, dims=medium.domain.ndim)
 
-    _, c_f = discr_1D.empty_field(name="c")
-    _, p_f = discr_1D.empty_field(name="p")
-    _, rho_f = discr_1D.empty_field(name="rho")
-    _, rho0_f = discr_ND.empty_field(name="rho0")
-    _, SM_f = discr_ND.empty_field(name="Source_m")
-    _, u_f = discr_ND.empty_field(name="u")
+    c, c_f = discr_1D.empty_field(name="c")
+    p, p_f = discr_1D.empty_field(name="p")
+    rho0, rho0_f = discr_1D.empty_field(name="rho")
+    rho, rho_f = discr_ND.empty_field(name="rho0")
+    SM, SM_f = discr_ND.empty_field(name="Source_m")
+    u, u_f = discr_ND.empty_field(name="u")
 
     # Numerical functions
     # Note that we keep the shared dictionaries separate, to reduce
@@ -92,23 +93,24 @@ def ongrid_wave_propagation(
     # They need to be added when using functions
     _du = du(rho0=rho0_f, p=p_f)
     gp_du = _du.get_global_params()
-    shared_params = gp_du["shared"]
+    shared_params = gp_du["shared"].copy()
     del gp_du["shared"]
 
     def du_f(gp, rho0, p):
         return _du.get_field_on_grid(0)(gp, {"rho0": rho0, "p": p})
 
     _drho = drho(u=u_f, rho0=rho0_f, Source_m=SM_f)
-    gp_drho = _du.get_global_params()
-    shared_params = join_dicts(shared_params, gp_drho["shared"])
+    gp_drho = _drho.get_global_params()
+    shared_params = join_dicts(shared_params, gp_drho["shared"].copy())
     del gp_drho["shared"]
 
     def drho_f(gp, u, rho0, Sm):
         return _drho.get_field_on_grid(0)(gp, {"u": u, "rho0": rho0, "Source_m": Sm})
+    
 
     _p_new = p_new(c=c_f, rho=rho_f)
     gp_pnew = _p_new.get_global_params()
-    shared_params = join_dicts(shared_params, gp_pnew["shared"])
+    shared_params = join_dicts(shared_params, gp_pnew["shared"].copy())
     del gp_pnew["shared"]
 
     def p_new_f(gp, c, rho):
@@ -123,7 +125,7 @@ def ongrid_wave_propagation(
         idx = (t / dt).round().astype(jnp.int32)
         signals = source_signals[:, idx] / len(medium.domain.N)
         src = src.at[sources.positions].add(signals)
-        return src
+        return jnp.expand_dims(src, -1)
 
     # Defining parameters
     params = {
@@ -139,12 +141,12 @@ def ongrid_wave_propagation(
         },
         "source_signals": sources.signals,
         "acoustic_params": {
-            "speed_of_sound": medium.sound_speed,
-            "density": medium.density,
+            "speed_of_sound": jnp.expand_dims(medium.sound_speed, -1),
+            "density": jnp.expand_dims(medium.density, -1),
         },
         "initial_fields": {
-            "rho0": rho0_f.params(),
-            "u0": u_f.params(),
+            "rho": rho_f.params,
+            "u": u_f.params,
         },
     }
 
@@ -161,7 +163,8 @@ def ongrid_wave_propagation(
         # Making density update
         gp = params["idependent"]["du_dt"]
         gp["shared"] = params["shared"]
-        return du_f(gp, rho_0, p)
+        output = du_f(gp, rho_0, p)
+        return output
 
     def drho_dt(params, u, t):
         rho_0 = params["acoustic_params"]["density"]
@@ -170,7 +173,8 @@ def ongrid_wave_propagation(
         gp = params["idependent"]["drho_dt"]
         gp["shared"] = params["shared"]
 
-        return drho_f(gp, u, rho_0, src)
+        output =  drho_f(gp, u, rho_0, src)
+        return output
 
     # Defining solver
     def solver(params):
@@ -180,8 +184,8 @@ def ongrid_wave_propagation(
             drho_dt,
             measurement_operator,
             params["integrator"]["pml_grid"],
-            params["initial_fields"]["u0"],
-            params["initial_fields"]["rho0"],
+            params["initial_fields"]["u"],
+            params["initial_fields"]["rho"],
             params["integrator"]["dt"],
             output_steps,
             backprop,

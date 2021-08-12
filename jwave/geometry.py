@@ -19,7 +19,7 @@ class Domain(NamedTuple):
             ```
 
         """
-        return list(map(lambda x, y: x * y, zip(self.N, self.dx)))
+        return list(map(lambda x: x[0] * x[1], zip(self.N, self.dx)))
 
     @property
     def ndim(self):
@@ -174,7 +174,7 @@ class TimeAxis(NamedTuple):
         return jnp.arange(0, self.t_end, self.dt)
 
     @staticmethod
-    def from_kgrid(medium: Medium, cfl: float = 0.3, t_end=None):
+    def from_medium(medium: Medium, cfl: float = 0.3, t_end=None):
         r"""Construct a `TimeAxis` object from `kGrid` and `Medium`
         Args:
             grid (kGrid):

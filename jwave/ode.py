@@ -285,7 +285,7 @@ def generalized_semi_implicit_euler(
 
 
 def variable_update_with_pml(x, dx_dt, k, dt):
-    x = jax.tree_util.tree_multimap(lambda x, y, a: a * (a * x + y * dt), x, dx_dt, k)
+    x = k*(x*k + dt*dx_dt)
     return x
 
 

@@ -436,7 +436,6 @@ class FFTGradient(Primitive):
             return jnp.stack([single_grad(i, u) for i in range(ndim)], axis=-1)
 
         f.__name__ = self.name
-
         return f
 
 
@@ -645,11 +644,11 @@ class FFTStaggeredDiagJacobian(FFTStaggeredGrad):
             def make_dx(P, axis):
                 FP = jnp.fft.fftn(P)
                 FdP = jnp.moveaxis(jnp.moveaxis(FP, axis, -1) * k_vec[axis], -1, axis)
-                output = jnp.fft.ifftn(FdP * kspaceop).real
+                output = jnp.fft.ifftn(FdP * kspaceop[...,0]).real
                 return output
 
             ndim = len(field_params.shape) - 1
-            dp = jnp.concatenate(
+            dp = jnp.stack(
                 [make_dx(field_params[..., ax], ax) for ax in range(ndim)], axis=-1
             )
             return dp
