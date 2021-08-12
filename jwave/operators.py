@@ -34,7 +34,16 @@ gradient = Operator("gradient")
 nabla_dot = Operator("nabla_dot")
 diag_jacobian = Operator("diag_jacobian")
 sum_over_dims = Operator("sum_over_dims")
+laplacian = Operator("laplacian")
 
+class OperatorWithArgs(Operator):
+    def __init__(self, name: str, *args, **kwargs):
+        self.name = name
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, u):
+        return getattr(u.discretization, self.name)(u, *self.args, **self.kwargs)
 
 class elementwise(Operator):
     def __init__(self, func: Callable):

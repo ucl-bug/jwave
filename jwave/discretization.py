@@ -1,5 +1,5 @@
 from jwave.geometry import Domain
-from jwave.core import Discretization
+from jwave.core import Discretization, Field
 from jwave import primitives as pr
 from jwave import spectral
 from functools import reduce
@@ -32,6 +32,9 @@ class Arbitrary(Discretization):
 
     def mul(self, u, v):
         return pr.MultiplyFields()(u, v)
+
+    def div(self, u, v):
+        return pr.DivideFields()(u, v)
 
     def apply_on_grid(self, fun):
         """Returns a function applied on a grid"""
@@ -82,8 +85,10 @@ class Arbitrary(Discretization):
         )
         return primitive(u)
 
-    def random_field(self, seed):
-        return self._init_params(seed, self.domain)
+    def random_field(self, seed, name):
+        params = self._init_params(seed, self.domain)
+        field = Field(self, params, name)
+        return params, field
 
     def reciprocal(self, u):
         return pr.Reciprocal()(u)
@@ -119,8 +124,10 @@ class Coordinate(Arbitrary):
     def __init__(self, domain):
         self.domain = domain
 
-    def init_params(self, seed):
-        return {}
+    def init_params(self, seed, name):
+        params = {}
+        field = Field(self, params, name)
+        return params, field
 
     def get_field(self):
         def f(params, x):
@@ -167,10 +174,6 @@ class Linear(Arbitrary):
         )
         return primitive(u)
 
-    def mul(self, u, v, independent_params=True):
-        primitive = pr.MultiplyOnGrid()
-        return primitive(u, v)
-
 
 class GridBased(Linear):
     def __init__(self, domain):
@@ -186,36 +189,51 @@ class GridBased(Linear):
         )
         return primitive(u)
 
+    def mul(self, u, v, independent_params=True):
+        primitive = pr.MultiplyOnGrid()
+        return primitive(u, v)
+
+    def div(self, u, v, independent_params=True):
+        primitive = pr.DivideOnGrid()
+        return primitive(u, v)
+
     def reciprocal(self, u):
         return pr.ReciprocalOnGrid()(u)
 
     def sum_over_dims(self, u):
         return pr.SumOverDimsOnGrid()(u)
 
+class FiniteDifferences(GridBased):
+    def __init__(self, domain):
+        self.domain = domain
+        self.is_field_complex = True
+
+class RealFiniteDifferences(FiniteDifferences):
+    def __init__(self, domain):
+        super().__init__(domain)
+        self.is_field_complex = False
 
 class FourierSeries(GridBased):
     def __init__(self, domain, dims=1):
         self.domain = domain
-
-        # internal parameters
-        self.dims = dims
         self.is_field_complex = True
+        self.dims=dims
 
-        # Initialize parameters
-        # TODO: This grid could be constructed on the fly from the frequency axis or
-        # stored as a parameter. Should make a speed test to check if initializing
-        # is the best idea.
-        self.params = {}
-        self.params["freq_grid"] = self._freq_grid
-
-    def gradient(self, u):
+    @staticmethod
+    def gradient(u):
         return pr.FFTGradient()(u)
 
-    def nabla_dot(self, u):
+    @staticmethod
+    def nabla_dot(u):
         return pr.FFTNablaDot()(u)
 
-    def diag_jacobian(self, u):
+    @staticmethod
+    def diag_jacobian(u):
         return pr.FFTDiagJacobian()(u)
+
+    @staticmethod
+    def laplacian(u):
+        return pr.FFTLaplacian()(u)
 
     @property
     def _freq_grid(self):
@@ -267,37 +285,37 @@ class FourierSeries(GridBased):
 
         return _sample_on_grid
 
-    def random_field(self, rng):
+    def random_field(self, seed, name):
         if self.is_field_complex:
             dtype = jnp.complex64
         else:
             dtype = jnp.float32
-        if self.dims == 1:
-            return random.normal(rng, self.domain.N, dtype)
-        else:
-            return random.normal(rng, [self.dims] + [*self.domain.N], dtype)
+        params = random.normal(seed, [*self.domain.N] + [self.dims], dtype)
+        field = Field(self, params, name)
+        return params, field
 
-    def empty_field(self):
+    def empty_field(self, name):
         params = jnp.zeros([*self.domain.N] + [self.dims])
         if self.is_field_complex:
-            return params + 0j
-        else:
-            return params
+            params = params + 0j
+        field = Field(self, params, name)
+        return params, field
 
 
 class RealFourierSeries(FourierSeries):
     def __init__(self, domain, dims=1):
         self.domain = domain
         self.is_field_complex = False
-        self.dims = dims
-        self.params = {}
-        self.params["freq_grid"] = self._freq_grid
+        self.dims=dims
 
-    def gradient(self, u):
+    @staticmethod
+    def gradient(u):
         return pr.FFTGradient(real=True)(u)
 
-    def nabla_dot(self, u):
+    @staticmethod
+    def nabla_dot(u):
         return pr.FFTNablaDot(real=True)(u)
 
-    def diag_jacobian(self, u):
+    @staticmethod
+    def diag_jacobian(u):
         return pr.FFTDiagJacobian(real=True)(u)

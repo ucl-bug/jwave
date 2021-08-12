@@ -24,7 +24,6 @@ class Operator(NamedTuple):
             + f"<-- {self.fun.__name__} {keys} | ({self.param_kind}) {self.params}"
         )
 
-
 class Primitive(object):
     def __init__(self, name=None, independent_params=True):
         self.name = name
@@ -237,6 +236,26 @@ class MultiplyFields(BinaryPrimitive):
         )
         return None, new_discretization
 
+class DivideFields(BinaryPrimitive):
+    def __init__(self, name="DivideFields", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_1_params, field_2_params):
+            return [field_1_params, field_2_params]
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field_1, field_2):
+        def get_field(p_joined, x):
+            p1, p2 = p_joined
+            return field_1.discretization.get_field()(
+                p1, x
+            ) / field_2.discretization.get_field()(p2, x) 
+        new_discretization = discretization.Arbitrary(
+            field_1.discretization.domain, get_field, no_init
+        )
+        return None, new_discretization
 
 class MultiplyOnGrid(BinaryPrimitive):
     def __init__(self, name="MultiplyOnGrid", independent_params=True):
@@ -256,6 +275,23 @@ class MultiplyOnGrid(BinaryPrimitive):
         new_discretization = field_1.discretization
         return None, new_discretization
 
+
+class DivideOnGrid(BinaryPrimitive):
+    def __init__(self, name="DivideOnGrid", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_1_params, field_2_params):
+            return field_1_params / field_2_params
+        f.__name__ = self.name
+        return f
+    
+    def setup(self, field_1, field_2):
+        assert field_1.discretization.domain == field_2.discretization.domain
+        assert isinstance(field_1.discretization, type(field_2.discretization))
+
+        new_discretization = field_1.discretization
+        return None, new_discretization
 
 class SumOverDimsOnGrid(Primitive):
     def __init__(self, name="SumOverDimsOnGrid", independent_params=True):
@@ -396,6 +432,41 @@ class FFTGradient(Primitive):
 
         return f
 
+
+class FFTLaplacian(Primitive):
+    def __init__(self, real=False, name="FFTLaplacian", independent_params=False):
+        super().__init__(name, independent_params)
+        self.real = real
+
+    def setup(self, field):
+        new_discretization = field.discretization
+        k_vec = field.discretization._freq_axis
+        parameters = {"k_vec": k_vec}
+        return parameters, new_discretization
+
+    def discrete_transform(self):
+        if self.real:
+            ffts = [jnp.fft.rfft, jnp.fft.irfft]
+        else:
+            ffts = [jnp.fft.fft, jnp.fft.ifft]
+
+        def f(op_params, field_params):
+            k_vec = op_params["k_vec"]
+            u = field_params[..., 0]
+            ndim = len(field_params.shape) - 1
+
+            def single_grad(axis, u):
+                u = jnp.moveaxis(u, axis, -1)
+                Fx = ffts[0](u, axis=-1)
+                iku = - Fx * k_vec[axis]**2
+                du = ffts[1](iku, axis=-1, n=u.shape[-1])
+                return jnp.moveaxis(du, -1, axis)
+
+            return jnp.sum(jnp.stack([single_grad(i, u) for i in range(ndim)], axis=-1), axis=-1, keepdims=True)
+
+        f.__name__ = self.name
+
+        return f
 
 class FFTNablaDot(Primitive):
     def __init__(self, name="FFTNablaDot", independent_params=False):
