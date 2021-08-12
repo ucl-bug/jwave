@@ -3,12 +3,15 @@ import jwave.operators as jops
 from jwave.core import Field, operator
 from jwave.discretization import Coordinate, StaggeredRealFourier, UniformField
 from jwave.utils import join_dicts
+from typing import Callable
 
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
 
-def td_pml_on_grid(medium: geometry.Medium, dt: float, exponent=2., alpha_max=2.):
+def _base_pml(
+    transform_fun: Callable, medium: geometry.Medium, exponent=2.0, alpha_max=2.0
+):
     delta_pml = list(map(lambda x: x / 2 - medium.pml_size, medium.domain.size))
     delta_pml, delta_pml_f = UniformField(medium.domain, len(delta_pml)).from_scalar(
         jnp.asarray(delta_pml), "delta_pml"
@@ -21,7 +24,7 @@ def td_pml_on_grid(medium: geometry.Medium, dt: float, exponent=2., alpha_max=2.
         diff = (jops.elementwise(jnp.abs)(X) + (-1.0) * delta_pml) / (medium.pml_size)
         on_pml = jops.elementwise(lambda x: jnp.where(x > 0, x, 0))(diff)
         alpha = alpha_max * (on_pml ** exponent)
-        exp_val = jops.elementwise(jnp.exp)((-1) * alpha * dt / 2)
+        exp_val = transform_fun(alpha)
         return exp_val
 
     outfield = X_pml(X=X, delta_pml=delta_pml_f)
@@ -32,11 +35,23 @@ def td_pml_on_grid(medium: geometry.Medium, dt: float, exponent=2., alpha_max=2.
     return pml_val
 
 
+def complex_pml_on_grid(
+    medium: geometry.Medium, omega: float, exponent=2.0, alpha_max=2.0
+):
+    transform_fun = lambda alpha: 1.0 / (1 + 1j * alpha / omega)
+    return _base_pml(transform_fun, medium, exponent, alpha_max)
+
+
+def td_pml_on_grid(medium: geometry.Medium, dt: float, exponent=2.0, alpha_max=2.0):
+    transform_fun = lambda alpha: jops.elementwise(jnp.exp)((-1) * alpha * dt / 2)
+    return _base_pml(transform_fun, medium, exponent, alpha_max)
+
+
 def ongrid_wave_propagation(
     medium: geometry.Medium,
     time_array: geometry.TimeAxis,
     sources: geometry.Sources,
-    discretization= StaggeredRealFourier,
+    discretization=StaggeredRealFourier,
     sensors=None,
     output_t_axis=None,
     backprop=False,
@@ -105,7 +120,6 @@ def ongrid_wave_propagation(
 
     def drho_f(gp, u, rho0, Sm):
         return _drho.get_field_on_grid(0)(gp, {"u": u, "rho0": rho0, "Source_m": Sm})
-    
 
     _p_new = p_new(c=c_f, rho=rho_f)
     gp_pnew = _p_new.get_global_params()
@@ -172,7 +186,7 @@ def ongrid_wave_propagation(
         gp = params["idependent"]["drho_dt"]
         gp["shared"] = params["shared"]
 
-        output =  drho_f(gp, u, rho_0, src)
+        output = drho_f(gp, u, rho_0, src)
         return output
 
     # Defining solver

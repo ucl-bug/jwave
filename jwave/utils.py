@@ -19,6 +19,7 @@ def safe_sinc(x: jnp.ndarray) -> jnp.ndarray:
         eq_zero, _sinc_maclaurin(0, pi_x), lax.div(lax.sin(safe_pi_x), safe_pi_x)
     )
 
+
 def join_dicts(dict1, dict2):
     for k, v in dict2.items():
         if k in dict1:

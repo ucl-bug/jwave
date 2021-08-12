@@ -261,7 +261,7 @@ class FourierSeries(GridBased):
                 return jnp.fft.rfftfreq(N, dx) * 2 * jnp.pi
 
         k_axis = [f(n, delta) for n, delta in zip(self.domain.N, self.domain.dx)]
-        
+
         return k_axis
 
     @property
@@ -271,7 +271,9 @@ class FourierSeries(GridBased):
 
         k_axis = [f(n, delta) for n, delta in zip(self.domain.N, self.domain.dx)]
         if not self.is_field_complex:
-            k_axis[-1] = jnp.fft.rfftfreq(self.domain.N[-1], self.domain.dx[-1]) * 2 * jnp.pi
+            k_axis[-1] = (
+                jnp.fft.rfftfreq(self.domain.N[-1], self.domain.dx[-1]) * 2 * jnp.pi
+            )
         return k_axis
 
     @property
@@ -291,6 +293,7 @@ class FourierSeries(GridBased):
         if self.is_field_complex:
             interp_fun = spectral.fft_interp
         else:
+
             def interp_fun(k, s, x):
                 return spectral.fft_interp(k, s, x).real
 

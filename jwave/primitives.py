@@ -644,7 +644,7 @@ class FFTStaggeredDiagJacobian(FFTStaggeredGrad):
             def make_dx(P, axis):
                 FP = jnp.fft.fftn(P)
                 FdP = jnp.moveaxis(jnp.moveaxis(FP, axis, -1) * k_vec[axis], -1, axis)
-                output = jnp.fft.ifftn(FdP * kspaceop[...,0]).real
+                output = jnp.fft.ifftn(FdP * kspaceop[..., 0]).real
                 return output
 
             ndim = len(field_params.shape) - 1

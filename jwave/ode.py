@@ -285,7 +285,7 @@ def generalized_semi_implicit_euler(
 
 
 def variable_update_with_pml(x, dx_dt, k, dt):
-    x = k*(x*k + dt*dx_dt)
+    x = k * (x * k + dt * dx_dt)
     return x
 
 
