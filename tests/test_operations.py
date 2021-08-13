@@ -27,12 +27,12 @@ def get_fun(params, x):
 
 
 arbitrary_discr = Arbitrary(domain, get_fun, init_params)
-arbitrary_field_u, u_arbitrary = arbitrary_discr.random_field(seeds[0], 'u')
-arbitrary_field_v, v_arbitrary = arbitrary_discr.random_field(seeds[1], 'v')
+arbitrary_field_u, u_arbitrary = arbitrary_discr.random_field(seeds[0], "u")
+arbitrary_field_v, v_arbitrary = arbitrary_discr.random_field(seeds[1], "v")
 
 fourier_discr = RealFourierSeries(domain)
-fourier_field_u, u_fourier = fourier_discr.random_field(seeds[0], 'u')
-fourier_field_v, v_fourier = fourier_discr.random_field(seeds[1], 'v')
+fourier_field_u, u_fourier = fourier_discr.random_field(seeds[0], "u")
+fourier_field_v, v_fourier = fourier_discr.random_field(seeds[1], "v")
 
 
 def _apply_operator(op):

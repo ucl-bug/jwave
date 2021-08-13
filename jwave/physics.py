@@ -1,17 +1,23 @@
 from jwave import geometry, ode
 import jwave.operators as jops
 from jwave.core import Field, operator
-from jwave.discretization import Coordinate, StaggeredRealFourier, UniformField
+from jwave.discretization import (
+    Coordinate,
+    FourierSeries,
+    StaggeredRealFourier,
+    UniformField,
+)
 from jwave.utils import join_dicts
-from typing import Callable
+from typing import Callable, Union
 
 from jax import numpy as jnp
 from jax.tree_util import tree_map
+from jax.scipy.sparse.linalg import gmres, bicgstab
 
 
 def _base_pml(
     transform_fun: Callable, medium: geometry.Medium, exponent=2.0, alpha_max=2.0
-):
+) -> jnp.ndarray:
     delta_pml = list(map(lambda x: x / 2 - medium.pml_size, medium.domain.size))
     delta_pml, delta_pml_f = UniformField(medium.domain, len(delta_pml)).from_scalar(
         jnp.asarray(delta_pml), "delta_pml"
@@ -37,12 +43,14 @@ def _base_pml(
 
 def complex_pml_on_grid(
     medium: geometry.Medium, omega: float, exponent=2.0, alpha_max=2.0
-):
+) -> jnp.ndarray:
     transform_fun = lambda alpha: 1.0 / (1 + 1j * alpha / omega)
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
 
-def td_pml_on_grid(medium: geometry.Medium, dt: float, exponent=2.0, alpha_max=2.0):
+def td_pml_on_grid(
+    medium: geometry.Medium, dt: float, exponent=2.0, alpha_max=2.0
+) -> jnp.ndarray:
     transform_fun = lambda alpha: jops.elementwise(jnp.exp)((-1) * alpha * dt / 2)
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
@@ -56,7 +64,7 @@ def ongrid_wave_propagation(
     output_t_axis=None,
     backprop=False,
     checkpoint=False,
-):
+) -> Union[dict, Callable]:
     # Setup parameters
     c_ref = jnp.amin(medium.sound_speed)
     dt = time_array.dt
@@ -204,6 +212,87 @@ def ongrid_wave_propagation(
             backprop,
             checkpoint,
         )
+
+    return params, solver
+
+
+def ongrid_helmholtz_solver(
+    medium: geometry.Medium,
+    omega: float,
+    discretization=FourierSeries,
+    method="gmres",
+    restart=10,
+    tol=1e-5,
+    solve_method="batched",
+    maxiter=None,
+) -> Union[dict, Callable]:
+    # Initializing PML
+    pml_grid = complex_pml_on_grid(medium, omega)
+
+    # Modified laplacian
+    def laplacian(u, pml):
+        grad_u = jops.gradient(u)
+        mod_grad_u = grad_u * pml
+        mod_diag_jacobian = jops.diag_jacobian(mod_grad_u) * pml
+        return jops.sum_over_dims(mod_diag_jacobian)
+
+    # Helmholtz operator
+    @operator()
+    def helmholtz(u, c, pml):
+        # Get the modified laplacian
+        L = laplacian(u, pml)
+
+        # Add the wavenumber term
+        k = ((omega / c) ** 2) * u
+
+        return L + k
+
+    # Discretizing operator
+    fourier_discr = discretization(medium.domain)
+    u_fourier_params, u = fourier_discr.empty_field(name="u")
+    src_fourier_params, src = fourier_discr.empty_field(name="src")
+    src_fourier_params = src_fourier_params.at[64, 64, 0].set(1.0)
+    c_fourier_params, c = fourier_discr.empty_field(name="c")
+    pml = Field(fourier_discr, params=pml_grid, name="pml")
+
+    Hu = helmholtz(u=u, c=c, pml=pml)
+    global_params = Hu.get_global_params()
+    f = Hu.get_field_on_grid(0)
+
+    # Parameters
+    params = {
+        "globals": global_params,
+        "guess": u_fourier_params,
+        "c": c_fourier_params,
+        "pml": pml_grid,
+        "source": src_fourier_params,
+        "solver_params": {"tol": tol, "restart": restart, "maxiter": maxiter},
+    }
+
+    def solver(params):
+        def helm_func(u):
+            return f(
+                params["globals"], {"u": u, "c": params["c"], "pml": params["pml"]}
+            )
+
+        if method == "gmres":
+            return gmres(
+                helm_func,
+                params["source"],
+                x0=params["guess"],
+                tol=params["solver_params"]["tol"],
+                restart=params["solver_params"]["restart"],
+                maxiter=params["solver_params"]["maxiter"],
+                solve_method=solve_method,
+            )[0]
+        elif method == "bicgstab":
+            return bicgstab(
+                helm_func,
+                params["source"],
+                x0=params["guess"],
+                tol=params["solver_params"]["tol"],
+                maxiter=params["solver_params"]["maxiter"],
+            )[0]
 
     return params, solver
 
