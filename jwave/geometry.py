@@ -1,4 +1,6 @@
 from jax import numpy as jnp
+from jax import random
+import jax
 from functools import reduce
 from typing import NamedTuple, Tuple
 from enum import IntEnum
@@ -40,6 +42,36 @@ class Domain(NamedTuple):
         axis = [_make_axis(n, delta) for n, delta in zip(self.N, self.dx)]
         axis = [ax - jnp.mean(ax) for ax in axis]
         return axis
+
+    @property
+    def boundary_sampler(self):
+        L  = jnp.asarray(self.size)/2
+        def sample(seed):
+            seeds = random.split(seed, 3)
+            first = 2*jnp.expand_dims(random.uniform(seeds[0]), 0) -1
+            others = 2*random.bernoulli(seeds[1], shape=(self.ndim-1,)) - 1
+            sample = jnp.concatenate([first, others]).astype(jnp.float32)
+            random_perm = random.permutation(seeds[2], sample)
+            sample = random_perm*L
+            return sample
+        
+        def multi_samples(seed, num_samples: int):
+            seeds = random.split(seed, num_samples)
+            return jax.vmap(sample)(seeds)
+
+        return multi_samples
+    
+    def domain_sampler(self):
+        L  = jnp.asarray(self.size)/2
+        def sample(seed):
+            sample = 2*random.uniform(seed, shape=(self.ndim,))-1
+            return sample*L
+
+        def multi_samples(seed, num_samples: int):
+            seeds = random.split(seed, num_samples)
+            return jax.vmap(sample)(seeds)
+        
+        return multi_samples
 
     @property
     def origin(self):

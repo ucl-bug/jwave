@@ -2,6 +2,7 @@ from jwave.core import TracedField, Discretization
 from jwave import discretization, geometry
 from typing import Callable, NamedTuple, List, Any
 from jax import numpy as jnp
+import jax
 
 
 def no_init(*args, **kwargs):
@@ -403,6 +404,77 @@ class DivideByScalarLinear(Primitive):
         parameters = {"scalar": self.scalar}
         return parameters, new_discretization
 
+
+class ArbitraryGradient(Primitive):
+    def __init__(self, name="ArbitraryGradient", independent_params=True):
+        super().__init__(name, independent_params)
+    
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """New arbitrary discretization"""
+        assert field.discretization.dims == 1
+
+        def get_field(p, x):
+            f = field.discretization.get_field()
+            f_jac = jax.jacfwd(f, argnums=(1,))
+            return f_jac(p, x)[0]
+        
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain, get_field, no_init
+        )
+
+        return None, new_discretization
+
+class ArbitraryDiagJacobian(Primitive):
+    def __init__(self, name="ArbitraryDiagJacobian", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """New arbitrary discretization"""
+
+        def get_field(p, x):
+            f = field.discretization.get_field()
+            f_jac = jax.jacfwd(f, argnums=(1,))
+            return jax.vmap(jnp.diag)(f_jac(p, x)[0])
+        
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain, get_field, no_init
+        )
+
+        return None, new_discretization
+
+class SumOverDims(Primitive):
+    def __init__(self, name="SumOverDims", independent_params=True):
+        super().__init__(name, independent_params)
+
+    def discrete_transform(self):
+        def f(op_params, field_params):
+            return field_params
+        f.__name__ = self.name
+        return f
+
+    def setup(self, field):
+        """New arbitrary discretization"""
+
+        def get_field(p, x):
+            return jnp.sum(field.discretization.get_field()(p, x), axis=-1, keepdims=False)
+
+        new_discretization = discretization.Arbitrary(
+            field.discretization.domain, get_field, no_init
+        )
+
+        return None, new_discretization
 
 class FFTGradient(Primitive):
     def __init__(self, real=False, name="FFTGradient", independent_params=False):

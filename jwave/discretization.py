@@ -9,10 +9,11 @@ from typing import Callable
 
 
 class Arbitrary(Discretization):
-    def __init__(self, domain: Domain, get_fun: Callable, init_params: Callable):
+    def __init__(self, domain: Domain, get_fun: Callable, init_params: Callable, dims=1):
         self._get_fun = get_fun
         self._init_params = init_params
         self.domain = domain
+        self.dims=1
 
     @staticmethod
     def add_scalar(u, scalar, independent_params=True):
@@ -87,6 +88,18 @@ class Arbitrary(Discretization):
             scalar=scalar,
         )
         return primitive(u)
+
+    @staticmethod
+    def gradient(u, independent_params=True):
+        return pr.ArbitraryGradient()(u)
+
+    @staticmethod
+    def diag_jacobian(u, independent_params=True):
+        return pr.ArbitraryDiagJacobian()(u)
+
+    @staticmethod
+    def sum_over_dims(u):
+        return pr.SumOverDims()(u)
 
     def random_field(self, seed, name):
         params = self._init_params(seed, self.domain)
