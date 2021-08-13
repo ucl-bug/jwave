@@ -1,5 +1,5 @@
 from jwave.geometry import Domain
-from jwave.core import Discretization
+from jwave.core import Discretization, Field
 from jwave import primitives as pr
 from jwave import spectral
 from functools import reduce
@@ -9,10 +9,11 @@ from typing import Callable
 
 
 class Arbitrary(Discretization):
-    def __init__(self, domain: Domain, get_fun: Callable, init_params: Callable):
+    def __init__(self, domain: Domain, get_fun: Callable, init_params: Callable, dims=1):
         self._get_fun = get_fun
         self._init_params = init_params
         self.domain = domain
+        self.dims=1
 
     @staticmethod
     def add_scalar(u, scalar, independent_params=True):
@@ -30,8 +31,14 @@ class Arbitrary(Discretization):
         primitive = pr.Elementwise(callable)
         return primitive(u)
 
+    def invert(self, u):
+        return pr.Invert()(u)
+
     def mul(self, u, v):
         return pr.MultiplyFields()(u, v)
+
+    def div(self, u, v):
+        return pr.DivideFields()(u, v)
 
     def apply_on_grid(self, fun):
         """Returns a function applied on a grid"""
@@ -82,25 +89,42 @@ class Arbitrary(Discretization):
         )
         return primitive(u)
 
-    def random_field(self, seed):
-        return self._init_params(seed, self.domain)
+    @staticmethod
+    def gradient(u, independent_params=True):
+        return pr.ArbitraryGradient()(u)
+
+    @staticmethod
+    def diag_jacobian(u, independent_params=True):
+        return pr.ArbitraryDiagJacobian()(u)
+
+    @staticmethod
+    def sum_over_dims(u):
+        return pr.SumOverDims()(u)
+
+    def random_field(self, seed, name):
+        params = self._init_params(seed, self.domain)
+        field = Field(self, name, params)
+        return params, field
 
     def reciprocal(self, u):
         return pr.Reciprocal()(u)
 
 
 class UniformField(Arbitrary):
-    def __init__(self, domain: Domain):
+    def __init__(self, domain: Domain, dims=1):
         self.domain = domain
+        self.dims = dims
 
     def random_field(self, seed):
-        return random.uniform(seed)
+        return random.uniform((self.dims,), seed)
 
     def empty_field(self):
-        return 0.0
+        return jnp.zeros((self.dims,))
 
-    def from_scalar(self, scalar):
-        return scalar
+    def from_scalar(self, scalar, name):
+        params = scalar
+        field = Field(self, params, name)
+        return params, field
 
     def get_field(self):
         def f(params, x):
@@ -109,9 +133,9 @@ class UniformField(Arbitrary):
         return f
 
     def get_field_on_grid(self):
-        def f(params, x):
-            return params
-
+        f = self.get_field()
+        for _ in range(self.dims):
+            f = vmap(f, in_axes=(None, 0))
         return f
 
 
@@ -119,8 +143,10 @@ class Coordinate(Arbitrary):
     def __init__(self, domain):
         self.domain = domain
 
-    def init_params(self, seed):
-        return {}
+    def init_params(self, seed, name):
+        params = {}
+        field = Field(self, name, params)
+        return params, field
 
     def get_field(self):
         def f(params, x):
@@ -167,10 +193,6 @@ class Linear(Arbitrary):
         )
         return primitive(u)
 
-    def mul(self, u, v, independent_params=True):
-        primitive = pr.MultiplyOnGrid()
-        return primitive(u, v)
-
 
 class GridBased(Linear):
     def __init__(self, domain):
@@ -186,6 +208,14 @@ class GridBased(Linear):
         )
         return primitive(u)
 
+    def mul(self, u, v, independent_params=True):
+        primitive = pr.MultiplyOnGrid()
+        return primitive(u, v)
+
+    def div(self, u, v, independent_params=True):
+        primitive = pr.DivideOnGrid()
+        return primitive(u, v)
+
     def reciprocal(self, u):
         return pr.ReciprocalOnGrid()(u)
 
@@ -193,29 +223,39 @@ class GridBased(Linear):
         return pr.SumOverDimsOnGrid()(u)
 
 
+class FiniteDifferences(GridBased):
+    def __init__(self, domain):
+        self.domain = domain
+        self.is_field_complex = True
+
+
+class RealFiniteDifferences(FiniteDifferences):
+    def __init__(self, domain):
+        super().__init__(domain)
+        self.is_field_complex = False
+
+
 class FourierSeries(GridBased):
     def __init__(self, domain, dims=1):
         self.domain = domain
-
-        # internal parameters
-        self.dims = dims
         self.is_field_complex = True
+        self.dims = dims
 
-        # Initialize parameters
-        # TODO: This grid could be constructed on the fly from the frequency axis or
-        # stored as a parameter. Should make a speed test to check if initializing
-        # is the best idea.
-        self.params = {}
-        self.params["freq_grid"] = self._freq_grid
-
-    def gradient(self, u):
+    @staticmethod
+    def gradient(u):
         return pr.FFTGradient()(u)
 
-    def nabla_dot(self, u):
+    @staticmethod
+    def nabla_dot(u):
         return pr.FFTNablaDot()(u)
 
-    def diag_jacobian(self, u):
+    @staticmethod
+    def diag_jacobian(u):
         return pr.FFTDiagJacobian()(u)
+
+    @staticmethod
+    def laplacian(u):
+        return pr.FFTLaplacian()(u)
 
     @property
     def _freq_grid(self):
@@ -234,7 +274,24 @@ class FourierSeries(GridBased):
                 return jnp.fft.rfftfreq(N, dx) * 2 * jnp.pi
 
         k_axis = [f(n, delta) for n, delta in zip(self.domain.N, self.domain.dx)]
+
         return k_axis
+
+    @property
+    def _cut_freq_axis(self):
+        def f(N, dx):
+            return jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
+
+        k_axis = [f(n, delta) for n, delta in zip(self.domain.N, self.domain.dx)]
+        if not self.is_field_complex:
+            k_axis[-1] = (
+                jnp.fft.rfftfreq(self.domain.N[-1], self.domain.dx[-1]) * 2 * jnp.pi
+            )
+        return k_axis
+
+    @property
+    def _cut_freq_grid(self):
+        return jnp.stack(jnp.meshgrid(*self._cut_freq_axis, indexing="ij"), axis=-1)
 
     @property
     def _domain_axis(self):
@@ -249,15 +306,16 @@ class FourierSeries(GridBased):
         if self.is_field_complex:
             interp_fun = spectral.fft_interp
         else:
-            first_dim_size = self.domain.N[0]
-            interp_fun = (
-                lambda k, s, x: spectral.rfft_interp(k, s, x, first_dim_size) / V
-            )
+
+            def interp_fun(k, s, x):
+                return spectral.fft_interp(k, s, x).real
 
         def f(field_params, x):
-            k = self._freq_grid
+            k = self._cut_freq_grid
+            field_params = jnp.moveaxis(field_params, -1, 0)
             spectrum = fftfun(field_params, axes=self._domain_axis)
-            return interp_fun(k, spectrum, x)
+            interp_values = interp_fun(k, spectrum, x)
+            return jnp.moveaxis(interp_values, 0, -1)
 
         return f
 
@@ -267,22 +325,21 @@ class FourierSeries(GridBased):
 
         return _sample_on_grid
 
-    def random_field(self, rng):
+    def random_field(self, seed, name):
         if self.is_field_complex:
             dtype = jnp.complex64
         else:
             dtype = jnp.float32
-        if self.dims == 1:
-            return random.normal(rng, self.domain.N, dtype)
-        else:
-            return random.normal(rng, [self.dims] + [*self.domain.N], dtype)
+        params = random.normal(seed, [*self.domain.N] + [self.dims], dtype)
+        field = Field(self, name, params)
+        return params, field
 
-    def empty_field(self):
+    def empty_field(self, name):
         params = jnp.zeros([*self.domain.N] + [self.dims])
         if self.is_field_complex:
-            return params + 0j
-        else:
-            return params
+            params = params + 0j
+        field = Field(self, name, params)
+        return params, field
 
 
 class RealFourierSeries(FourierSeries):
@@ -290,14 +347,28 @@ class RealFourierSeries(FourierSeries):
         self.domain = domain
         self.is_field_complex = False
         self.dims = dims
-        self.params = {}
-        self.params["freq_grid"] = self._freq_grid
 
-    def gradient(self, u):
+    @staticmethod
+    def gradient(u):
         return pr.FFTGradient(real=True)(u)
 
-    def nabla_dot(self, u):
+    @staticmethod
+    def nabla_dot(u):
         return pr.FFTNablaDot(real=True)(u)
 
-    def diag_jacobian(self, u):
+    @staticmethod
+    def diag_jacobian(u):
         return pr.FFTDiagJacobian(real=True)(u)
+
+
+class StaggeredRealFourier(RealFourierSeries):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def staggered_grad(u, c_ref, dt, direction):
+        return pr.FFTStaggeredGrad(c_ref=c_ref, dt=dt, direction=direction)(u)
+
+    @staticmethod
+    def staggered_diag_jacobian(u, c_ref, dt, direction):
+        return pr.FFTStaggeredDiagJacobian(c_ref=c_ref, dt=dt, direction=direction)(u)

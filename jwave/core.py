@@ -26,10 +26,9 @@ class Globals(object):
 
     def set(self, key: str, value: Any, group: str):
         if group == "shared":
-            if key not in self.dict["shared"].keys():
-                self.dict["shared"][key] = value
-            else:
-                print(f"{key} already exists in shared Globals, skipping")
+            for k, v in value.items():
+                if k not in self.dict["shared"].keys():
+                    self.dict["shared"][k] = v
         elif group == "independent":
             if key not in self.dict["independent"].keys():
                 self.dict["independent"][key] = value
@@ -37,7 +36,9 @@ class Globals(object):
                 raise ValueError(f"{key} already exists in independent Globals!")
 
     def __repr__(self):
-        return f"{self.dict}"
+        str1 = f"Shared: {self.dict['shared']}\n"
+        str2 = f"Independent: {self.dict['independent']}"
+        return str1 + str2
 
 
 class Tracer(object):
@@ -73,10 +74,12 @@ class Tracer(object):
                 if op_name in sorted_graph:
                     op = self.operations[op_name]
                     args = [concrete_ops[n] for n in op.inputs]
-                    if op.param_kind != "none":
-                        op_params = global_params[op.param_kind][op.params]
-                    else:
+                    if op.param_kind == "none":
                         op_params = {}
+                    elif op.param_kind == "shared":
+                        op_params = global_params["shared"]
+                    else:
+                        op_params = global_params[op.param_kind][op.params]
                     concrete_ops[op_name] = op.fun(op_params, *args)
 
             # Output requested parameters
