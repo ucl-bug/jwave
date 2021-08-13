@@ -8,7 +8,7 @@ from jwave.discretization import (
     UniformField,
 )
 from jwave.utils import join_dicts
-from typing import Callable, Union
+from typing import Callable, Union, Tuple
 
 from jax import numpy as jnp
 from jax.tree_util import tree_map
@@ -64,7 +64,7 @@ def ongrid_wave_propagation(
     output_t_axis=None,
     backprop=False,
     checkpoint=False,
-) -> Union[dict, Callable]:
+) -> Tuple[dict, Callable]:
     # Setup parameters
     c_ref = jnp.amin(medium.sound_speed)
     dt = time_array.dt
@@ -225,7 +225,7 @@ def ongrid_helmholtz_solver(
     tol=1e-5,
     solve_method="batched",
     maxiter=None,
-) -> Union[dict, Callable]:
+) -> Tuple[dict, Callable]:
     # Initializing PML
     pml_grid = complex_pml_on_grid(medium, omega)
 
