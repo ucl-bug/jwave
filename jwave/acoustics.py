@@ -1,13 +1,14 @@
-from jwave import geometry, ode
-import jwave.operators as jops
-from jwave.core import Field, operator
-from jwave.discretization import (
+from jwave import geometry
+from jaxdf import ode
+import jaxdf.operators as jops
+from jaxdf.core import Field, operator
+from jaxdf.discretization import (
     Coordinate,
     FourierSeries,
     StaggeredRealFourier,
     UniformField,
 )
-from jwave.utils import join_dicts
+from jaxdf.utils import join_dicts
 from typing import Callable, Union, Tuple
 
 from jax import numpy as jnp
@@ -44,7 +45,7 @@ def _base_pml(
 def complex_pml_on_grid(
     medium: geometry.Medium, omega: float, exponent=2.0, alpha_max=2.0
 ) -> jnp.ndarray:
-    transform_fun = lambda alpha: 1.0 / (1 + 1j * alpha / omega)
+    transform_fun = lambda alpha: 1.0 / (1 + 1j * alpha)
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
 
@@ -215,47 +216,95 @@ def ongrid_wave_propagation(
 
     return params, solver
 
-
-def ongrid_helmholtz_solver(
+def helmholtz_on_grid(
     medium: geometry.Medium,
     omega: float,
+    source=None,
     discretization=FourierSeries,
-    method="gmres",
-    restart=10,
-    tol=1e-5,
-    solve_method="batched",
-    maxiter=None,
-) -> Tuple[dict, Callable]:
+):
+    fourier_discr = discretization(medium.domain)
+
     # Initializing PML
     pml_grid = complex_pml_on_grid(medium, omega)
 
     # Modified laplacian
-    def laplacian(u, pml):
-        grad_u = jops.gradient(u)
-        mod_grad_u = grad_u * pml
-        mod_diag_jacobian = jops.diag_jacobian(mod_grad_u) * pml
-        return jops.sum_over_dims(mod_diag_jacobian)
+    rho0_val = medium.density
+    if rho0_val is None:
+        rho0_val = 1.
+    if (type(rho0_val) is float) or (type(rho0_val) is int):
+        def laplacian(u, rho0, pml):
+            grad_u = jops.gradient(u)
+            mod_grad_u = grad_u * pml
+            mod_diag_jacobian = jops.diag_jacobian(mod_grad_u) * pml
+            return jops.sum_over_dims(mod_diag_jacobian)
+    else:
+        assert rho0_val.ndim == medium.sound_speed.ndim
+        def laplacian(u, rho0, pml):
+            grad_u = jops.gradient(u)
+            mod_grad_u = grad_u * pml
+            mod_diag_jacobian = jops.diag_jacobian(mod_grad_u) * pml
+            nabla_u = jops.sum_over_dims(mod_diag_jacobian)
+
+            grad_rho0 = jops.gradient(rho0)
+            rho_u = jops.sum_over_dims(mod_grad_u * grad_rho0) / rho0
+            
+            return nabla_u - rho_u
+
+    # Absorption term
+    if medium.attenuation is None:
+        alpha_params, alpha = UniformField(medium.domain, dims=1).from_scalar(
+            0.0, name="alpha")
+        k_fun = lambda u, omega, c, alpha: ((omega / c) ** 2) * u
+    else:
+        if (type(medium.attenuation) is float) or (type(medium.attenuation) is int):
+            alpha_params, alpha = UniformField(medium.domain, dims=1).from_scalar(
+            medium.attenuation, name="alpha")
+        else:
+            alpha_params, alpha = fourier_discr.from_array(
+                medium.attenuation, 
+                name="alpha",
+                expand_params=True)
+
+        def k_fun(u, omega, c, alpha):
+            k_mod = (omega / c) ** 2 + 2j*(omega**3)*alpha/c
+            return u*k_mod
 
     # Helmholtz operator
     @operator()
-    def helmholtz(u, c, pml):
+    def helmholtz(u, c, rho0, alpha, pml):
         # Get the modified laplacian
-        L = laplacian(u, pml)
+        L = laplacian(u, rho0, pml)
 
         # Add the wavenumber term
-        k = ((omega / c) ** 2) * u
-
+        k = k_fun(u, omega, c, alpha)
         return L + k
 
     # Discretizing operator
-    fourier_discr = discretization(medium.domain)
     u_fourier_params, u = fourier_discr.empty_field(name="u")
-    src_fourier_params, src = fourier_discr.empty_field(name="src")
-    src_fourier_params = src_fourier_params.at[64, 64, 0].set(1.0)
+    
+    if source is None:
+        src_fourier_params, _ = fourier_discr.empty_field(name="src")
+    else:
+        src_fourier_params, _ = fourier_discr.from_array(
+                source, 
+                name="src",
+                expand_params=True)
+
+    if (type(rho0_val) is float) or (type(rho0_val) is int):
+        rho0_params, rho0 = UniformField(medium.domain, dims=1).from_scalar(
+            rho0_val, name="rho0")
+    else:
+        _, rho0 = fourier_discr.empty_field(name="rho0")
+        rho0_params, rho0 = fourier_discr.from_array(
+            medium.density, # +0j,
+            name="rho0",
+            expand_params=True)
+
     c_fourier_params, c = fourier_discr.empty_field(name="c")
+    c_fourier_params = jnp.expand_dims(medium.sound_speed, -1)
     pml = Field(fourier_discr, params=pml_grid, name="pml")
 
-    Hu = helmholtz(u=u, c=c, pml=pml)
+    Hu = helmholtz(u=u, c=c, rho0=rho0, alpha=alpha, pml=pml)
     global_params = Hu.get_global_params()
     f = Hu.get_field_on_grid(0)
 
@@ -264,15 +313,43 @@ def ongrid_helmholtz_solver(
         "globals": global_params,
         "guess": u_fourier_params,
         "c": c_fourier_params,
+        "rho0": rho0_params,
+        "alpha": alpha_params,
         "pml": pml_grid,
-        "source": src_fourier_params,
-        "solver_params": {"tol": tol, "restart": restart, "maxiter": maxiter},
+        "source": src_fourier_params
     }
+    return params, f
+
+def ongrid_helmholtz_solver(
+    medium: geometry.Medium,
+    omega: float,
+    source=None,
+    discretization=FourierSeries,
+    method="gmres",
+    restart=10,
+    tol=1e-5,
+    solve_method="batched",
+    maxiter=None,
+) -> Tuple[dict, Callable]:
+    
+    params, f = helmholtz_on_grid(
+        medium,
+        omega,
+        source=source,
+        discretization=discretization,
+    )
+    params["solver_params"] = {"tol": tol, "maxiter": maxiter}
 
     def solver(params):
         def helm_func(u):
             return f(
-                params["globals"], {"u": u, "c": params["c"], "pml": params["pml"]}
+                params["globals"], {
+                    "u": u, 
+                    "c": params["c"],
+                    "rho0": params["rho0"], 
+                    "alpha": params["alpha"],
+                    "pml": params["pml"]
+                }
             )
 
         if method == "gmres":
@@ -281,7 +358,7 @@ def ongrid_helmholtz_solver(
                 params["source"],
                 x0=params["guess"],
                 tol=params["solver_params"]["tol"],
-                restart=params["solver_params"]["restart"],
+                restart=restart,
                 maxiter=params["solver_params"]["maxiter"],
                 solve_method=solve_method,
             )[0]
