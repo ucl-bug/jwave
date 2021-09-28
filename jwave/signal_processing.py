@@ -1,7 +1,68 @@
 from jax import numpy as jnp
-from jax import eval_shape
+from jax import eval_shape, vmap
 from typing import Callable
 
+def fourier_downsample(x, subsample=2, discard_last=True):
+    """
+    Downsample a signal by taking the Fourier transform and
+    discarding the high frequencies.
+
+    Args:
+        x (jnp.ndarray): Signal to be downsampled
+        subsample (int, optional): Sumsampling factor. Defaults to 2.
+        discard_last (bool, optional): If True, the last dimension is not
+            subsampled. Defaults to True.
+
+    Returns:
+        jnp.ndarray: [description]
+    """
+    if subsample == 1:
+        return x
+
+    def _single_downsample(x):
+        """removes positive and negative frequency at appropriate
+        cut values"""
+        Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
+        cuts = [(subsample-1) * x // 2 // subsample for x in Fx.shape]
+        slices = tuple([slice(cut, -cut) for cut in cuts])
+        return jnp.fft.ifftn(jnp.fft.ifftshift(Fx[slices]))/(subsample**x.ndim)
+
+    if discard_last:
+        _single_downsample = vmap(_single_downsample, in_axes=(-1,), out_axes=-1)
+    
+    return _single_downsample(x)
+
+def fourier_upsample(x, upsample=2, discard_last=True):
+    """
+    Upsample a signal by taking the Fourier transform and
+    adding zeros at the high frequencies.
+
+    Args:
+        x (jnp.ndarray): Signal to be upsampled
+        upsample (int, optional): Upsampling factor. Defaults to 2.
+
+    Returns:
+        jnp.ndarray: Upsampled signal
+    """
+    if upsample == 1:
+        return x
+
+    def _single_upsample(x):
+        """adds zeros at appropriate cut values"""
+        new_size = list(map(lambda x: x * upsample, x.shape))
+        print(new_size)
+        Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
+        new_Fx = jnp.zeros(new_size, dtype=Fx.dtype)
+        cuts = [(upsample-1) * x // 2 // upsample for x in new_size]
+        slices = tuple([slice(cut, -cut) for cut in cuts])
+        print(slices)
+        new_Fx = new_Fx.at[slices].set(Fx)
+        return jnp.fft.ifftn(jnp.fft.ifftshift(new_Fx))*(upsample**x.ndim)
+
+    if discard_last:
+        _single_upsample = vmap(_single_upsample, in_axes=(-1,), out_axes=-1)
+
+    return _single_upsample(x)
 
 def apply_ramp(
     signal: jnp.ndarray, dt: float, center_freq: float, warmup_cycles: float = 3
