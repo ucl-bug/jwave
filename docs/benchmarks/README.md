@@ -1,0 +1,1 @@
+Before running the benchmarks, run all the MATLAB scripts in the `kwave` folder.

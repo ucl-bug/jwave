@@ -1,4 +1,5 @@
 from jwave import geometry
+from jaxdf import geometry as geodf
 from jaxdf import ode
 import jaxdf.operators as jops
 from jaxdf.core import Field, operator
@@ -50,16 +51,16 @@ def complex_pml_on_grid(
 
 
 def td_pml_on_grid(
-    medium: geometry.Medium, dt: float, exponent=2.0, alpha_max=2.0
+    medium: geometry.Medium, dt: float, exponent=4.0, alpha_max=2.0
 ) -> jnp.ndarray:
-    transform_fun = lambda alpha: jops.elementwise(jnp.exp)((-1) * alpha * dt / 2)
+    transform_fun = lambda alpha: jops.elementwise(jnp.exp)((-1) * alpha / 2)
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
 
 def ongrid_wave_propagation(
     medium: geometry.Medium,
     time_array: geometry.TimeAxis,
-    sources: geometry.Sources,
+    sources: geometry.Sources = None,
     discretization: str = "StaggeredFourier",
     sensors=None,
     output_t_axis=None,
@@ -98,7 +99,7 @@ def ongrid_wave_propagation(
     Args:
         medium (geometry.Medium): The acoustic medium
         time_array (geometry.TimeAxis): The time axis
-        sources (geometry.Sources): Point sources
+        sources (geometry.Sources): Point sources. Defaults to `None`
         discretization (str, optional): Numerical discretization method. Supported 
             discretizations are `'StaggeredFourier'` and `'Fourier'`. Defaults to "StaggeredFourier".
         sensors ([type], optional): [description]. Defaults to None.
@@ -170,8 +171,8 @@ def ongrid_wave_propagation(
     pml_grid = td_pml_on_grid(medium, dt)
 
     # Making math operators for ODE solver
-    fwd_grad = jops.staggered_grad(c_ref, dt, geometry.Staggered.FORWARD)
-    bwd_diag_jac = jops.staggered_diag_jacobian(c_ref, dt, geometry.Staggered.BACKWARD)
+    fwd_grad = jops.staggered_grad(c_ref, dt, geodf.Staggered.FORWARD)
+    bwd_diag_jac = jops.staggered_diag_jacobian(c_ref, dt, geodf.Staggered.BACKWARD)
 
     @operator()
     def du(rho0, p):
@@ -230,12 +231,13 @@ def ongrid_wave_propagation(
     measurement_operator = sensor_to_operator(sensors)
 
     # Defining source scaling function
-    def src_to_field(source_signals, t):
-        src = jnp.zeros(medium.domain.N)
-        idx = (t / dt).round().astype(jnp.int32)
-        signals = source_signals[:, idx] / len(medium.domain.N)
-        src = src.at[sources.positions].add(signals)
-        return jnp.expand_dims(src, -1)
+    if sources is not None:
+        def src_to_field(source_signals, t):
+            src = jnp.zeros(medium.domain.N)
+            idx = (t / dt).round().astype(jnp.int32)
+            signals = source_signals[:, idx] / len(medium.domain.N)
+            src = src.at[sources.positions].add(signals)
+            return jnp.expand_dims(src, -1)
 
     # Defining parameters
     params = {
@@ -249,7 +251,7 @@ def ongrid_wave_propagation(
             "dt": dt,
             "pml_grid": pml_grid,
         },
-        "source_signals": sources.signals,
+        "source_signals": sources.signals if sources is not None else [],
         "acoustic_params": {
             "speed_of_sound": jnp.expand_dims(medium.sound_speed, -1),
             "density": jnp.expand_dims(medium.density, -1),
@@ -278,7 +280,10 @@ def ongrid_wave_propagation(
 
     def drho_dt(params, u, t):
         rho_0 = params["acoustic_params"]["density"]
-        src = src_to_field(params["source_signals"], t)
+        if sources is not None:
+            src = src_to_field(params["source_signals"], t)
+        else:
+            src = 0.0
 
         gp = params["idependent"]["drho_dt"]
         gp["shared"] = params["shared"]
