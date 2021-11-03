@@ -1,6 +1,6 @@
-::: jwave.discretization
+::: jwave.acoustics
     handler: python
     members:
-        - FiniteDifferences
+        - ongrid_wave_propagation
     show_root_heading: true
     show_source: false

@@ -18,7 +18,7 @@ nav:
   - Tutorials:
     - Implement a custom discretization: notebooks/customizing_discretizations.ipynb
   - API:
-    - discretization: api_discretization.md
+    - acoustics: api_acoustics.md
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:

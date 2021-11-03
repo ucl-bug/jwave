@@ -60,12 +60,100 @@ def ongrid_wave_propagation(
     medium: geometry.Medium,
     time_array: geometry.TimeAxis,
     sources: geometry.Sources,
-    discretization=StaggeredRealFourier,
+    discretization: str = "StaggeredFourier",
     sensors=None,
     output_t_axis=None,
     backprop=False,
     checkpoint=False,
 ) -> Tuple[dict, Callable]:
+    r"""Constructs a wave propagation operator on a grid.
+
+    The operator solves the equations
+
+    ```math
+    \begin{align}
+        \frac{\partial u}{\partial t} &= - \frac{1}{\rho_0}\nabla p \\
+        \frac{\partial \rho}{\partial t} &= -\rho_0\nabla \cdot u - u \cdot \nabla \rho_0 + S_M  \\
+        p &= c_0^2(\rho + d\cdot\nabla \rho_0)
+    \end{align}
+    ```
+
+    The function returns a tuple, where the first element is a 
+    dictionary of parameters, and the second element is a function
+    that takes a dictionary of parameters and returns the solution.
+
+    The solution is defined for all time points in the time axis.
+
+    If the `sensors` argument is not None, the function returns the
+    entire field at each time point. Otherwise, the function returns
+    the field at the sensors locations at each time point.
+
+    Setting `backprop` to True will return a function that can be
+    differentiated using backpropagation. Otherwise, only forward
+    differentiation is supported.
+
+    Lastly. if `checkpoint` is True, memory requirements are reduced
+    for backpropagation, at the expense of a longer runtime.
+
+    Args:
+        medium (geometry.Medium): The acoustic medium
+        time_array (geometry.TimeAxis): The time axis
+        sources (geometry.Sources): Point sources
+        discretization (str, optional): Numerical discretization method. Supported 
+            discretizations are `'StaggeredFourier'` and `'Fourier'`. Defaults to "StaggeredFourier".
+        sensors ([type], optional): [description]. Defaults to None.
+        output_t_axis ([type], optional): [description]. Defaults to None.
+        backprop (bool, optional): [description]. Defaults to False.
+        checkpoint (bool, optional): [description]. Defaults to False.
+
+    Raises:
+        ValueError: [description]
+        ValueError: [description]
+
+    Returns:
+        Tuple[dict, Callable]: [description]
+
+    The structure of the dictionary of parameters returned is
+    ```json
+    {
+        "shared": Internal operator parameters,
+        "idependent": Internal operator parameters,
+        "integrator": {
+            "dt": timestep,
+            "pml_grid": PML function on the grid,
+        },
+        "source_signals": Arrays of source signals,
+        "acoustic_params": {
+            "speed_of_sound": Speed of sound map,
+            "density": Acoustic density map,
+        },
+        "initial_fields": {
+            "rho": Initial acoustic density,
+            "u": Initial acoustic velocity,
+        },
+    }
+    ```
+    The simulation function can be differentiated with respect to any of such
+    parameters.
+
+    !!! todo
+        The structure of the internal parameters is a bit obscure at the moment,
+        and will be improved in the future.
+    """
+    
+
+    # TODO: This could be more flexible and accept custom discretizations
+
+    if discretization == "StaggeredFourier":
+        discretization = StaggeredRealFourier
+    elif discretization == "Fourier":
+        discretization = FourierSeries
+    else:
+        raise ValueError(
+            f"Discretization {discretization} not supported. "
+            "Supported discretizations are 'StaggeredFourier' and 'Fourier'."
+        )
+
     # Setup parameters
     c_ref = jnp.amin(medium.sound_speed)
     dt = time_array.dt
