@@ -23,7 +23,7 @@ def fourier_downsample(x, subsample=2, discard_last=True):
         """removes positive and negative frequency at appropriate
         cut values"""
         Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
-        cuts = [(subsample-1) * x // 2 // subsample for x in Fx.shape]
+        cuts = [int((subsample-1) * x / 2 / subsample) for x in Fx.shape]
         slices = tuple([slice(cut, -cut) for cut in cuts])
         return jnp.fft.ifftn(jnp.fft.ifftshift(Fx[slices]))/(subsample**x.ndim)
 
@@ -50,12 +50,10 @@ def fourier_upsample(x, upsample=2, discard_last=True):
     def _single_upsample(x):
         """adds zeros at appropriate cut values"""
         new_size = list(map(lambda x: x * upsample, x.shape))
-        print(new_size)
         Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
         new_Fx = jnp.zeros(new_size, dtype=Fx.dtype)
-        cuts = [(upsample-1) * x // 2 // upsample for x in new_size]
+        cuts = [int((upsample-1) * x / 2 / upsample) for x in new_size]
         slices = tuple([slice(cut, -cut) for cut in cuts])
-        print(slices)
         new_Fx = new_Fx.at[slices].set(Fx)
         return jnp.fft.ifftn(jnp.fft.ifftshift(new_Fx))*(upsample**x.ndim)
 
