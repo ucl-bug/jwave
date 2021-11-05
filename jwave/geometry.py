@@ -136,3 +136,9 @@ class TimeAxis(NamedTuple):
                 sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
             ) / jnp.min(medium.sound_speed)
         return TimeAxis(dt=float(dt), t_end=float(t_end))
+
+def _circ_mask(N, radius, centre):
+    x, y = np.mgrid[0 : N[0], 0 : N[1]]
+    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
+    mask = (dist_from_centre < radius).astype(int)
+    return mask

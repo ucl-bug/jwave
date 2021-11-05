@@ -13,7 +13,7 @@ Following the phylosophy of [JAX](https://jax.readthedocs.io/en/stable/), jWave 
 
 
 ## :floppy_disk: Install
-Before installing `jwave`, make sure that [you have installed `jaxdf`](https://github.com/google/jax#installation). 
+Before installing `jwave`, make sure that [you have installed `jaxdf`](https://github.com/ucl-bug/jaxdf). 
 
 Install jwave by `cd` in the repo folder an run
 ```bash
@@ -26,9 +26,7 @@ If you want to run the notebooks, you should also install the following packages
 pip install jupyter, tqdm
 ```
 
-## Related
-
-### Projects
+### Related Projects
 
 1. [`ADSeismic.jl`](https://github.com/kailaix/ADSeismic.jl): a finite difference acoustic simulator with support for AD and JIT compilation in Julia.
 2. [`stride`](https://github.com/trustimaging/stride): a general optimisation framework for medical ultrasound tomography.

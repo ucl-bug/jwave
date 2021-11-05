@@ -51,9 +51,9 @@ def complex_pml_on_grid(
 
 
 def td_pml_on_grid(
-    medium: geometry.Medium, dt: float, exponent=4.0, alpha_max=2.0
+    medium: geometry.Medium, dt: float, exponent=4.0, alpha_max=2.0, c0=1.0, dx= 1.0
 ) -> jnp.ndarray:
-    transform_fun = lambda alpha: jops.elementwise(jnp.exp)((-1) * alpha / 2)
+    transform_fun = jops.elementwise( lambda alpha: jnp.exp((-1) * alpha * dt * c0 / 2 / dx))
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
 
@@ -168,7 +168,7 @@ def ongrid_wave_propagation(
     output_steps = (t / dt).astype(jnp.int32)
 
     # Making PML on grid
-    pml_grid = td_pml_on_grid(medium, dt)
+    pml_grid = td_pml_on_grid(medium, dt, c0=jnp.amin(medium.sound_speed), dx=medium.domain.dx[0])
 
     # Making math operators for ODE solver
     fwd_grad = jops.staggered_grad(c_ref, dt, geodf.Staggered.FORWARD)
@@ -479,13 +479,13 @@ def sensor_to_operator(sensors):
         if len(sensors.positions) == 1:
 
             def measurement_operator(x):
-                return tree_map(lambda leaf: leaf[..., sensors.positions[0]], x)
+                return tree_map(lambda leaf: leaf[sensors.positions[0]], x)
 
         elif len(sensors.positions) == 2:
 
             def measurement_operator(x):
                 return tree_map(
-                    lambda leaf: leaf[..., sensors.positions[0], sensors.positions[1]],
+                    lambda leaf: leaf[sensors.positions[0], sensors.positions[1]],
                     x,
                 )
 
@@ -494,7 +494,6 @@ def sensor_to_operator(sensors):
             def measurement_operator(x):
                 return tree_map(
                     lambda leaf: leaf[
-                        ...,
                         sensors.positions[0],
                         sensors.positions[1],
                         sensors.positions[2],
