@@ -1,4 +1,5 @@
 from jwave import geometry
+from jwave.signal_processing import smooth
 from jaxdf import geometry as geodf
 from jaxdf import ode
 import jaxdf.operators as jops
@@ -15,16 +16,20 @@ from typing import Callable, Union, Tuple
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 from jax.scipy.sparse.linalg import gmres, bicgstab
+from dataclasses import dataclass
 
 
 def _base_pml(
     transform_fun: Callable, medium: geometry.Medium, exponent=2.0, alpha_max=2.0
 ) -> jnp.ndarray:
-    delta_pml = list(map(lambda x: x / 2 - medium.pml_size, medium.domain.size))
-    delta_pml, delta_pml_f = UniformField(medium.domain, len(delta_pml)).from_scalar(
+    def pml_edge(x):
+        return (x/2 - medium.pml_size)
+    delta_pml = list(map(pml_edge, medium.domain.N))
+    domain = geometry.Domain(N=medium.domain.N, dx=tuple([1.]*len(medium.domain.N)))
+    delta_pml, delta_pml_f = UniformField(domain, len(delta_pml)).from_scalar(
         jnp.asarray(delta_pml), "delta_pml"
     )
-    coordinate_discr = Coordinate(medium.domain)
+    coordinate_discr = Coordinate(domain)
     X = Field(coordinate_discr, params={}, name="X")
 
     @operator()
@@ -51,11 +56,15 @@ def complex_pml_on_grid(
 
 
 def td_pml_on_grid(
-    medium: geometry.Medium, dt: float, exponent=4.0, alpha_max=2.0, c0=1.0, dx= 1.0
+    medium: geometry.Medium, dt: float, exponent=4.0, alpha_max=2.0, c0=1.0, dx=1.0
 ) -> jnp.ndarray:
-    transform_fun = jops.elementwise( lambda alpha: jnp.exp((-1) * alpha * dt * c0 / 2 / dx))
+    transform_fun = jops.elementwise(
+        lambda alpha: jnp.exp((-1) * alpha * dt * c0 / 2 / dx)
+    )
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
+def pressure_from_density(sensors_data, sound_speed, sensors):
+    return jnp.sum(sensors_data[1],-1)*(sound_speed[sensors.positions]**2)
 
 def ongrid_wave_propagation(
     medium: geometry.Medium,
@@ -66,6 +75,8 @@ def ongrid_wave_propagation(
     output_t_axis=None,
     backprop=False,
     checkpoint=False,
+    u0=None,
+    p0=None,
 ) -> Tuple[dict, Callable]:
     r"""Constructs a wave propagation operator on a grid.
 
@@ -141,7 +152,6 @@ def ongrid_wave_propagation(
         The structure of the internal parameters is a bit obscure at the moment,
         and will be improved in the future.
     """
-    
 
     # TODO: This could be more flexible and accept custom discretizations
 
@@ -168,7 +178,9 @@ def ongrid_wave_propagation(
     output_steps = (t / dt).astype(jnp.int32)
 
     # Making PML on grid
-    pml_grid = td_pml_on_grid(medium, dt, c0=jnp.amin(medium.sound_speed), dx=medium.domain.dx[0])
+    pml_grid = td_pml_on_grid(
+        medium, dt, c0=jnp.amin(medium.sound_speed), dx=medium.domain.dx[0]
+    )
 
     # Making math operators for ODE solver
     fwd_grad = jops.staggered_grad(c_ref, dt, geodf.Staggered.FORWARD)
@@ -192,12 +204,18 @@ def ongrid_wave_propagation(
     discr_1D = discretization(medium.domain)
     discr_ND = discretization(medium.domain, dims=medium.domain.ndim)
 
-    c, c_f = discr_1D.empty_field(name="c")
-    p, p_f = discr_1D.empty_field(name="p")
-    rho0, rho0_f = discr_1D.empty_field(name="rho")
-    rho, rho_f = discr_ND.empty_field(name="rho0")
-    SM, SM_f = discr_ND.empty_field(name="Source_m")
-    u, u_f = discr_ND.empty_field(name="u")
+    _, c_f = discr_1D.empty_field(name="c")
+    _, p_f = discr_1D.empty_field(name="p")
+    _, rho0_f = discr_1D.empty_field(name="rho")
+    _, rho_f = discr_ND.empty_field(name="rho0")
+    _, SM_f = discr_ND.empty_field(name="Source_m")
+    _, u_f = discr_ND.empty_field(name="u")
+    
+    # Update initial fields
+    if u0 is not None:
+        u_f.params = u0
+    if p0 is None:
+        p0 = jnp.zeors_like(medium.sound_speed)
 
     # Numerical functions
     # Note that we keep the shared dictionaries separate, to reduce
@@ -232,6 +250,7 @@ def ongrid_wave_propagation(
 
     # Defining source scaling function
     if sources is not None:
+
         def src_to_field(source_signals, t):
             src = jnp.zeros(medium.domain.N)
             idx = (t / dt).round().astype(jnp.int32)
@@ -257,7 +276,7 @@ def ongrid_wave_propagation(
             "density": jnp.expand_dims(medium.density, -1),
         },
         "initial_fields": {
-            "rho": rho_f.params,
+            "p": p0,
             "u": u_f.params,
         },
     }
@@ -293,21 +312,35 @@ def ongrid_wave_propagation(
 
     # Defining solver
     def solver(params):
-        return ode.generalized_semi_implicit_euler(
+        # Make initial density from pressure field
+        p0 = params["initial_fields"]["p"]
+        p0 = smooth(p0)
+        rho0 = p0 / (params["acoustic_params"]["speed_of_sound"][...,0] ** 2.0)
+        rho0 = jnp.stack([rho0] * medium.domain.ndim, -1) / medium.domain.ndim
+        
+        # Integrate
+        sensors_data = ode.generalized_semi_implicit_euler(
             params,
             du_dt,
             drho_dt,
             measurement_operator,
             params["integrator"]["pml_grid"],
             params["initial_fields"]["u"],
-            params["initial_fields"]["rho"],
+            rho0,
             params["integrator"]["dt"],
             output_steps,
             backprop,
             checkpoint,
         )
+        
+        # Get pressure from density
+        p = pressure_from_density(
+            sensors_data, params["acoustic_params"]["speed_of_sound"][...,0], sensors 
+        )
+        return p
 
     return params, solver
+
 
 def helmholtz_on_grid(
     medium: geometry.Medium,
@@ -323,15 +356,18 @@ def helmholtz_on_grid(
     # Modified laplacian
     rho0_val = medium.density
     if rho0_val is None:
-        rho0_val = 1.
+        rho0_val = 1.0
     if (type(rho0_val) is float) or (type(rho0_val) is int):
+
         def laplacian(u, rho0, pml):
             grad_u = jops.gradient(u)
             mod_grad_u = grad_u * pml
             mod_diag_jacobian = jops.diag_jacobian(mod_grad_u) * pml
             return jops.sum_over_dims(mod_diag_jacobian)
+
     else:
         assert rho0_val.ndim == medium.sound_speed.ndim
+
         def laplacian(u, rho0, pml):
             grad_u = jops.gradient(u)
             mod_grad_u = grad_u * pml
@@ -340,27 +376,28 @@ def helmholtz_on_grid(
 
             grad_rho0 = jops.gradient(rho0)
             rho_u = jops.sum_over_dims(mod_grad_u * grad_rho0) / rho0
-            
+
             return nabla_u - rho_u
 
     # Absorption term
     if medium.attenuation is None:
         alpha_params, alpha = UniformField(medium.domain, dims=1).from_scalar(
-            0.0, name="alpha")
+            0.0, name="alpha"
+        )
         k_fun = lambda u, omega, c, alpha: ((omega / c) ** 2) * u
     else:
         if (type(medium.attenuation) is float) or (type(medium.attenuation) is int):
             alpha_params, alpha = UniformField(medium.domain, dims=1).from_scalar(
-            medium.attenuation, name="alpha")
+                medium.attenuation, name="alpha"
+            )
         else:
             alpha_params, alpha = fourier_discr.from_array(
-                medium.attenuation, 
-                name="alpha",
-                expand_params=True)
+                medium.attenuation, name="alpha", expand_params=True
+            )
 
         def k_fun(u, omega, c, alpha):
-            k_mod = (omega / c) ** 2 + 2j*(omega**3)*alpha/c
-            return u*k_mod
+            k_mod = (omega / c) ** 2 + 2j * (omega ** 3) * alpha / c
+            return u * k_mod
 
     # Helmholtz operator
     @operator()
@@ -374,24 +411,23 @@ def helmholtz_on_grid(
 
     # Discretizing operator
     u_fourier_params, u = fourier_discr.empty_field(name="u")
-    
+
     if source is None:
         src_fourier_params, _ = fourier_discr.empty_field(name="src")
     else:
         src_fourier_params, _ = fourier_discr.from_array(
-                source, 
-                name="src",
-                expand_params=True)
+            source, name="src", expand_params=True
+        )
 
     if (type(rho0_val) is float) or (type(rho0_val) is int):
         rho0_params, rho0 = UniformField(medium.domain, dims=1).from_scalar(
-            rho0_val, name="rho0")
+            rho0_val, name="rho0"
+        )
     else:
         _, rho0 = fourier_discr.empty_field(name="rho0")
         rho0_params, rho0 = fourier_discr.from_array(
-            medium.density, # +0j,
-            name="rho0",
-            expand_params=True)
+            medium.density, name="rho0", expand_params=True  # +0j,
+        )
 
     c_fourier_params, c = fourier_discr.empty_field(name="c")
     c_fourier_params = jnp.expand_dims(medium.sound_speed, -1)
@@ -409,9 +445,10 @@ def helmholtz_on_grid(
         "rho0": rho0_params,
         "alpha": alpha_params,
         "pml": pml_grid,
-        "source": src_fourier_params
+        "source": src_fourier_params,
     }
     return params, f
+
 
 def ongrid_helmholtz_solver(
     medium: geometry.Medium,
@@ -424,7 +461,7 @@ def ongrid_helmholtz_solver(
     solve_method="batched",
     maxiter=None,
 ) -> Tuple[dict, Callable]:
-    
+
     params, f = helmholtz_on_grid(
         medium,
         omega,
@@ -436,13 +473,14 @@ def ongrid_helmholtz_solver(
     def solver(params):
         def helm_func(u):
             return f(
-                params["globals"], {
-                    "u": u, 
+                params["globals"],
+                {
+                    "u": u,
                     "c": params["c"],
-                    "rho0": params["rho0"], 
+                    "rho0": params["rho0"],
                     "alpha": params["alpha"],
-                    "pml": params["pml"]
-                }
+                    "pml": params["pml"],
+                },
             )
 
         if method == "gmres":

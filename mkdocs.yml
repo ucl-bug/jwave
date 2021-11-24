@@ -16,9 +16,9 @@ theme:
 nav:
   - Home: index.md
   - Tutorials:
-    - Implement a custom discretization: notebooks/customizing_discretizations.ipynb
-  - API:
-    - acoustics: api_acoustics.md
+    - Homogeneous medium IVP: notebooks/homog_propagation_medium.ipynb
+  #- API:
+  #  - acoustics: api_acoustics.md
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:

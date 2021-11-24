@@ -2,10 +2,12 @@ from jaxdf.geometry import Domain
 from jax import numpy as jnp
 import numpy as np
 from functools import reduce
+from dataclasses import dataclass
 from typing import NamedTuple, Tuple
 
 
-class Medium(NamedTuple):
+@dataclass(init=False)
+class Medium:
     r"""
     Medium structure
     Attributes:
@@ -18,7 +20,7 @@ class Medium(NamedTuple):
         N = (128,356)
         medium = Medium(
             sound_speed = jnp.ones(N),
-            density = jnp.ones(N),
+            density = jnp.ones(N),.
             attenuation = 0.0,
             pml_size = 15
         )
@@ -28,7 +30,24 @@ class Medium(NamedTuple):
     sound_speed: jnp.ndarray
     density: jnp.ndarray
     attenuation: jnp.ndarray
-    pml_size: float
+    pml_size: float = 20
+
+    def __init__(self, domain, sound_speed, density=None, attenuation=None, pml_size=20):
+        self.domain = domain
+        self.sound_speed = sound_speed
+
+        if density is None:
+            self.density = jnp.ones_like(sound_speed)
+        else:
+            self.density = density
+
+        if attenuation is None:
+            self.attenuation = 0
+        else:
+            self.attenuation = attenuation
+
+        self.pml_size = pml_size
+
 
 def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0):
     angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
@@ -46,7 +65,8 @@ def _circ_mask(N, radius, centre):
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
-class Sources(NamedTuple):
+@dataclass
+class Sources:
     r"""Sources structure
     Attributes:
         positions (Tuple[List[int]): source positions
@@ -64,7 +84,8 @@ class Sources(NamedTuple):
     signals: Tuple[jnp.ndarray]
 
 
-class ComplexSources(NamedTuple):
+@dataclass
+class ComplexSources:
     r"""ComplexSources structure
     Attributes:
         positions (Tuple[List[int]): source positions
@@ -89,7 +110,8 @@ class ComplexSources(NamedTuple):
         return field
 
 
-class Sensors(NamedTuple):
+@dataclass
+class Sensors:
     """Sensors structure
     Attributes:
         positions (Tuple[List[int]]): sensors positions
@@ -104,7 +126,8 @@ class Sensors(NamedTuple):
     positions: Tuple[jnp.ndarray]
 
 
-class TimeAxis(NamedTuple):
+@dataclass
+class TimeAxis:
     r"""Temporal vector to be used for acoustic
     simulation based on the pseudospectral method of
     [k-Wave](http://www.k-wave.org/)
@@ -136,6 +159,7 @@ class TimeAxis(NamedTuple):
                 sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
             ) / jnp.min(medium.sound_speed)
         return TimeAxis(dt=float(dt), t_end=float(t_end))
+
 
 def _circ_mask(N, radius, centre):
     x, y = np.mgrid[0 : N[0], 0 : N[1]]
