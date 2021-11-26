@@ -215,7 +215,7 @@ def ongrid_wave_propagation(
     if u0 is not None:
         u_f.params = u0
     if p0 is None:
-        p0 = jnp.zeors_like(medium.sound_speed)
+        p0 = jnp.zeros_like(medium.sound_speed)
 
     # Numerical functions
     # Note that we keep the shared dictionaries separate, to reduce
