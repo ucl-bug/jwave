@@ -17,6 +17,7 @@ nav:
   - Home: index.md
   - Tutorials:
     - Homogeneous medium IVP: notebooks/homog_propagation_medium.ipynb
+    - Full wave inversion: notebooks/FWI.ipynb
   #- API:
   #  - acoustics: api_acoustics.md
 plugins:
