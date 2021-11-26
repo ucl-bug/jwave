@@ -18,14 +18,14 @@ This example simulates an acoustic initial value problem, which is often used as
 
 ```python
 from jwave.acoustics import ongrid_wave_propagation
-from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
+from jwave.geometry import Domain, Medium, TimeAxis, _points_on_circle
 from jwave.phantoms import three_circles
 from jax import numpy as jnp
 from jax import jit, grad
 
 # Simulation parameters
 domain = Domain(N=(128, 128), dx=(0.1e-3, 0.1e-3))
-medium = Medium(domain=domain, sound_speed=jnp.ones(N)*1500)
+medium = Medium(domain=domain, sound_speed=jnp.ones(domain.N)*1500)
 time_axis = TimeAxis.from_medium(medium, cfl=0.3, t_end=.8e-05)
 x, y = _points_on_circle(32,40,(64,64))  # Place sensors on a circle
 sensors = Sensors(positions=(jnp.array(x), jnp.array(y)))
