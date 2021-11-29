@@ -1,5 +1,6 @@
 from jwave import geometry
 from jwave.signal_processing import smooth
+from jwave.utils import is_numeric
 from jaxdf import geometry as geodf
 from jaxdf import ode
 import jaxdf.operators as jops
@@ -348,7 +349,7 @@ def helmholtz_on_grid(
     source=None,
     discretization=FourierSeries,
 ):
-    fourier_discr = discretization(medium.domain)
+    discretization = discretization(medium.domain)
 
     # Initializing PML
     pml_grid = complex_pml_on_grid(medium, omega)
@@ -386,12 +387,12 @@ def helmholtz_on_grid(
         )
         k_fun = lambda u, omega, c, alpha: ((omega / c) ** 2) * u
     else:
-        if (type(medium.attenuation) is float) or (type(medium.attenuation) is int):
+        if is_numeric(medium.attenuation):
             alpha_params, alpha = UniformField(medium.domain, dims=1).from_scalar(
                 medium.attenuation, name="alpha"
             )
         else:
-            alpha_params, alpha = fourier_discr.from_array(
+            alpha_params, alpha = discretization.from_array(
                 medium.attenuation, name="alpha", expand_params=True
             )
 
@@ -410,28 +411,28 @@ def helmholtz_on_grid(
         return L + k
 
     # Discretizing operator
-    u_fourier_params, u = fourier_discr.empty_field(name="u")
+    u_fourier_params, u = discretization.empty_field(name="u")
 
     if source is None:
-        src_fourier_params, _ = fourier_discr.empty_field(name="src")
+        src_fourier_params, _ = discretization.empty_field(name="src")
     else:
-        src_fourier_params, _ = fourier_discr.from_array(
+        src_fourier_params, _ = discretization.from_array(
             source, name="src", expand_params=True
         )
 
-    if (type(rho0_val) is float) or (type(rho0_val) is int):
+    if is_numeric(rho0_val):
         rho0_params, rho0 = UniformField(medium.domain, dims=1).from_scalar(
             rho0_val, name="rho0"
         )
     else:
-        _, rho0 = fourier_discr.empty_field(name="rho0")
-        rho0_params, rho0 = fourier_discr.from_array(
+        _, rho0 = discretization.empty_field(name="rho0")
+        rho0_params, rho0 = discretization.from_array(
             medium.density, name="rho0", expand_params=True  # +0j,
         )
 
-    c_fourier_params, c = fourier_discr.empty_field(name="c")
+    c_fourier_params, c = discretization.empty_field(name="c")
     c_fourier_params = jnp.expand_dims(medium.sound_speed, -1)
-    pml = Field(fourier_discr, params=pml_grid, name="pml")
+    pml = Field(discretization, params=pml_grid, name="pml")
 
     Hu = helmholtz(u=u, c=c, rho0=rho0, alpha=alpha, pml=pml)
     global_params = Hu.get_global_params()

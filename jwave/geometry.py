@@ -41,10 +41,11 @@ class Medium:
         else:
             self.density = density
 
-        if attenuation is None:
-            self.attenuation = 0
-        else:
-            self.attenuation = attenuation
+        #if attenuation is None:
+        #    self.attenuation = 0
+        #else:
+        #    self.attenuation = attenuation
+        self.attenuation = attenuation
 
         self.pml_size = pml_size
 
