@@ -1,7 +1,35 @@
 from jax import numpy as jnp
 from jax import eval_shape, vmap
 from typing import Callable
+import numpy as np
 
+def analytic_signal(x, axis=-1):
+    """
+    Computes the analytic signal from a real signal `x`, using the
+    FFT.
+
+    Args:
+        x (jnp.ndarray): [description]
+        axis (int, optional): [description]. Defaults to -1.
+
+    Returns:
+        jnp.ndarray: [description]
+    """
+    spectrum = jnp.fft.fft(x, axis=axis)
+
+    # Set negative frequencies to zero along the axis, using slices
+    positive_indices = slice(0, spectrum.shape[axis] // 2)
+    slices = [slice(None)] * spectrum.ndim
+    slices[axis] = positive_indices
+    slices = tuple(slices)
+    spectrum = spectrum.at[slices].set(0.)
+
+    # Get complex signal
+    x = jnp.fft.ifft(spectrum, axis=axis)
+    return x
+
+    # Take the inverse fft
+    return jnp.fft.ifft(spectrum, axis=axis)
 
 def fourier_downsample(x, subsample=2, discard_last=True):
     """
@@ -125,6 +153,7 @@ def gaussian_window(
 
 
 def smoothing_filter(sample_input) -> Callable:
+    r"""Returns a smoothing filter based on the blackman window"""
     # Constructs the filter
     dimensions = sample_input.shape
     axis = [blackman(x) for x in dimensions]
@@ -189,7 +218,21 @@ def _dist_from_ends(N):
     return jnp.concatenate([jnp.arange(N // 2), jnp.flip(jnp.arange(0, N - N // 2))])
 
 
-def tone_burst(sample_freq, signal_freq, num_cycles):
+def tone_burst(
+    sample_freq: float, 
+    signal_freq: float, 
+    num_cycles: float
+) -> jnp.ndarray:
+    r"""Returns a tone burst
+
+    Args:
+        sample_freq (float): Sampling frequency
+        signal_freq (float): Signal frequency
+        num_cycles (float): Number of cycles
+    
+    Returns:
+        jnp.ndarray: The tone burst signal
+    """
     def gaussian(x, magnitude, mean, variance):
         return magnitude * jnp.exp(-((x - mean) ** 2) / (2 * variance))
 

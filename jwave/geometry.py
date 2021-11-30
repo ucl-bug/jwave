@@ -15,6 +15,7 @@ class Medium:
         density (jnp.ndarray): density map, can be a scalar
         attenuation (jnp.ndarray): attenuation map, can be a scalar
         pml_size (int): size of the PML layer in grid-points
+        
     !!! example
         ```python
         N = (128,356)

@@ -7,3 +7,4 @@ mkdocs-material
 mkdocs-jupyter
 mkdocstrings
 mkdocs-mermaid2-plugin
+markdown-katex
