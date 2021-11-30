@@ -1,5 +1,6 @@
 from jwave import geometry
 from jwave.signal_processing import smooth
+from jwave.utils import is_numeric
 from jaxdf import geometry as geodf
 from jaxdf import ode
 import jaxdf.operators as jops
@@ -11,12 +12,16 @@ from jaxdf.discretization import (
     UniformField,
 )
 from jaxdf.utils import join_dicts
-from typing import Callable, Union, Tuple
+from typing import Callable, Union, Tuple, Any
 
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 from jax.scipy.sparse.linalg import gmres, bicgstab
+import jax
 from dataclasses import dataclass
+
+# Custom typedef
+PyTree = Any
 
 
 def _base_pml(
@@ -63,7 +68,23 @@ def td_pml_on_grid(
     )
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
-def pressure_from_density(sensors_data, sound_speed, sensors):
+def pressure_from_density(
+    sensors_data: jnp.ndarray, 
+    sound_speed: jnp.ndarray, 
+    sensors: geometry.Sensors
+) -> jnp.ndarray:
+    """
+    Calculate pressure from acoustic density given by the raw output of the
+    timestepping scheme.
+    
+    Args:
+        sensors_data: Raw output of the timestepping scheme.
+        sound_speed: Sound speed of the medium.
+        sensors: Sensors object.
+
+    Returns:
+        jnp.ndarray: Pressure time traces at sensor locations
+    """
     return jnp.sum(sensors_data[1],-1)*(sound_speed[sensors.positions]**2)
 
 def ongrid_wave_propagation(
@@ -345,10 +366,45 @@ def ongrid_wave_propagation(
 def helmholtz_on_grid(
     medium: geometry.Medium,
     omega: float,
-    source=None,
+    source: Union[None, jnp.ndarray]  =None,
     discretization=FourierSeries,
-):
-    fourier_discr = discretization(medium.domain)
+) -> Union[PyTree, Callable]:
+    """
+    Constructs the Helmholtz operator on a homogeneous collocation
+    grid. The operator is returned as couple of parameters and 
+    callable
+    
+    Args:
+        medium (geometry.Medium): Medium object
+        omega (float): Angular frequency
+        source (jnp.ndarray): Source map (optional)
+        discretization (Discretization): Discretization object
+
+    Returns:
+        params (dict): Parameters of the Helmholtz operator
+        helmholtz (Callable): Helmholtz operator
+    
+    The discretization object must be compatible with the following operations,
+    on top of the standard arithmetic ones:
+        - `jops.gradient()`
+        - `jops.diag_jacobian()`
+        - `jops.sum_over_dims()`
+
+    !!! example
+        ```python
+        from jwave import geometry
+        from jwave.acoustics import helmholtz_on_grid
+
+        domain = Domain((128, 256), (1., 1.))
+        medium = geometry.Medium(
+            domain, 
+            speed_of_sound=jnp.ones(128,128)
+        )
+
+        params, solver = helmholtz_on_grid(medium, omega=1.)
+        ```
+    """
+    discretization = discretization(medium.domain)
 
     # Initializing PML
     pml_grid = complex_pml_on_grid(medium, omega)
@@ -386,12 +442,12 @@ def helmholtz_on_grid(
         )
         k_fun = lambda u, omega, c, alpha: ((omega / c) ** 2) * u
     else:
-        if (type(medium.attenuation) is float) or (type(medium.attenuation) is int):
+        if is_numeric(medium.attenuation):
             alpha_params, alpha = UniformField(medium.domain, dims=1).from_scalar(
                 medium.attenuation, name="alpha"
             )
         else:
-            alpha_params, alpha = fourier_discr.from_array(
+            alpha_params, alpha = discretization.from_array(
                 medium.attenuation, name="alpha", expand_params=True
             )
 
@@ -410,28 +466,28 @@ def helmholtz_on_grid(
         return L + k
 
     # Discretizing operator
-    u_fourier_params, u = fourier_discr.empty_field(name="u")
+    u_fourier_params, u = discretization.empty_field(name="u")
 
     if source is None:
-        src_fourier_params, _ = fourier_discr.empty_field(name="src")
+        src_fourier_params, _ = discretization.empty_field(name="src")
     else:
-        src_fourier_params, _ = fourier_discr.from_array(
+        src_fourier_params, _ = discretization.from_array(
             source, name="src", expand_params=True
         )
 
-    if (type(rho0_val) is float) or (type(rho0_val) is int):
+    if is_numeric(rho0_val):
         rho0_params, rho0 = UniformField(medium.domain, dims=1).from_scalar(
             rho0_val, name="rho0"
         )
     else:
-        _, rho0 = fourier_discr.empty_field(name="rho0")
-        rho0_params, rho0 = fourier_discr.from_array(
+        _, rho0 = discretization.empty_field(name="rho0")
+        rho0_params, rho0 = discretization.from_array(
             medium.density, name="rho0", expand_params=True  # +0j,
         )
 
-    c_fourier_params, c = fourier_discr.empty_field(name="c")
+    c_fourier_params, c = discretization.empty_field(name="c")
     c_fourier_params = jnp.expand_dims(medium.sound_speed, -1)
-    pml = Field(fourier_discr, params=pml_grid, name="pml")
+    pml = Field(discretization, params=pml_grid, name="pml")
 
     Hu = helmholtz(u=u, c=c, rho0=rho0, alpha=alpha, pml=pml)
     global_params = Hu.get_global_params()
@@ -460,7 +516,33 @@ def ongrid_helmholtz_solver(
     tol=1e-5,
     solve_method="batched",
     maxiter=None,
+    checkpoint=False
 ) -> Tuple[dict, Callable]:
+    r"""
+    Generates a solver for the Helmholtz equation on a grid.
+
+    The equation solved is
+
+    ```math
+    -\frac{\omega^2}{c_0^2}P = \nabla^2 P - \frac{1}{\rho_0} \nabla \rho_0 \cdot \nabla P + \frac{2i\omega^3\alpha_0}{c_0} P - i \omega S_M.
+    ```
+
+    where `P` is the pressure, `\rho_0` is the background density, 
+    `c_0` is the background sound speed, `\alpha_0` is the attenuation, 
+    `\omega` is the angular frequency, and `S_M` is the mass source term.
+
+    Args:
+        medium (geometry.Medium): The acoustic medium.
+        omega (float): The angular frequency.
+        source (jnp.ndarray, optional): The source term.
+        discretization (jaxdf.discretization, optional): The discretization to use. Defaults to FourierSeries.
+        method (str, optional): The linear solver to use. Defaults to "gmres".
+        restart (int, optional): The number of iterations to restart. Defaults to 10.
+        tol (float, optional): The tolerance for the linear solver. Defaults to 1e-5.
+        solve_method (str, optional): *Only for GMRES*. Defaults to "batched".
+        maxiter (int, optional): Defaults to None (i.e. no maximum number of iterations).
+        checkpoint (bool, optional): Wehther to checkpoint the forward solve for saving memory. Defaults to False.
+    """
 
     params, f = helmholtz_on_grid(
         medium,
@@ -482,6 +564,9 @@ def ongrid_helmholtz_solver(
                     "pml": params["pml"],
                 },
             )
+
+        if checkpoint:
+            helm_func = jax.checkpoint(helm_func)
 
         if method == "gmres":
             return gmres(
