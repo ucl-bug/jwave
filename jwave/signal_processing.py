@@ -3,6 +3,7 @@ from jax import eval_shape, vmap
 from typing import Callable
 import numpy as np
 
+
 def analytic_signal(x, axis=-1):
     """
     Computes the analytic signal from a real signal `x`, using the
@@ -22,7 +23,7 @@ def analytic_signal(x, axis=-1):
     slices = [slice(None)] * spectrum.ndim
     slices[axis] = positive_indices
     slices = tuple(slices)
-    spectrum = spectrum.at[slices].set(0.)
+    spectrum = spectrum.at[slices].set(0.0)
 
     # Get complex signal
     x = jnp.fft.ifft(spectrum, axis=axis)
@@ -30,6 +31,7 @@ def analytic_signal(x, axis=-1):
 
     # Take the inverse fft
     return jnp.fft.ifft(spectrum, axis=axis)
+
 
 def fourier_downsample(x, subsample=2, discard_last=True):
     """
@@ -204,13 +206,14 @@ def smooth(x: jnp.ndarray) -> jnp.ndarray:
     else:
         # TODO: Find a more elegant way of constructing the filter
         if len(axis) == 1:
-            filter_kernel = axis[0]
+            filter_kernel = jnp.fft.fftshift(axis[0])
         elif len(axis) == 2:
             filter_kernel = jnp.fft.fftshift(jnp.outer(*axis))
         elif len(axis) == 3:
             filter_kernel_2d = jnp.outer(*axis[1:])
             third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1), 2)
-            filter_kernel = third_component * filter_kernel_2d
+            filter_kernel = jnp.fft.fftshift(third_component * filter_kernel_2d)
+        print(filter_kernel.shape)
     return jnp.fft.ifftn(filter_kernel * jnp.fft.fftn(x)).real
 
 
@@ -219,9 +222,7 @@ def _dist_from_ends(N):
 
 
 def tone_burst(
-    sample_freq: float, 
-    signal_freq: float, 
-    num_cycles: float
+    sample_freq: float, signal_freq: float, num_cycles: float
 ) -> jnp.ndarray:
     r"""Returns a tone burst
 
@@ -229,10 +230,11 @@ def tone_burst(
         sample_freq (float): Sampling frequency
         signal_freq (float): Signal frequency
         num_cycles (float): Number of cycles
-    
+
     Returns:
         jnp.ndarray: The tone burst signal
     """
+
     def gaussian(x, magnitude, mean, variance):
         return magnitude * jnp.exp(-((x - mean) ** 2) / (2 * variance))
 

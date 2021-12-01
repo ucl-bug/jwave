@@ -1,0 +1,15 @@
+.doc-attribute{
+    border-top: 1px solid #ccc;
+}
+
+.doc-method {
+    border-top: 1px solid #ccc;
+}
+
+.doc-function {
+    border-top: 1px solid #ccc;
+}
+
+.doc-class {
+    border-top: 5px solid var(--md-code-bg-color);
+}

@@ -28,9 +28,10 @@ def _base_pml(
     transform_fun: Callable, medium: geometry.Medium, exponent=2.0, alpha_max=2.0
 ) -> jnp.ndarray:
     def pml_edge(x):
-        return (x/2 - medium.pml_size)
+        return x / 2 - medium.pml_size
+
     delta_pml = list(map(pml_edge, medium.domain.N))
-    domain = geometry.Domain(N=medium.domain.N, dx=tuple([1.]*len(medium.domain.N)))
+    domain = geometry.Domain(N=medium.domain.N, dx=tuple([1.0] * len(medium.domain.N)))
     delta_pml, delta_pml_f = UniformField(domain, len(delta_pml)).from_scalar(
         jnp.asarray(delta_pml), "delta_pml"
     )
@@ -68,15 +69,14 @@ def td_pml_on_grid(
     )
     return _base_pml(transform_fun, medium, exponent, alpha_max)
 
+
 def pressure_from_density(
-    sensors_data: jnp.ndarray, 
-    sound_speed: jnp.ndarray, 
-    sensors: geometry.Sensors
+    sensors_data: jnp.ndarray, sound_speed: jnp.ndarray, sensors: geometry.Sensors
 ) -> jnp.ndarray:
     """
     Calculate pressure from acoustic density given by the raw output of the
     timestepping scheme.
-    
+
     Args:
         sensors_data: Raw output of the timestepping scheme.
         sound_speed: Sound speed of the medium.
@@ -85,7 +85,11 @@ def pressure_from_density(
     Returns:
         jnp.ndarray: Pressure time traces at sensor locations
     """
-    return jnp.sum(sensors_data[1],-1)*(sound_speed[sensors.positions]**2)
+    if sensors is None:
+        return jnp.sum(sensors_data[1], -1) * (sound_speed ** 2)
+    else:
+        return jnp.sum(sensors_data[1], -1) * (sound_speed[sensors.positions] ** 2)
+
 
 def ongrid_wave_propagation(
     medium: geometry.Medium,
@@ -175,7 +179,6 @@ def ongrid_wave_propagation(
     """
 
     # TODO: This could be more flexible and accept custom discretizations
-
     if discretization == "StaggeredFourier":
         discretization = StaggeredRealFourier
     elif discretization == "Fourier":
@@ -231,7 +234,7 @@ def ongrid_wave_propagation(
     _, rho_f = discr_ND.empty_field(name="rho0")
     _, SM_f = discr_ND.empty_field(name="Source_m")
     _, u_f = discr_ND.empty_field(name="u")
-    
+
     # Update initial fields
     if u0 is not None:
         u_f.params = u0
@@ -336,9 +339,9 @@ def ongrid_wave_propagation(
         # Make initial density from pressure field
         p0 = params["initial_fields"]["p"]
         p0 = smooth(p0)
-        rho0 = p0 / (params["acoustic_params"]["speed_of_sound"][...,0] ** 2.0)
+        rho0 = p0 / (params["acoustic_params"]["speed_of_sound"][..., 0] ** 2.0)
         rho0 = jnp.stack([rho0] * medium.domain.ndim, -1) / medium.domain.ndim
-        
+
         # Integrate
         sensors_data = ode.generalized_semi_implicit_euler(
             params,
@@ -353,10 +356,10 @@ def ongrid_wave_propagation(
             backprop,
             checkpoint,
         )
-        
+
         # Get pressure from density
         p = pressure_from_density(
-            sensors_data, params["acoustic_params"]["speed_of_sound"][...,0], sensors 
+            sensors_data, params["acoustic_params"]["speed_of_sound"][..., 0], sensors
         )
         return p
 
@@ -366,14 +369,14 @@ def ongrid_wave_propagation(
 def helmholtz_on_grid(
     medium: geometry.Medium,
     omega: float,
-    source: Union[None, jnp.ndarray]  =None,
+    source: Union[None, jnp.ndarray] = None,
     discretization=FourierSeries,
 ) -> Union[PyTree, Callable]:
     """
     Constructs the Helmholtz operator on a homogeneous collocation
-    grid. The operator is returned as couple of parameters and 
+    grid. The operator is returned as couple of parameters and
     callable
-    
+
     Args:
         medium (geometry.Medium): Medium object
         omega (float): Angular frequency
@@ -383,7 +386,7 @@ def helmholtz_on_grid(
     Returns:
         params (dict): Parameters of the Helmholtz operator
         helmholtz (Callable): Helmholtz operator
-    
+
     The discretization object must be compatible with the following operations,
     on top of the standard arithmetic ones:
         - `jops.gradient()`
@@ -397,7 +400,7 @@ def helmholtz_on_grid(
 
         domain = Domain((128, 256), (1., 1.))
         medium = geometry.Medium(
-            domain, 
+            domain,
             speed_of_sound=jnp.ones(128,128)
         )
 
@@ -516,7 +519,7 @@ def ongrid_helmholtz_solver(
     tol=1e-5,
     solve_method="batched",
     maxiter=None,
-    checkpoint=False
+    checkpoint=False,
 ) -> Tuple[dict, Callable]:
     r"""
     Generates a solver for the Helmholtz equation on a grid.
@@ -527,8 +530,8 @@ def ongrid_helmholtz_solver(
     -\frac{\omega^2}{c_0^2}P = \nabla^2 P - \frac{1}{\rho_0} \nabla \rho_0 \cdot \nabla P + \frac{2i\omega^3\alpha_0}{c_0} P - i \omega S_M.
     ```
 
-    where `P` is the pressure, `\rho_0` is the background density, 
-    `c_0` is the background sound speed, `\alpha_0` is the attenuation, 
+    where `P` is the pressure, `\rho_0` is the background density,
+    `c_0` is the background sound speed, `\alpha_0` is the attenuation,
     `\omega` is the angular frequency, and `S_M` is the mass source term.
 
     Args:

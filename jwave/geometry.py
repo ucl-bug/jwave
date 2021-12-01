@@ -1,6 +1,7 @@
 from jaxdf.geometry import Domain
 from jax import numpy as jnp
 import numpy as np
+import math
 from functools import reduce
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple
@@ -15,7 +16,7 @@ class Medium:
         density (jnp.ndarray): density map, can be a scalar
         attenuation (jnp.ndarray): attenuation map, can be a scalar
         pml_size (int): size of the PML layer in grid-points
-        
+
     !!! example
         ```python
         N = (128,356)
@@ -33,7 +34,9 @@ class Medium:
     attenuation: jnp.ndarray
     pml_size: float = 20
 
-    def __init__(self, domain, sound_speed, density=None, attenuation=None, pml_size=20):
+    def __init__(
+        self, domain, sound_speed, density=None, attenuation=None, pml_size=20
+    ):
         self.domain = domain
         self.sound_speed = sound_speed
 
@@ -42,9 +45,9 @@ class Medium:
         else:
             self.density = density
 
-        #if attenuation is None:
+        # if attenuation is None:
         #    self.attenuation = 0
-        #else:
+        # else:
         #    self.attenuation = attenuation
         self.attenuation = attenuation
 
@@ -61,11 +64,44 @@ def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0):
     return x, y
 
 
+def _unit_fibonacci_sphere(samples=128):
+    # From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+    points = []
+    phi = math.pi * (3.0 - math.sqrt(5.0))  # golden angle in radians
+    for i in range(samples):
+        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
+        radius = math.sqrt(1 - y * y)  # radius at y
+        theta = phi * i  # golden angle increment
+        x = math.cos(theta) * radius
+        z = math.sin(theta) * radius
+        points.append((x, y, z))
+    return points
+
+
+def _fibonacci_sphere(n, radius, centre, cast_int=True):
+    points = _unit_fibonacci_sphere(n)
+    points = np.array(points)
+    points = points * radius + centre
+    if cast_int:
+        points = points.astype(int)
+    return points[:, 0], points[:, 1], points[:, 2]
+
+
 def _circ_mask(N, radius, centre):
     x, y = np.mgrid[0 : N[0], 0 : N[1]]
     dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
+
+
+def _sphere_mask(N, radius, centre):
+    x, y, z = np.mgrid[0 : N[0], 0 : N[1], 0 : N[2]]
+    dist_from_centre = np.sqrt(
+        (x - centre[0]) ** 2 + (y - centre[1]) ** 2 + (z - centre[2]) ** 2
+    )
+    mask = (dist_from_centre < radius).astype(int)
+    return mask
+
 
 @dataclass
 class Sources:
