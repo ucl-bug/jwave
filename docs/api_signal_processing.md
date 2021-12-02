@@ -1,4 +1,6 @@
-::: jwave.signal_processing
+# `jwave.signal_processing`
+
+### ::: jwave.signal_processing
     handler: python
     members:
         - apply_ramp

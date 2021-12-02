@@ -1,4 +1,6 @@
-::: jwave.geometry
+# `jwave.geometry`
+
+### ::: jwave.geometry
     handler: python
     members:
         - Medium

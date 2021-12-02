@@ -1,4 +1,6 @@
-::: jwave.utils
+# `jwave.utils`
+
+### ::: jwave.utils
     handler: python
     members:
         - is_numeric
