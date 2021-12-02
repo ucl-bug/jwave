@@ -121,6 +121,19 @@ class Sources:
     positions: Tuple[jnp.ndarray]
     signals: Tuple[jnp.ndarray]
 
+    def to_binary_mask(self, N):
+        r"""
+        Convert sources to binary mask
+        Args:
+            N (Tuple[int]): grid size
+
+        Returns:
+            jnp.ndarray: binary mask
+        """
+        mask = jnp.zeros(N)
+        for i in range(len(self.positions[0])):
+            mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
+        return mask>0
 
 @dataclass
 class ComplexSources:
@@ -162,6 +175,20 @@ class Sensors:
     """
 
     positions: Tuple[jnp.ndarray]
+
+    def to_binary_mask(self, N):
+        r"""
+        Convert sensors to binary mask
+        Args:
+            N (Tuple[int]): grid size
+
+        Returns:
+            jnp.ndarray: binary mask
+        """
+        mask = jnp.zeros(N)
+        for i in range(len(self.positions[0])):
+            mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
+        return mask>0
 
 
 @dataclass

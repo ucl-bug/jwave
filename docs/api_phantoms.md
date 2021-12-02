@@ -1,4 +1,5 @@
-::: jwave.phantoms
+# `jwave.phantoms`
+### ::: jwave.phantoms
     handler: python
     members:
         - three_circles

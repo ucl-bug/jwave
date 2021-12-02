@@ -15,18 +15,25 @@ theme:
 
 nav:
   - Home: index.md
+  - API:
+    - acoustics: api_acoustics.md
+    - extras: api_extras.md
+    - geometry: api_geometry.md
+    - phantoms: api_phantoms.md
+    - signal_processing: api_signal_processing.md
+    - utils: api_utils.md
   - Tutorials:
     - Homogeneous medium IVP: notebooks/homog_propagation_medium.ipynb
     - 3D Simulations: notebooks/homog_propagation_medium_3d.ipynb
     - Full wave inversion: notebooks/FWI.ipynb
     - Helmholtz equation: notebooks/helmholtz_problem.ipynb
     - Focusing single frequency waves: notebooks/helmholtz_solver_differentiable.ipynb
-  - API:
-    - acoustics: api_acoustics.md
-    - geometry: api_geometry.md
-    - phantoms: api_phantoms.md
-    - signal_processing: api_signal_processing.md
-    - utils: api_utils.md
+    - Linear uncertainty propagation: notebooks/uncertainty_propagation.ipynb
+  - Benchmarks: 
+    - Accuracy vs k-Wave: benchmarks/homogeneous_vs_kwave.ipynb
+    - Scaling vs timesteps: benchmarks/compute_time_vs_timesteps.ipynb
+    - Scaling vs domain size (2D): benchmarks/compute_time_vs_size_2d.ipynb
+    - Scaling vs domain size (3D): benchmarks/compute_time_vs_size_3d.ipynb
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:

@@ -178,7 +178,6 @@ def smoothing_filter(sample_input) -> Callable:
         filter_kernel = filter_kernel[..., : Fx.shape[-1]]
 
         def smooth_fun(x):
-            print(x.shape, jnp.fft.rfftn(x).shape, filter_kernel.shape)
             return jnp.fft.irfftn(filter_kernel * jnp.fft.rfftn(x)).real
 
     else:
@@ -213,7 +212,6 @@ def smooth(x: jnp.ndarray) -> jnp.ndarray:
             filter_kernel_2d = jnp.outer(*axis[1:])
             third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1), 2)
             filter_kernel = jnp.fft.fftshift(third_component * filter_kernel_2d)
-        print(filter_kernel.shape)
     return jnp.fft.ifftn(filter_kernel * jnp.fft.fftn(x)).real
 
 
