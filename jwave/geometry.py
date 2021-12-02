@@ -1,11 +1,14 @@
 from jaxdf.geometry import Domain
 from jax import numpy as jnp
 import numpy as np
+import math
 from functools import reduce
+from dataclasses import dataclass
 from typing import NamedTuple, Tuple
 
 
-class Medium(NamedTuple):
+@dataclass(init=False)
+class Medium:
     r"""
     Medium structure
     Attributes:
@@ -13,12 +16,13 @@ class Medium(NamedTuple):
         density (jnp.ndarray): density map, can be a scalar
         attenuation (jnp.ndarray): attenuation map, can be a scalar
         pml_size (int): size of the PML layer in grid-points
+
     !!! example
         ```python
         N = (128,356)
         medium = Medium(
             sound_speed = jnp.ones(N),
-            density = jnp.ones(N),
+            density = jnp.ones(N),.
             attenuation = 0.0,
             pml_size = 15
         )
@@ -28,7 +32,27 @@ class Medium(NamedTuple):
     sound_speed: jnp.ndarray
     density: jnp.ndarray
     attenuation: jnp.ndarray
-    pml_size: float
+    pml_size: float = 20
+
+    def __init__(
+        self, domain, sound_speed, density=None, attenuation=None, pml_size=20
+    ):
+        self.domain = domain
+        self.sound_speed = sound_speed
+
+        if density is None:
+            self.density = jnp.ones_like(sound_speed)
+        else:
+            self.density = density
+
+        # if attenuation is None:
+        #    self.attenuation = 0
+        # else:
+        #    self.attenuation = attenuation
+        self.attenuation = attenuation
+
+        self.pml_size = pml_size
+
 
 def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0):
     angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
@@ -40,13 +64,47 @@ def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0):
     return x, y
 
 
+def _unit_fibonacci_sphere(samples=128):
+    # From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+    points = []
+    phi = math.pi * (3.0 - math.sqrt(5.0))  # golden angle in radians
+    for i in range(samples):
+        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
+        radius = math.sqrt(1 - y * y)  # radius at y
+        theta = phi * i  # golden angle increment
+        x = math.cos(theta) * radius
+        z = math.sin(theta) * radius
+        points.append((x, y, z))
+    return points
+
+
+def _fibonacci_sphere(n, radius, centre, cast_int=True):
+    points = _unit_fibonacci_sphere(n)
+    points = np.array(points)
+    points = points * radius + centre
+    if cast_int:
+        points = points.astype(int)
+    return points[:, 0], points[:, 1], points[:, 2]
+
+
 def _circ_mask(N, radius, centre):
     x, y = np.mgrid[0 : N[0], 0 : N[1]]
     dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
-class Sources(NamedTuple):
+
+def _sphere_mask(N, radius, centre):
+    x, y, z = np.mgrid[0 : N[0], 0 : N[1], 0 : N[2]]
+    dist_from_centre = np.sqrt(
+        (x - centre[0]) ** 2 + (y - centre[1]) ** 2 + (z - centre[2]) ** 2
+    )
+    mask = (dist_from_centre < radius).astype(int)
+    return mask
+
+
+@dataclass
+class Sources:
     r"""Sources structure
     Attributes:
         positions (Tuple[List[int]): source positions
@@ -63,8 +121,22 @@ class Sources(NamedTuple):
     positions: Tuple[jnp.ndarray]
     signals: Tuple[jnp.ndarray]
 
+    def to_binary_mask(self, N):
+        r"""
+        Convert sources to binary mask
+        Args:
+            N (Tuple[int]): grid size
 
-class ComplexSources(NamedTuple):
+        Returns:
+            jnp.ndarray: binary mask
+        """
+        mask = jnp.zeros(N)
+        for i in range(len(self.positions[0])):
+            mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
+        return mask>0
+
+@dataclass
+class ComplexSources:
     r"""ComplexSources structure
     Attributes:
         positions (Tuple[List[int]): source positions
@@ -89,7 +161,8 @@ class ComplexSources(NamedTuple):
         return field
 
 
-class Sensors(NamedTuple):
+@dataclass
+class Sensors:
     """Sensors structure
     Attributes:
         positions (Tuple[List[int]]): sensors positions
@@ -103,8 +176,23 @@ class Sensors(NamedTuple):
 
     positions: Tuple[jnp.ndarray]
 
+    def to_binary_mask(self, N):
+        r"""
+        Convert sensors to binary mask
+        Args:
+            N (Tuple[int]): grid size
 
-class TimeAxis(NamedTuple):
+        Returns:
+            jnp.ndarray: binary mask
+        """
+        mask = jnp.zeros(N)
+        for i in range(len(self.positions[0])):
+            mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
+        return mask>0
+
+
+@dataclass
+class TimeAxis:
     r"""Temporal vector to be used for acoustic
     simulation based on the pseudospectral method of
     [k-Wave](http://www.k-wave.org/)
@@ -136,3 +224,10 @@ class TimeAxis(NamedTuple):
                 sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
             ) / jnp.min(medium.sound_speed)
         return TimeAxis(dt=float(dt), t_end=float(t_end))
+
+
+def _circ_mask(N, radius, centre):
+    x, y = np.mgrid[0 : N[0], 0 : N[1]]
+    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
+    mask = (dist_from_centre < radius).astype(int)
+    return mask

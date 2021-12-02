@@ -4,6 +4,12 @@
 *.egg-info
 *__pycache__
 
+# Data
+*.mat
+
+#k-wave outputs
+docs/benchmarks/kwave/*.png
+
 # Misc
 *.DS_Store
 *.env.local

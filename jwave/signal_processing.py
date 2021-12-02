@@ -1,6 +1,37 @@
 from jax import numpy as jnp
 from jax import eval_shape, vmap
 from typing import Callable
+import numpy as np
+
+
+def analytic_signal(x, axis=-1):
+    """
+    Computes the analytic signal from a real signal `x`, using the
+    FFT.
+
+    Args:
+        x (jnp.ndarray): [description]
+        axis (int, optional): [description]. Defaults to -1.
+
+    Returns:
+        jnp.ndarray: [description]
+    """
+    spectrum = jnp.fft.fft(x, axis=axis)
+
+    # Set negative frequencies to zero along the axis, using slices
+    positive_indices = slice(0, spectrum.shape[axis] // 2)
+    slices = [slice(None)] * spectrum.ndim
+    slices[axis] = positive_indices
+    slices = tuple(slices)
+    spectrum = spectrum.at[slices].set(0.0)
+
+    # Get complex signal
+    x = jnp.fft.ifft(spectrum, axis=axis)
+    return x
+
+    # Take the inverse fft
+    return jnp.fft.ifft(spectrum, axis=axis)
+
 
 def fourier_downsample(x, subsample=2, discard_last=True):
     """
@@ -23,14 +54,15 @@ def fourier_downsample(x, subsample=2, discard_last=True):
         """removes positive and negative frequency at appropriate
         cut values"""
         Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
-        cuts = [(subsample-1) * x // 2 // subsample for x in Fx.shape]
+        cuts = [int((subsample - 1) * x / 2 / subsample) for x in Fx.shape]
         slices = tuple([slice(cut, -cut) for cut in cuts])
-        return jnp.fft.ifftn(jnp.fft.ifftshift(Fx[slices]))/(subsample**x.ndim)
+        return jnp.fft.ifftn(jnp.fft.ifftshift(Fx[slices])) / (subsample ** x.ndim)
 
     if discard_last:
         _single_downsample = vmap(_single_downsample, in_axes=(-1,), out_axes=-1)
-    
+
     return _single_downsample(x)
+
 
 def fourier_upsample(x, upsample=2, discard_last=True):
     """
@@ -50,19 +82,18 @@ def fourier_upsample(x, upsample=2, discard_last=True):
     def _single_upsample(x):
         """adds zeros at appropriate cut values"""
         new_size = list(map(lambda x: x * upsample, x.shape))
-        print(new_size)
         Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
         new_Fx = jnp.zeros(new_size, dtype=Fx.dtype)
-        cuts = [(upsample-1) * x // 2 // upsample for x in new_size]
+        cuts = [int((upsample - 1) * x / 2 / upsample) for x in new_size]
         slices = tuple([slice(cut, -cut) for cut in cuts])
-        print(slices)
         new_Fx = new_Fx.at[slices].set(Fx)
-        return jnp.fft.ifftn(jnp.fft.ifftshift(new_Fx))*(upsample**x.ndim)
+        return jnp.fft.ifftn(jnp.fft.ifftshift(new_Fx)) * (upsample ** x.ndim)
 
     if discard_last:
         _single_upsample = vmap(_single_upsample, in_axes=(-1,), out_axes=-1)
 
     return _single_upsample(x)
+
 
 def apply_ramp(
     signal: jnp.ndarray, dt: float, center_freq: float, warmup_cycles: float = 3
@@ -124,6 +155,7 @@ def gaussian_window(
 
 
 def smoothing_filter(sample_input) -> Callable:
+    r"""Returns a smoothing filter based on the blackman window"""
     # Constructs the filter
     dimensions = sample_input.shape
     axis = [blackman(x) for x in dimensions]
@@ -146,7 +178,6 @@ def smoothing_filter(sample_input) -> Callable:
         filter_kernel = filter_kernel[..., : Fx.shape[-1]]
 
         def smooth_fun(x):
-            print(x.shape, jnp.fft.rfftn(x).shape, filter_kernel.shape)
             return jnp.fft.irfftn(filter_kernel * jnp.fft.rfftn(x)).real
 
     else:
@@ -174,13 +205,13 @@ def smooth(x: jnp.ndarray) -> jnp.ndarray:
     else:
         # TODO: Find a more elegant way of constructing the filter
         if len(axis) == 1:
-            filter_kernel = axis[0]
+            filter_kernel = jnp.fft.fftshift(axis[0])
         elif len(axis) == 2:
             filter_kernel = jnp.fft.fftshift(jnp.outer(*axis))
         elif len(axis) == 3:
             filter_kernel_2d = jnp.outer(*axis[1:])
             third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1), 2)
-            filter_kernel = third_component * filter_kernel_2d
+            filter_kernel = jnp.fft.fftshift(third_component * filter_kernel_2d)
     return jnp.fft.ifftn(filter_kernel * jnp.fft.fftn(x)).real
 
 
@@ -188,7 +219,20 @@ def _dist_from_ends(N):
     return jnp.concatenate([jnp.arange(N // 2), jnp.flip(jnp.arange(0, N - N // 2))])
 
 
-def tone_burst(sample_freq, signal_freq, num_cycles):
+def tone_burst(
+    sample_freq: float, signal_freq: float, num_cycles: float
+) -> jnp.ndarray:
+    r"""Returns a tone burst
+
+    Args:
+        sample_freq (float): Sampling frequency
+        signal_freq (float): Signal frequency
+        num_cycles (float): Number of cycles
+
+    Returns:
+        jnp.ndarray: The tone burst signal
+    """
+
     def gaussian(x, magnitude, mean, variance):
         return magnitude * jnp.exp(-((x - mean) ** 2) / (2 * variance))
 

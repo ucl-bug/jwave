@@ -1,6 +1,7 @@
-::: jwave.discretization
+# `jwave.phantoms`
+### ::: jwave.phantoms
     handler: python
     members:
-        - FiniteDifferences
+        - three_circles
     show_root_heading: true
     show_source: false
