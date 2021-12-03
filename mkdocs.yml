@@ -5,7 +5,7 @@ site_name: j-Wave
 site_author: Antonio Stanziola, Biomedical Ultrasound Group
 site_description: >-
   Fast and differentiable acoustic simulations in JAX
-site_url: https://bug.medphys.ucl.ac.uk
+site_url: https://ucl-bug.github.io/jwave/
 
 theme:
   name: "material"
@@ -70,3 +70,5 @@ extra_css:
 
 extra_javascript:
     - https://unpkg.com/mermaid/dist/mermaid.min.js
+
+use_directory_urls: false
