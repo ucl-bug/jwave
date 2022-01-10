@@ -1,5 +1,5 @@
-from matplotlib import pyplot as plt
 from jax import numpy as jnp
+from matplotlib import pyplot as plt
 
 
 def is_numeric(x):
@@ -36,7 +36,7 @@ def plot_complex_field(field: jnp.ndarray, figsize=(15, 8), max_intensity=None):
     return fig, axes
 
 
-def show_field(x, title="", vmax=None):
+def show_field(x, title="", vmax=None, aspect="auto"):
     plt.figure(figsize=(8, 6))
     maxval = vmax or jnp.amax(jnp.abs(x))
     plt.imshow(
@@ -44,8 +44,28 @@ def show_field(x, title="", vmax=None):
         cmap="RdBu_r",
         vmin=-maxval,
         vmax=maxval,
-        interpolation="nearest",
-        aspect="auto",
+        interpolation="spline36",
+        aspect=aspect,
+    )
+    plt.colorbar()
+    plt.title(title)
+    plt.axis("off")
+    return None
+
+
+def show_positive_field(x, title="", vmax=None, vmin=None, aspect="auto"):
+    plt.figure(figsize=(8, 6))
+    if vmax is None:
+        vmax = jnp.amax(x)
+    if vmin is None:
+        vmin = jnp.vmin(x)
+    plt.imshow(
+        x,
+        cmap="PuBuGn_r",
+        vmin=vmin,
+        vmax=vmax,
+        interpolation="spline36",
+        aspect=aspect,
     )
     plt.colorbar()
     plt.title(title)

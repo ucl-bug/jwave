@@ -1,12 +1,12 @@
+import jax
+from jax import numpy as jnp
+from jax.experimental import optimizers
+from jax.scipy.sparse.linalg import gmres
 from jaxdf import operators as jops
-from jaxdf.core import operator, Field
-from jaxdf.discretization import FourierSeries, Coordinate
+from jaxdf.core import Field, operator
+from jaxdf.discretization import Coordinate, FourierSeries
 from jaxdf.geometry import Domain
 from jaxdf.utils import join_dicts
-from jax import numpy as jnp
-from jax.scipy.sparse.linalg import gmres
-from jax.experimental import optimizers
-import jax
 
 # Settings
 domain = Domain((256, 256), (1., 1.))

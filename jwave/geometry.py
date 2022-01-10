@@ -1,10 +1,11 @@
-from jaxdf.geometry import Domain
-from jax import numpy as jnp
-import numpy as np
 import math
-from functools import reduce
 from dataclasses import dataclass
+from functools import reduce
 from typing import NamedTuple, Tuple
+
+import numpy as np
+from jax import numpy as jnp
+from jaxdf.geometry import Domain
 
 
 @dataclass(init=False)
@@ -120,6 +121,8 @@ class Sources:
     """
     positions: Tuple[jnp.ndarray]
     signals: Tuple[jnp.ndarray]
+    dt: float
+    domain: Domain
 
     def to_binary_mask(self, N):
         r"""
@@ -133,32 +136,91 @@ class Sources:
         mask = jnp.zeros(N)
         for i in range(len(self.positions[0])):
             mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
-        return mask>0
+        return mask > 0
+
+    def to_field(self, t):
+
+        src = jnp.zeros(self.domain.N)
+        if len(self.signals) == 0:
+            return src
+
+        idx = (t / self.dt).round().astype(jnp.int32)
+        signals = self.source_signals[:, idx] / len(self.domain.N)
+        src = src.at[self.positions].add(signals)
+        return jnp.expand_dims(src, -1)
+
+    @staticmethod
+    def no_sources(domain):
+        return Sources(positions=([], []), signals=([]), dt=1.0, domain=domain)
+
 
 @dataclass
-class ComplexSources:
+class TimeHarmonicSource:
     r"""ComplexSources structure
-    Attributes:
-        positions (Tuple[List[int]): source positions
-        amplitude (jnp.ndarray): source complex amplitudes
-    !!! example
-        ```python
-        x_pos = [10,20,30,40]
-        y_pos = [30,30,30,30]
-        amp = jnp.array([0, 1, 1j, -1])
-        sources = geometry.ComplexSources(positions=(x_pos, y_pos), amplitude=amp)
-        ```
-    """
-    positions: Tuple[jnp.ndarray]
-    amplitude: Tuple[jnp.ndarray]
+    def sensor_to_operator(sensors):
+        if sensors is None:
 
-    def to_field(self, grid):
+            def measurement_operator(x):
+                return x  # identity operator
+
+        elif isinstance(sensors, geometry.Sensors):
+            # Define the application of the porjection matrix at the sensors
+            # locations as a function
+            if len(sensors.positions) == 1:
+
+                def measurement_operator(x):
+                    return tree_map(lambda leaf: leaf[sensors.positions[0]], x)
+
+            elif len(sensors.positions) == 2:
+
+                def measurement_operator(x):
+                    return tree_map(
+                        lambda leaf: leaf[sensors.positions[0], sensors.positions[1]],
+                        x,
+                    )
+
+            elif len(sensors.positions) == 3:
+
+                def measurement_operator(x):
+                    return tree_map(
+                        lambda leaf: leaf[
+                            sensors.positions[0],
+                            sensors.positions[1],
+                            sensors.positions[2],
+                        ],
+                        x,
+                    )
+
+            else:
+                raise ValueError(
+                    "Sensors positions must be 1, 2 or 3 dimensional. Not {}".format(
+                        len(sensors.positions)
+                    )
+                )
+        else:
+            measurement_operator = sensors
+        return measurement_operator
+
+        Attributes:
+            positions (Tuple[List[int]): source positions
+            amplitude (jnp.ndarray): source complex amplitudes
+        !!! example
+            ```python
+            x_pos = [10,20,30,40]
+            y_pos = [30,30,30,30]
+            amp = jnp.array([0, 1, 1j, -1])
+            sources = geometry.ComplexSources(positions=(x_pos, y_pos), amplitude=amp)
+            ```
+    """
+    amplitude: jnp.ndarray
+    omega: float
+    domain: Domain
+
+    def to_field(self, t=0.0):
         r"""Returns the complex field corresponding to the
         sources distribution.
         """
-        field = jnp.zeros(grid.N, dtype=jnp.complex64)
-        field = field.at[self.positions].set(self.amplitude)
-        return field
+        return self.amplitude * jnp.exp(1j * self.omega * t)
 
 
 @dataclass
@@ -188,7 +250,7 @@ class Sensors:
         mask = jnp.zeros(N)
         for i in range(len(self.positions[0])):
             mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
-        return mask>0
+        return mask > 0
 
 
 @dataclass
@@ -218,7 +280,7 @@ class TimeAxis:
                     it is automatically calculated as the time required to travel
                     from one corner of the domain to the opposite one.
         """
-        dt = dt = cfl * min(medium.domain.dx) / jnp.max(medium.sound_speed)
+        dt = cfl * min(medium.domain.dx) / jnp.max(medium.sound_speed)
         if t_end is None:
             t_end = jnp.sqrt(
                 sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)

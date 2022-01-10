@@ -1,6 +1,8 @@
-from jwave.geometry import Domain, Medium
-from jwave.acoustics import ongrid_helmholtz_solver
 from jax import numpy as jnp
+
+from jwave.acoustics import ongrid_helmholtz_solver
+from jwave.geometry import Domain, Medium
+
 
 def test_if_homog_helmholtz_runs():
     N = (128,128)

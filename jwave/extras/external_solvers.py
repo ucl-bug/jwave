@@ -1,7 +1,10 @@
-from jwave.extras.engine import Matlab
-import numpy as np
-import matlab.engine
 from typing import Union
+
+import matlab.engine
+import numpy as np
+
+from jwave.extras.engine import Matlab
+
 
 class kWaveSolver(object):
     r"""
@@ -122,10 +125,11 @@ class kWaveSolver(object):
         self.matlab.start()
 
 if __name__ == "__main__":
-    from jwave.geometry import Domain
     from jax import numpy as jnp
-    from jwave.geometry import Medium,TimeAxis,_points_on_circle, Sensors, _circ_mask
+
     from jwave.acoustics import ongrid_wave_propagation
+    from jwave.geometry import (Domain, Medium, Sensors, TimeAxis, _circ_mask,
+                                _points_on_circle)
 
     N, dx = (128, 128), (0.1e-3, 0.1e-3)
     domain = Domain(N, dx)
