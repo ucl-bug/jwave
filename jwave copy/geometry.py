@@ -1,27 +1,22 @@
 import math
 from dataclasses import dataclass
 from functools import reduce
-from typing import NamedTuple, Tuple, Union
-from numbers import Number
+from typing import NamedTuple, Tuple
 
 import numpy as np
 from jax import numpy as jnp
 from jaxdf.geometry import Domain
-from jaxdf import Field
-from jax.tree_util import register_pytree_node_class
 
 
-
-@register_pytree_node_class
+@dataclass(init=False)
 class Medium:
     r"""
     Medium structure
     Attributes:
-      domain (Domain): domain of the medium
-      sound_speed (jnp.darray): speed of sound map, can be a scalar
-      density (jnp.ndarray): density map, can be a scalar
-      attenuation (jnp.ndarray): attenuation map, can be a scalar
-      pml_size (int): size of the PML layer in grid-points
+        sound_speed (jnp.darray): speed of sound map, can be a scalar
+        density (jnp.ndarray): density map, can be a scalar
+        attenuation (jnp.ndarray): attenuation map, can be a scalar
+        pml_size (int): size of the PML layer in grid-points
 
     !!! example
         ```python
@@ -35,38 +30,30 @@ class Medium:
         ```
     """
     domain: Domain
-    sound_speed: Union[Number, Field] = 1.0
-    density: Union[Number, Field] = 1.0
-    attenuation: Union[Number, Field] = 0.0
-    pml_size: Number = 20
+    sound_speed: jnp.ndarray
+    density: jnp.ndarray
+    attenuation: jnp.ndarray
+    pml_size: float = 20
 
     def __init__(
-        self, domain, sound_speed = 1.0, density=1.0, attenuation=0.0, pml_size=20
-    ): 
-      # Check that all domains are the same
-      for field in [sound_speed, density, attenuation]:
-        if isinstance(field, Field):
-          assert domain == field.domain, "All domains must be the same"
-      
-      # Set the attributes
-      self.domain = domain
-      self.sound_speed = sound_speed
-      self.density = density
-      self.attenuation = attenuation
-      self.pml_size = pml_size
-      
-    def tree_flatten(self):
-      children = (self.sound_speed, self.density, self.attenuation, self.pml_size)
-      aux = (self.domain,)
-      return (children, aux)
-    
-    @classmethod
-    def tree_unflatten(cls, aux, children):
-      sound_speed, density, attenuation, pml_size = children
-      domain = aux[0]
-      a = cls(domain, sound_speed, density, attenuation, pml_size)
-      return a
-      
+        self, domain, sound_speed, density=None, attenuation=None, pml_size=20
+    ):
+        self.domain = domain
+        self.sound_speed = sound_speed
+
+        if density is None:
+            self.density = jnp.ones_like(sound_speed)
+        else:
+            self.density = density
+
+        # if attenuation is None:
+        #    self.attenuation = 0
+        # else:
+        #    self.attenuation = attenuation
+        self.attenuation = attenuation
+
+        self.pml_size = pml_size
+
 
 def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0):
     angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
