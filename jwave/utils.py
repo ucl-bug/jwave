@@ -1,5 +1,6 @@
 from jax import numpy as jnp
 from matplotlib import pyplot as plt
+import numpy as np
 
 
 def is_numeric(x):
