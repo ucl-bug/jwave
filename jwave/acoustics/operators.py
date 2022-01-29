@@ -5,12 +5,14 @@ from jaxdf.operators import gradient, diag_jacobian, sum_over_dims
 from jwave.geometry import Medium
 from numbers import Number
 from .pml import complex_pml_on_grid
+from jax import numpy as jnp
+import jax
 
 @operator
 def laplacian_with_pml(
   u: OnGrid,
   medium: Medium,
-  omega: float,
+  omega = 1.0,
   params = None
 ):
   pml_grid = complex_pml_on_grid(medium, omega)
@@ -38,32 +40,35 @@ def laplacian_with_pml(
 def laplacian_with_pml(
   u: FourierSeries,
   medium: Medium,
-  omega: float,
+  omega = 1.0,
   params = None
 ):
+  rho0 = medium.density
+
   # Initialize pml parameters if not provided
   if params == None:
     params = {
       'pml_on_grid': u.replace_params(complex_pml_on_grid(medium, omega)),
-      'fft_params': gradient(u)._op_params
+      'fft_u':  gradient(u)._op_params,
     }
     
   pml = params['pml_on_grid']
-  fft_params = params['fft_params']
   
   # Making laplacian
-  grad_u = gradient(u, params=fft_params)
+  grad_u = gradient(u, params=params['fft_u'])
   mod_grad_u = grad_u*pml
-  mod_diag_jacobian = diag_jacobian(mod_grad_u, params=fft_params) * pml
+  mod_diag_jacobian = diag_jacobian(mod_grad_u, params=params['fft_u']) * pml
   nabla_u = sum_over_dims(mod_diag_jacobian)
   
   # Density term
-  rho0 = medium.density
   if not(issubclass(type(rho0), Field)):
     # Assume it is a number
     rho_u = 0.
   else:
-    grad_rho0 = gradient(rho0, params=fft_params)
+    if not('fft_rho0' in params.keys()):
+      params['fft_rho0'] = gradient(rho0)._op_params
+
+    grad_rho0 = gradient(rho0, params=params['fft_rho0'])
     rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
   
   # Put everything together
@@ -73,7 +78,7 @@ def laplacian_with_pml(
 def wavevector(
   u: Field,
   medium: Medium,
-  omega: float,
+  omega = 1.0,
   params = None
 ):
   """
@@ -84,11 +89,12 @@ def wavevector(
   k_mod = (omega / c) ** 2 + 2j * (omega ** 3) * alpha / c
   return u * k_mod, None
 
+
 @operator
 def helmholtz(
   u: Field,
   medium: Medium,
-  omega: float = 1.0,
+  omega = 1.0,
   params = None
 ):
   # Get the modified laplacian
@@ -108,7 +114,7 @@ def helmholtz(
 ):
   if params == None:
     params = laplacian_with_pml(u, medium, omega)._op_params
-  
+
   # Get the modified laplacian
   L = laplacian_with_pml(u, medium, omega, params=params)
 

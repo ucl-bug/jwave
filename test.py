@@ -1,84 +1,56 @@
-import jax
+import os
+os.environ['CUDA_VISIBLE_DEVICES']='7'
+
+from jwave.geometry import Domain, Medium, _circ_mask
+from jwave import FourierSeries
+from jax import random, jit
+from functools import partial
+from matplotlib import pyplot as plt
 from jax import numpy as jnp
-from jax.experimental import optimizers
-from jax.scipy.sparse.linalg import gmres
-from jaxdf import operators as jops
-from jaxdf.core import Field, operator
-from jaxdf.discretization import Coordinate, FourierSeries
-from jaxdf.geometry import Domain
-from jaxdf.utils import join_dicts
+from jwave.acoustics.time_harmonic import helmholtz_solver
+from jwave.acoustics.operators import helmholtz
+import jax
 
-# Settings
-domain = Domain((256, 256), (1., 1.))
-seed = jax.random.PRNGKey(0)
+if __name__ == '__main__':
+  import os
+  os.environ['CUDA_VISIBLE_DEVICES']='7'
+  os.environ['JAX_LOG_COMPILES'] = '1'
 
-# Speed of sound parametrization
-lens_params = jax.random.uniform(seed, (168,40))
-def get_sos(p):
-    lens = jnp.zeros(domain.N).at[44:212,108:148].set(jax.nn.sigmoid(p)) + 1
-    return jnp.expand_dims(lens, -1)
+  key = random.PRNGKey(42)
 
-# Defining operators
-@jops.elementwise
-def pml_absorption(x):
-    abs_x = jnp.abs(x)
-    return jnp.where(abs_x > 110, (jnp.abs(abs_x-110)/(128. - 110)), 0.)**2
+  # Defining geometry
+  N = (128, 256)         # Grid size
+  dx = (1., 1.)          # Spatial resolution
+  omega = 1.              # Wavefield omega = 2*pi*f
+  target = [160,360]     # Target location
 
-gamma = lambda x: 1./(1 + 1j*pml_absorption(x))
+  # Making geometry
+  domain = Domain(N, dx)
 
-@operator()
-def helmholtz(u, c, x):
-    pml = gamma(x)
-    mod_grad_u = jops.gradient(u)*pml
-    mod_diag_jacobian = jops.diag_jacobian(mod_grad_u)*pml
-    laplacian = jops.sum_over_dims(mod_diag_jacobian)
-    return laplacian + ((1./c)**2)*u
+  # Build the vector that holds the parameters of the apodization an the
+  # functions required to transform it into a source wavefield
+  transmit_phase = jnp.concatenate([jnp.ones((2,)), jnp.ones((2,))])
+  position = list(range(32, 32+4, 2))
 
-@operator()
-def integrand_TV(u):
-    nabla_u = jops.gradient(u)    
-    return jops.sum_over_dims(jops.elementwise(jnp.abs)(nabla_u))
+  src_field = jnp.zeros(N).astype(jnp.complex64)
+  src_field = src_field.at[64, 22].set(1.0)
+  src = FourierSeries(jnp.expand_dims(src_field,-1), domain)
 
-# Defining discretizations
-fourier_discr = FourierSeries(domain)
-u_fourier_params, u = fourier_discr.empty_field(name='u')
-src_fourier_params, src = fourier_discr.empty_field(name='src')
-src_fourier_params = u_fourier_params.at[128, 40].set(1. + 0j)  # Monopole source
-_, c = fourier_discr.empty_field(name='c')
-_, x = fourier_discr.empty_field(name='x')
-x_params = Coordinate(domain).get_field_on_grid()({}) # Coordinate field
+  # Constructing medium physical properties
+  sound_speed = jnp.zeros(N)
+  sound_speed = sound_speed.at[20:105,20:200].set(1.)
+  sound_speed = sound_speed*(1-_circ_mask(N, 90,[64,180]))*(1-_circ_mask(N,50,[64,22])) +1
+  sound_speed = FourierSeries(jnp.expand_dims(sound_speed,-1), domain)
 
-# Discretizing operators: getting pure functions and parameters
-H = helmholtz(u=u, c=c, x=x)
-TV = integrand_TV(u=u)
-global_params = join_dicts(H.get_global_params(), TV.get_global_params())
-H_on_grid = H.get_field_on_grid(0)
-tv_on_grid = lambda x: TV.get_field_on_grid(0)(global_params, x)
+  medium = Medium(
+      domain=domain,
+      sound_speed=sound_speed,
+      pml_size=15
+  )
 
-# Helmholtz solver function
-def solve_helmholtz(speed_of_sound):
-    params = {"c":speed_of_sound, "x":x_params}
-    def helm_func(u):
-        params["u"] = u
-        return H_on_grid(global_params, params)
-    sol, _ = gmres(helm_func, src_fourier_params, maxiter=1000, tol=1e-3, restart=50)
-    return sol
+  @jit
+  def solve_helmholtz(medium):
+      f = helmholtz_solver(medium, omega, src)
+      return f
 
-# Loss function
-def loss(p):
-    sos = get_sos(p)
-    tv_term = jnp.mean(H_on_grid(sos))
-    field = solve_helmholtz(sos)
-    return -jnp.sum(jnp.abs(field[70,210])) + 1e-4*tv_term
-
-# Optimization loop
-init_fun, update_fun, get_params = optimizers.adam(.1, b1=0.9, b2=0.9)
-opt_state = init_fun(lens_params)
-
-@jax.jit
-def update(opt_state, k):
-    lossval, gradient = jax.value_and_grad(loss)(get_params(opt_state))
-    return lossval, update_fun(k, gradient, opt_state)
-
-for k in range(100):
-    lossval, opt_state = update(opt_state, k)
+  field = solve_helmholtz(medium)

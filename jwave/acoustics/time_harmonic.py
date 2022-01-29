@@ -18,12 +18,14 @@ def helmholtz_solver(
   guess: Union[OnGrid, None] = None,
   method: str = 'gmres',
   checkpoint: bool = True,
-  helmholtz_params = None,
+  params = None,
   **kwargs
 ):
-  
+  if params is None:
+    params = helmholtz(source, medium, omega)._op_params
+
   def helm_func(u):
-    return helmholtz(u, medium, omega, params=helmholtz_params)
+    return helmholtz(u, medium, omega, params=params)
 
   if checkpoint:
     helm_func = jax.checkpoint(helm_func)
@@ -31,7 +33,7 @@ def helmholtz_solver(
   if guess is None:
     guess = source*0
   
-  tol = kwargs['tol'] if 'tol' in kwargs else 1e-6
+  tol = kwargs['tol'] if 'tol' in kwargs else 1e-3
   restart = kwargs['restart'] if 'restart' in kwargs else 10
   maxiter = kwargs['maxiter'] if 'maxiter' in kwargs else 1000
   solve_method = kwargs['solve_method'] if 'solve_method' in kwargs else 'batched'
