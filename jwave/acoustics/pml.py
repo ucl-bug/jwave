@@ -27,7 +27,7 @@ def _base_pml(
 
 
 def complex_pml_on_grid(
-    medium: Medium, omega: float, exponent=2.0, alpha_max=1.0
+    medium: Medium, omega: float, exponent=2.0, alpha_max=2.0
 ) -> jnp.ndarray:
     transform_fun = lambda alpha: 1.0 / (1 + 1j * alpha)
     return _base_pml(transform_fun, medium, exponent, alpha_max)

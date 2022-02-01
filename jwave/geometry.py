@@ -9,6 +9,7 @@ from jax import numpy as jnp
 from jaxdf.geometry import Domain
 from jaxdf import Field
 from jax.tree_util import register_pytree_node_class
+from jaxdf.operators import compose
 
 
 
@@ -132,7 +133,7 @@ class Sources:
         sources = geometry.Source(positions=(x_pos, y_pos), signals=signals)
         ```
     """
-    positions: Tuple[jnp.ndarray]
+    positions: Tuple[np.ndarray]
     signals: Tuple[jnp.ndarray]
     dt: float
     domain: Domain
@@ -151,14 +152,14 @@ class Sources:
             mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
         return mask > 0
 
-    def to_field(self, t):
+    def on_grid(self, t):
 
         src = jnp.zeros(self.domain.N)
         if len(self.signals) == 0:
             return src
 
         idx = (t / self.dt).round().astype(jnp.int32)
-        signals = self.source_signals[:, idx] / len(self.domain.N)
+        signals = self.signals[:, idx] / len(self.domain.N)
         src = src.at[self.positions].add(signals)
         return jnp.expand_dims(src, -1)
 
@@ -229,7 +230,7 @@ class TimeHarmonicSource:
     omega: float
     domain: Domain
 
-    def to_field(self, t=0.0):
+    def on_grid(self, t=0.0):
         r"""Returns the complex field corresponding to the
         sources distribution.
         """
@@ -293,7 +294,7 @@ class TimeAxis:
                     it is automatically calculated as the time required to travel
                     from one corner of the domain to the opposite one.
         """
-        dt = cfl * min(medium.domain.dx) / jnp.max(medium.sound_speed)
+        dt = cfl * min(medium.domain.dx) / jnp.max(medium.sound_speed.on_grid)
         if t_end is None:
             t_end = jnp.sqrt(
                 sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
