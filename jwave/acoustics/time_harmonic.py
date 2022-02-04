@@ -1,14 +1,15 @@
-from jwave.geometry import Medium
-from jwave.acoustics.pml import complex_pml_on_grid
 from typing import Union
-from jaxdf.discretization import OnGrid
-from jaxdf.operators import compose
-from jaxdf import operator
+
+import jax
 from jax import numpy as jnp
 from jax.scipy.sparse.linalg import bicgstab, gmres
-import jax
+from jaxdf import operator
+from jaxdf.discretization import OnGrid
+
+from jwave.geometry import Medium
 
 from .operators import helmholtz
+
 
 @operator
 def helmholtz_solver(
@@ -30,10 +31,10 @@ def helmholtz_solver(
 
   if checkpoint:
     helm_func = jax.checkpoint(helm_func)
-  
+
   if guess is None:
     guess = source*0
-  
+
   tol = kwargs['tol'] if 'tol' in kwargs else 1e-3
   restart = kwargs['restart'] if 'restart' in kwargs else 10
   maxiter = kwargs['maxiter'] if 'maxiter' in kwargs else 1000
@@ -43,8 +44,8 @@ def helmholtz_solver(
   elif method == 'bicgstab':
     out = bicgstab(helm_func, source, guess, tol=tol, maxiter=maxiter)[0]
   return out, None
-  
-    
+
+
 def helmholtz_solver_verbose(
   medium: Medium,
   omega: float,
@@ -63,10 +64,10 @@ def helmholtz_solver_verbose(
 
   if params is None:
     params = helmholtz(source, medium, omega)._op_params
-  
+
   if guess is None:
     guess = source*0
-  
+
   kwargs['maxiter'] = 1
   kwargs['tol'] = 0.0
   iterations = 0
@@ -80,13 +81,13 @@ def helmholtz_solver_verbose(
 
   while residual_magnitude > tol and iterations < maxiter:
     guess, residual_magnitude = solver(medium, guess, source)
-    
+
     iterations += 1
-    
+
     # Print iteration info
     print(
         f"Iteration {iterations}: residual magnitude = {residual_magnitude:.4e}, tol = {tol:.2e}",
         flush=True,
     )
-  
+
   return guess*src_magn

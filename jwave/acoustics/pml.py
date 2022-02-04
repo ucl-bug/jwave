@@ -1,8 +1,10 @@
 from typing import Callable
-from jaxdf import Field
-from jaxdf.operators.functions import compose
-from jwave.geometry import Medium, Domain
+
 from jax import numpy as jnp
+from jaxdf import Field
+
+from jwave.geometry import Domain, Medium
+
 
 def _base_pml(
   transform_fun: Callable,
@@ -12,10 +14,10 @@ def _base_pml(
 ) -> Field:
   def pml_edge(x):
     return x / 2 - medium.pml_size
-  
+
   delta_pml = jnp.asarray(list(map(pml_edge, medium.domain.N)))
   coord_grid = Domain(N=medium.domain.N, dx=tuple([1.0] * len(medium.domain.N))).grid
-  
+
   def _pml_fun(x, delta_pml):
     diff = (jnp.abs(x) - 1.0 * delta_pml) / medium.pml_size
     on_pml = jnp.where(diff > 0, diff, 0)

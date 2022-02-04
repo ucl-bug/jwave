@@ -1,13 +1,13 @@
-from unittest.mock import NonCallableMagicMock
-from jaxdf import operator, Field
-from jaxdf.discretization import OnGrid, FourierSeries
-from jaxdf.operators import gradient, diag_jacobian, sum_over_dims, compose
-from jwave.geometry import Medium
-from numbers import Number
-from .pml import complex_pml_on_grid
 from jax import numpy as jnp
-import jax
+from jaxdf import Field, operator
+from jaxdf.discretization import FourierSeries, OnGrid
+from jaxdf.operators import compose, diag_jacobian, gradient, sum_over_dims
+
+from jwave.geometry import Medium
+
 from .conversion import db2neper
+from .pml import complex_pml_on_grid
+
 
 @operator
 def laplacian_with_pml(
@@ -18,13 +18,13 @@ def laplacian_with_pml(
 ):
   pml_grid = complex_pml_on_grid(medium, omega)
   pml = u.replace_params(pml_grid)
-  
+
   # Making laplacian
   grad_u = gradient(u)
   mod_grad_u = grad_u*pml
   mod_diag_jacobian = diag_jacobian(mod_grad_u) * pml
   nabla_u = sum_over_dims(mod_diag_jacobian)
-  
+
   # Density term
   rho0 = medium.density
   if not(issubclass(type(rho0), Field)):
@@ -33,7 +33,7 @@ def laplacian_with_pml(
   else:
     grad_rho0 = gradient(rho0)
     rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
-  
+
   # Put everything together
   return nabla_u - rho_u, None
 
@@ -52,15 +52,15 @@ def laplacian_with_pml(
       'pml_on_grid': u.replace_params(complex_pml_on_grid(medium, omega)),
       'fft_u':  gradient(u)._op_params,
     }
-    
+
   pml = params['pml_on_grid']
-  
+
   # Making laplacian
   grad_u = gradient(u, params=params['fft_u'])
   mod_grad_u = grad_u*pml
   mod_diag_jacobian = diag_jacobian(mod_grad_u, params=params['fft_u']) * pml
   nabla_u = sum_over_dims(mod_diag_jacobian)
-  
+
   # Density term
   if not(issubclass(type(rho0), Field)):
     # Assume it is a number
@@ -84,7 +84,7 @@ def laplacian_with_pml(
     grad_rho0 = gradient(rho0, params=params['fft_rho0'])
     #grad_rho0 = grad_density(rho0)
     rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
-  
+
   # Put everything together
   return nabla_u - rho_u, params
 

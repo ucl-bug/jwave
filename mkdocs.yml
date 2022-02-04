@@ -12,7 +12,7 @@ theme:
   features:
     - navigation.tabs
     - navigation.instant
-    - content.code.annotate 
+    - content.code.annotate
 
 nav:
   - Home: index.md
@@ -31,7 +31,7 @@ nav:
     - Helmholtz equation: notebooks/helmholtz_problem.ipynb
     - Focusing single frequency waves: notebooks/helmholtz_solver_differentiable.ipynb
     - Linear uncertainty propagation: notebooks/uncertainty_propagation.ipynb
-  - Benchmarks: 
+  - Benchmarks:
     - Accuracy vs k-Wave: benchmarks/homogeneous_vs_kwave.ipynb
     - Scaling vs timesteps: benchmarks/compute_time_vs_timesteps.ipynb
     - Scaling vs domain size (2D): benchmarks/compute_time_vs_size_2d.ipynb
@@ -43,12 +43,14 @@ plugins:
       handlers:
         python:
           rendering:
-            show_source: false 
+            show_source: false
       custom_templates: templates
       watch:
         - jwave
   - search
   - mermaid2
+  - macros:
+      module_name: docs/macros
 
 markdown_extensions:
   - toc:

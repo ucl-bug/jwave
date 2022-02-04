@@ -1,10 +1,10 @@
 import math
 from dataclasses import dataclass
-from functools import reduce
-from typing import NamedTuple, Tuple
+from typing import Tuple
 
 import numpy as np
 from jax import numpy as jnp
+from jaxdf import Field
 from jaxdf.geometry import Domain
 
 
@@ -156,54 +156,12 @@ class Sources:
 
 @dataclass
 class TimeHarmonicSource:
-    r"""ComplexSources structure
-    def sensor_to_operator(sensors):
-        if sensors is None:
-
-            def measurement_operator(x):
-                return x  # identity operator
-
-        elif isinstance(sensors, geometry.Sensors):
-            # Define the application of the porjection matrix at the sensors
-            # locations as a function
-            if len(sensors.positions) == 1:
-
-                def measurement_operator(x):
-                    return tree_map(lambda leaf: leaf[sensors.positions[0]], x)
-
-            elif len(sensors.positions) == 2:
-
-                def measurement_operator(x):
-                    return tree_map(
-                        lambda leaf: leaf[sensors.positions[0], sensors.positions[1]],
-                        x,
-                    )
-
-            elif len(sensors.positions) == 3:
-
-                def measurement_operator(x):
-                    return tree_map(
-                        lambda leaf: leaf[
-                            sensors.positions[0],
-                            sensors.positions[1],
-                            sensors.positions[2],
-                        ],
-                        x,
-                    )
-
-            else:
-                raise ValueError(
-                    "Sensors positions must be 1, 2 or 3 dimensional. Not {}".format(
-                        len(sensors.positions)
-                    )
-                )
-        else:
-            measurement_operator = sensors
-        return measurement_operator
+    r"""TimeHarmonicSource structure
 
         Attributes:
-            positions (Tuple[List[int]): source positions
-            amplitude (jnp.ndarray): source complex amplitudes
+          amplitude (float): amplitude of the source
+
+
         !!! example
             ```python
             x_pos = [10,20,30,40]
@@ -212,7 +170,7 @@ class TimeHarmonicSource:
             sources = geometry.ComplexSources(positions=(x_pos, y_pos), amplitude=amp)
             ```
     """
-    amplitude: jnp.ndarray
+    amplitude: Field
     omega: float
     domain: Domain
 

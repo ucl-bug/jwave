@@ -1,23 +1,14 @@
-from dataclasses import dataclass
 from typing import Any, Callable, Tuple, Union
 
 import jax
 import jaxdf.operators as jops
 from jax import numpy as jnp
 from jax.scipy.sparse.linalg import bicgstab, gmres
-from jax.tree_util import tree_map
-from jaxdf import geometry as geodf
-from jaxdf import ode
 from jaxdf.core import Field, operator
-from jaxdf.discretization import (Coordinate, FourierSeries,
-                                  StaggeredRealFourier, UniformField)
-from jaxdf.utils import join_dicts
+from jaxdf.discretization import FourierSeries, UniformField
 
 from jwave import geometry
-from jwave.acoustics.conversion import pressure_from_density
 from jwave.acoustics.pml import complex_pml_on_grid
-from jwave.acoustics.time_varying import sensor_to_operator
-from jwave.signal_processing import smooth
 from jwave.utils import is_numeric
 
 # Custom typedef
@@ -266,7 +257,7 @@ def ongrid_helmholtz_solver(
                 f"Iteration {iterations}: residual magnitude = {residual_magnitude}, tol = {tol:.2e}",
                 flush=True,
             )
-        
+
         return x0
 
     return params, solver
@@ -367,7 +358,7 @@ def ongrid_helmholtz_solver_verbose(
                 f"Iteration {iterations}: residual magnitude = {residual_magnitude}, tol = {tol:.2e}",
                 flush=True,
             )
-        
+
         return x0
 
     return params, solver

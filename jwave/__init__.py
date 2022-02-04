@@ -1,3 +1,4 @@
+# nopycln: file
 from jaxdf.discretization import *
 
 from jwave import acoustics as ac

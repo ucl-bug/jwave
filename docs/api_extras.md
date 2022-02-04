@@ -3,7 +3,7 @@
 This sub-module is a collection of tools to extend the functionality of `jwave`, but that are not part of the main `jwave` package. The tools are not intended to be used by the end user, but are rather for developers.
 
 ## MATLAB Engine
-`jwave` is still in active development, and a lot of functionality is missing compared to `kWave`, expecially in terms of functions constructing objects. 
+`jwave` is still in active development, and a lot of functionality is missing compared to `kWave`, expecially in terms of functions constructing objects.
 
 If you want to use some `kWave` methods from python (for example the `kArray` class implementing off-grid sources), you should first install the MATLAB engine for python. For example:
 
@@ -55,8 +55,8 @@ params, _j_solver_ = ongrid_wave_propagation(
 
 k_solver = kWaveSolver()
 p_kwave, kwave_time = k_solver.solve(
-    params, 
-    dx, 
+    params,
+    dx,
     time_axis.t_end,
     sensors=sensors,
     p0=p0

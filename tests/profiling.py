@@ -1,12 +1,11 @@
 import jax
-
-from jwave.acoustics.time_harmonic import helmholtz_solver
-from jwave.acoustics.operators import helmholtz
 from jax import jit
-from jwave.geometry import Domain, Medium, _circ_mask
-from jwave import FourierSeries
 from jax import numpy as jnp
-from jax import random, jit
+from jax import random
+
+from jwave import FourierSeries
+from jwave.acoustics.operators import helmholtz
+from jwave.geometry import Domain, Medium, _circ_mask
 
 key = random.PRNGKey(42)
 
@@ -53,7 +52,7 @@ with jax.profiler.trace('profiling/'):
   # Run the operations to be profiled
   field = helm_func(medium)
   _ = field.params.block_until_ready()
-  
+
   # Run the operations to be profiled
   field = helm_func(medium)
   _ = field.params.block_until_ready()

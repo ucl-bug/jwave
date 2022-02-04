@@ -46,10 +46,10 @@ params, solver = ongrid_wave_propagation(
 )
 
 # Compile and run simulation
-sensors_data = jit(solver)(params) 
+sensors_data = jit(solver)(params)
 
 # Make imaging algorithm
-@jit 
+@jit
 def lazy_time_reversal(p):
     def mse_loss(p0):
         local_params = params.copy()
@@ -71,7 +71,7 @@ recon_image = lazy_time_reversal(noisy_data)
 ![Reconstructed image using autograd](docs/assets/images/readme_example_reconimage.png)
 
 ## :floppy_disk: Install
-Before installing `jwave`, make sure that [you have installed `jaxdf`](https://github.com/ucl-bug/jaxdf). 
+Before installing `jwave`, make sure that [you have installed `jaxdf`](https://github.com/ucl-bug/jaxdf).
 
 Install jwave by `cd` in the repo folder an run
 ```bash

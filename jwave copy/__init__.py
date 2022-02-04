@@ -1,3 +1,4 @@
+# nopycln: file
 from jwave import acoustics as acoustics
 from jwave import geometry as geometry
 from jwave import phantoms as phantoms

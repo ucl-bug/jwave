@@ -1,6 +1,5 @@
 from typing import Callable
 
-import numpy as np
 from jax import eval_shape
 from jax import numpy as jnp
 from jax import vmap

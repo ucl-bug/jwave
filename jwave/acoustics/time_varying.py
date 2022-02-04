@@ -1,15 +1,21 @@
-from typing import Union
-from time import time
 from typing import Sequence
-from jaxdf import operator, Field
-from jaxdf.discretization import OnGrid, FourierSeries, FiniteDifferences
-from jaxdf.operators import gradient, diag_jacobian, shift_operator, sum_over_dims
-from jaxdf.operators.differential import _get_ffts
-from jwave.geometry import Medium, Sensors, Sources, TimeAxis
-from .pml import td_pml_on_grid
-from jax import numpy as jnp
+
 import jax
 import numpy as np
+from jax import numpy as jnp
+from jaxdf import Field, operator
+from jaxdf.discretization import FiniteDifferences, FourierSeries, OnGrid
+from jaxdf.operators import (
+    diag_jacobian,
+    gradient,
+    shift_operator,
+    sum_over_dims,
+)
+from jaxdf.operators.differential import _get_ffts
+
+from jwave.geometry import Medium, TimeAxis
+
+from .pml import td_pml_on_grid
 
 
 @operator
@@ -54,7 +60,7 @@ def momentum_conservation_rhs(
   ffts = _get_ffts(p)
   k_vec = params['k_vec']
   u = p.params[...,0]
-  
+
   def single_grad(axis, u):
     u = jnp.moveaxis(u, axis, -1)
     Fx = ffts[0](u, axis=-1)
@@ -139,18 +145,18 @@ def simulate_wave_equation(
     pml_grid = td_pml_on_grid(medium, dt, c0=c_ref, dx=medium.domain.dx[0])
     pml = medium.sound_speed.replace_params(pml_grid)
     params = {'pml': pml,'output_steps': output_steps}
-  
+
   # Initialize variables
   shape = tuple(list(medium.domain.N) + [len(medium.domain.N),])
   if u0 is None:
     u0 = medium.sound_speed.replace_params(jnp.zeros(shape))
   else:
-    assert u0.dim == len(medium.domain.N) 
+    assert u0.dim == len(medium.domain.N)
   if p0 is None:
     p0 = medium.sound_speed.replace_params(jnp.zeros(shape))
   else:
     assert p0.dim == len(medium.domain.N)
-  
+
   # Initialize acoustic density
   rho_params = p0.on_grid/(medium.sound_speed.on_grid ** 2)
   rho_params = jnp.stack([rho_params]*p0.ndim)
@@ -162,7 +168,7 @@ def simulate_wave_equation(
   c = medium.sound_speed
   alpha = params['pml']
   output_steps = params['output_steps']
-  
+
   def scan_fun(fields, n):
     u, rho = fields
     mass_src_field = sources.on_grid(n)
@@ -181,7 +187,7 @@ def simulate_wave_equation(
     scan_fun = jax.checkpoint(scan_fun)
 
   _, ys = jax.lax.scan(scan_fun, fields, output_steps)
-  
+
   return _unroll(ys)
 
 

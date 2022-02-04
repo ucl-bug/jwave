@@ -1,7 +1,8 @@
+import numpy as np
 from jax import numpy as jnp
 
 from jwave.geometry import Sensors
-import numpy as np
+
 
 def pressure_from_density(
     sensors_data: jnp.ndarray, sound_speed: jnp.ndarray, sensors: Sensors

@@ -1,22 +1,18 @@
-from dataclasses import dataclass
 from typing import Any, Callable, Tuple, Union
 
-import jax
 import jaxdf.operators as jops
 from jax import numpy as jnp
-from jax.scipy.sparse.linalg import bicgstab, gmres
 from jax.tree_util import tree_map
 from jaxdf import geometry as geodf
 from jaxdf import ode
-from jaxdf.core import Field, operator
-from jaxdf.discretization import FourierSeries, StaggeredRealFourier
+from jaxdf.core import operator
+from jaxdf.discretization import StaggeredRealFourier
 from jaxdf.utils import join_dicts
 
 from jwave import geometry
 from jwave.acoustics.conversion import pressure_from_density
 from jwave.acoustics.pml import td_pml_on_grid
 from jwave.signal_processing import smooth
-from jwave.utils import is_numeric
 
 # Custom typedef
 PyTree = Any
@@ -50,7 +46,7 @@ def ongrid_simple_wave_propagation(
     \end{align}
     ```
 
-    The function returns a tuple, where the first element is a 
+    The function returns a tuple, where the first element is a
     dictionary of parameters, and the second element is a function
     that takes a dictionary of parameters and returns the solution.
 
@@ -71,7 +67,7 @@ def ongrid_simple_wave_propagation(
         medium (geometry.Medium): The acoustic medium
         time_array (geometry.TimeAxis): The time axis
         sources (geometry.Sources): Point sources. Defaults to `None`
-        discretization (str, optional): Numerical discretization method. Supported 
+        discretization (str, optional): Numerical discretization method. Supported
             discretizations are `'StaggeredFourier'` and `'Fourier'`. Defaults to "StaggeredFourier".
         sensors ([type], optional): [description]. Defaults to None.
         output_t_axis ([type], optional): [description]. Defaults to None.
@@ -80,10 +76,10 @@ def ongrid_simple_wave_propagation(
         u0 ([type], optional): Initial velocity field. Defaults to None.
         p0 ([type], optional): Initial pressure field. Defaults to None.
         u_update ([type], optional): If not None, overrides
-            eq. (1). It must be a `jaxdf` operator accepting a field ($`p`$) 
+            eq. (1). It must be a `jaxdf` operator accepting a field ($`p`$)
             and returning a field. Defaults to None.
         p_update ([type], optional): If not None, overrides eq. (2). It must be a
-            `jaxdf` operator accepting two fields ($`u, S_M`$) and returning a field. 
+            `jaxdf` operator accepting two fields ($`u, S_M`$) and returning a field.
             Defaults to None.
         rho_update ([type], optional): If not None, overrides eq. (3). It must be a
             `jaxdf` operator accepting two fields ($`\rho, c`$) and returning a field.
@@ -331,7 +327,7 @@ def ongrid_wave_propagation(
     \end{align}
     ```
 
-    The function returns a tuple, where the first element is a 
+    The function returns a tuple, where the first element is a
     dictionary of parameters, and the second element is a function
     that takes a dictionary of parameters and returns the solution.
 
@@ -352,7 +348,7 @@ def ongrid_wave_propagation(
         medium (geometry.Medium): The acoustic medium
         time_array (geometry.TimeAxis): The time axis
         sources (geometry.Sources): Point sources. Defaults to `None`
-        discretization (str, optional): Numerical discretization method. Supported 
+        discretization (str, optional): Numerical discretization method. Supported
             discretizations are `'StaggeredFourier'` and `'Fourier'`. Defaults to "StaggeredFourier".
         sensors ([type], optional): [description]. Defaults to None.
         output_t_axis ([type], optional): [description]. Defaults to None.

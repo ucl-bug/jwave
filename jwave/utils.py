@@ -1,6 +1,7 @@
 from jax import numpy as jnp
-from matplotlib import pyplot as plt
 from jaxdf import Field
+from matplotlib import pyplot as plt
+
 
 def is_numeric(x):
   """
@@ -39,7 +40,7 @@ def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
 
 def show_field(x: Field, title="", figsize=(8,6), vmax=None, aspect="auto"):
   x = x.on_grid
-  
+
   plt.figure(figsize=figsize)
   maxval = vmax or jnp.amax(jnp.abs(x))
   plt.imshow(

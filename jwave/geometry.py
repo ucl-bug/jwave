@@ -1,16 +1,13 @@
 import math
 from dataclasses import dataclass
-from functools import reduce
-from typing import NamedTuple, Tuple, Union
 from numbers import Number
+from typing import Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
-from jaxdf.geometry import Domain
-from jaxdf import Field
 from jax.tree_util import register_pytree_node_class
-from jaxdf.operators import compose
-
+from jaxdf import Field
+from jaxdf.geometry import Domain
 
 
 @register_pytree_node_class
@@ -43,31 +40,41 @@ class Medium:
 
     def __init__(
         self, domain, sound_speed = 1.0, density=1.0, attenuation=0.0, pml_size=20
-    ): 
+    ):
       # Check that all domains are the same
       for field in [sound_speed, density, attenuation]:
         if isinstance(field, Field):
           assert domain == field.domain, "All domains must be the same"
-      
+
       # Set the attributes
       self.domain = domain
       self.sound_speed = sound_speed
       self.density = density
       self.attenuation = attenuation
       self.pml_size = pml_size
-      
+
     def tree_flatten(self):
       children = (self.sound_speed, self.density, self.attenuation, self.pml_size)
       aux = (self.domain,)
       return (children, aux)
-    
+
     @classmethod
     def tree_unflatten(cls, aux, children):
       sound_speed, density, attenuation, pml_size = children
       domain = aux[0]
       a = cls(domain, sound_speed, density, attenuation, pml_size)
       return a
-      
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        def show_param(pname):
+            attr = getattr(self, pname)
+            return f'{pname}: ' + str(attr)
+        all_params = sorted(['domain', 'sound_speed','density','attenuation', 'pml_size'])
+        strings = list(map(lambda x: show_param(x), all_params))
+        return 'Medium dataclass:\n - ' + '\n - '.join(strings)
 
 def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0):
     angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
@@ -170,78 +177,31 @@ class Sources:
 
 @dataclass
 class TimeHarmonicSource:
-    r"""ComplexSources structure
-    def sensor_to_operator(sensors):
-        if sensors is None:
+    r"""TimeHarmonicSource dataclass
 
-            def measurement_operator(x):
-                return x  # identity operator
+    Attributes:
+      domain (Domain): domain
+      amplitude (Field): The complex amplitude field of the sources
+      omega (float): The angular frequency of the sources
 
-        elif isinstance(sensors, geometry.Sensors):
-            # Define the application of the porjection matrix at the sensors
-            # locations as a function
-            if len(sensors.positions) == 1:
-
-                def measurement_operator(x):
-                    return tree_map(lambda leaf: leaf[sensors.positions[0]], x)
-
-            elif len(sensors.positions) == 2:
-
-                def measurement_operator(x):
-                    return tree_map(
-                        lambda leaf: leaf[sensors.positions[0], sensors.positions[1]],
-                        x,
-                    )
-
-            elif len(sensors.positions) == 3:
-
-                def measurement_operator(x):
-                    return tree_map(
-                        lambda leaf: leaf[
-                            sensors.positions[0],
-                            sensors.positions[1],
-                            sensors.positions[2],
-                        ],
-                        x,
-                    )
-
-            else:
-                raise ValueError(
-                    "Sensors positions must be 1, 2 or 3 dimensional. Not {}".format(
-                        len(sensors.positions)
-                    )
-                )
-        else:
-            measurement_operator = sensors
-        return measurement_operator
-
-        Attributes:
-            positions (Tuple[List[int]): source positions
-            amplitude (jnp.ndarray): source complex amplitudes
-        !!! example
-            ```python
-            x_pos = [10,20,30,40]
-            y_pos = [30,30,30,30]
-            amp = jnp.array([0, 1, 1j, -1])
-            sources = geometry.ComplexSources(positions=(x_pos, y_pos), amplitude=amp)
-            ```
     """
-    amplitude: jnp.ndarray
-    omega: float
+    amplitude: Field
+    omega: Union[float, Field]
     domain: Domain
 
     def on_grid(self, t=0.0):
         r"""Returns the complex field corresponding to the
-        sources distribution.
+        sources distribution at time $`t`$.
         """
         return self.amplitude * jnp.exp(1j * self.omega * t)
 
 
 @dataclass
 class Sensors:
-    """Sensors structure
+    r"""Sensors structure
     Attributes:
         positions (Tuple[List[int]]): sensors positions
+
     !!! example
         ```python
         x_pos = [10,20,30,40]
