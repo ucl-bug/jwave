@@ -14,7 +14,7 @@ from .operators import helmholtz
 @operator
 def helmholtz_solver(
   medium: Medium,
-  omega: float,
+  omega: object,
   source: OnGrid,
   guess: Union[OnGrid, None] = None,
   method: str = 'gmres',

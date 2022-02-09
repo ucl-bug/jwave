@@ -8,6 +8,7 @@ from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
 from jaxdf import Field
 from jaxdf.geometry import Domain
+from jaxdf.operators import compose
 
 
 @register_pytree_node_class
@@ -74,7 +75,7 @@ class Medium:
             return f'{pname}: ' + str(attr)
         all_params = sorted(['domain', 'sound_speed','density','attenuation', 'pml_size'])
         strings = list(map(lambda x: show_param(x), all_params))
-        return 'Medium dataclass:\n - ' + '\n - '.join(strings)
+        return 'Medium:\n - ' + '\n - '.join(strings)
 
 def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0):
     angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
@@ -254,11 +255,11 @@ class TimeAxis:
                     it is automatically calculated as the time required to travel
                     from one corner of the domain to the opposite one.
         """
-        dt = cfl * min(medium.domain.dx) / jnp.max(medium.sound_speed.on_grid)
+        dt = cfl * min(medium.domain.dx) / compose(medium.sound_speed)(np.max)
         if t_end is None:
             t_end = jnp.sqrt(
                 sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
-            ) / jnp.min(medium.sound_speed)
+            ) / compose(medium.sound_speed)(np.min)
         return TimeAxis(dt=float(dt), t_end=float(t_end))
 
 
