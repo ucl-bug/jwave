@@ -26,6 +26,8 @@ nav:
   - Tutorials:
     - Initial value problems:
       - Homogeneous wave propagation: notebooks/ivp/homogeneous_medium.ipynb
+      - Sensors: notebooks/ivp/homogeneous_medium_sensors.ipynb
+      - Automatic differentiation: notebooks/ivp/homogeneous_medium_backprop.ipynb
     - Homogeneous medium IVP: notebooks/homog_propagation_medium.ipynb
     - Heterogeneous wave equation: notebooks/sim_wave_equation.ipynb
     - 3D Simulations: notebooks/homog_propagation_medium_3d.ipynb
