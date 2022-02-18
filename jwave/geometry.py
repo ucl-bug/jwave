@@ -6,9 +6,9 @@ from typing import Tuple, Union
 import numpy as np
 from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
-from jaxdf import Field
+from jaxdf import Field, FourierSeries
 from jaxdf.geometry import Domain
-from jaxdf.operators import functional
+from jaxdf.operators import dot_product, functional
 from plum import parametric, type_of
 
 
@@ -136,7 +136,7 @@ def _sphere_mask(N, radius, centre):
   return mask
 
 
-@dataclass
+@register_pytree_node_class
 class Sources:
   r"""Sources structure
   Attributes:
@@ -156,6 +156,24 @@ class Sources:
   dt: float
   domain: Domain
 
+  def __init__(self, positions, signals, dt, domain):
+    self.positions = positions
+    self.signals = signals
+    self.dt = dt
+    self.domain = domain
+
+  def tree_flatten(self):
+    children = (self.signals, self.dt)
+    aux = (self.domain, self.positions)
+    return (children, aux)
+
+  @classmethod
+  def tree_unflatten(cls, aux, children):
+    signals, dt = children
+    domain, positions = aux
+    a = cls(positions, signals, dt, domain)
+    return a
+
   def to_binary_mask(self, N):
     r"""
     Convert sources to binary mask
@@ -170,13 +188,13 @@ class Sources:
       mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
     return mask > 0
 
-  def on_grid(self, t):
+  def on_grid(self, n):
 
     src = jnp.zeros(self.domain.N)
     if len(self.signals) == 0:
       return src
 
-    idx = (t / self.dt).round().astype(jnp.int32)
+    idx = n.astype(jnp.int32)
     signals = self.signals[:, idx] / len(self.domain.N)
     src = src.at[self.positions].add(signals)
     return jnp.expand_dims(src, -1)
@@ -184,6 +202,75 @@ class Sources:
   @staticmethod
   def no_sources(domain):
     return Sources(positions=([], []), signals=([]), dt=1.0, domain=domain)
+
+@register_pytree_node_class
+class DistributedTransducer:
+  mask: Field
+  signal: jnp.ndarray
+  dt: float
+  domain: Domain
+
+  def __init__(self, mask, signal, dt, domain):
+    self.mask = mask
+    self.signal = signal
+    self.dt = dt
+    self.domain = domain
+
+  def tree_flatten(self):
+    children = (self.mask, self.signal, self.dt)
+    aux = (self.domain,)
+    return (children, aux)
+
+  @classmethod
+  def tree_unflatten(cls, aux, children):
+    mask, signal, dt = children
+    domain = aux[0]
+    a = cls(mask, signal, dt, domain)
+    return a
+
+  def __call__(self, u: Field):
+    # returns the transducer output for the wavefield u
+    # (Receive mode)
+    return dot_product(self.mask, u)
+
+  def set_signal(self, s):
+    return DistributedTransducer(self.mask, s, self.dt, self.domain)
+
+  def set_mask(self, m):
+    return DistributedTransducer(m, self.signal, self.dt, m.domain)
+
+  def on_grid(self, n):
+    # Returns the wavefield produced by the transducer on the grid
+    # (Transmit mode)
+
+    if len(self.signal) == 0:
+      return 0.
+
+    idx = n.astype(jnp.int32)
+    signal = self.signal[idx] / len(self.domain.N)
+    return signal*self.mask
+
+
+def get_line_transducer(
+  domain,
+  position,
+  width,
+  angle=0
+) -> DistributedTransducer:
+  r"""
+  Construct a line transducer (2D)
+  """
+  if angle != 0:
+    raise NotImplementedError('Angle not implemented yet')
+
+  # Generate mask
+  mask = jnp.zeros(domain.N)
+  start_col = (domain.N[1]-width)//2
+  end_col = (domain.N[1] + width)//2
+  mask = mask.at[position, start_col:end_col].set(1.)
+  mask = jnp.expand_dims(mask, -1)
+  mask = FourierSeries(mask, domain)
+  return DistributedTransducer(mask, [], 0., domain)
 
 
 @dataclass
@@ -207,7 +294,7 @@ class TimeHarmonicSource:
     return self.amplitude * jnp.exp(1j * self.omega * t)
 
 
-@dataclass
+@register_pytree_node_class
 class Sensors:
   r"""Sensors structure
   Attributes:
@@ -222,6 +309,19 @@ class Sensors:
   """
 
   positions: Tuple[tuple]
+
+  def __init__(self, positions):
+    self.positions = positions
+
+  def tree_flatten(self):
+    children = None
+    aux = (self.positions,)
+    return (children, aux)
+
+  @classmethod
+  def tree_unflatten(cls, aux, children):
+    positions = aux[0]
+    return cls(positions)
 
   def to_binary_mask(self, N):
     r"""
