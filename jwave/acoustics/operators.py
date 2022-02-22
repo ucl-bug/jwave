@@ -1,13 +1,37 @@
 from jax import numpy as jnp
 from jaxdf import Field, operator
-from jaxdf.discretization import FiniteDifferences, FourierSeries, OnGrid
+from jaxdf.discretization import (
+    Continuous,
+    FiniteDifferences,
+    FourierSeries,
+    OnGrid,
+)
 from jaxdf.operators import compose, diag_jacobian, gradient, sum_over_dims
 
 from jwave.geometry import Medium
 
 from .conversion import db2neper
-from .pml import complex_pml_on_grid
+from .pml import complex_pml, complex_pml_on_grid
 
+
+@operator
+def laplacian_with_pml(
+  u: Continuous,
+  medium: Medium,
+  omega = 1.0,
+  params = None
+):
+  # Initialize coordinate filed
+  x = Continuous(None, u.domain, lambda p, x: x)
+
+  # PML Filed
+  pml = complex_pml(x, medium, omega)
+
+  # Modified laplacian
+  grad_u = gradient(u)
+  mod_grad_u = grad_u*pml
+  mod_diag_jacobian = diag_jacobian(mod_grad_u)*pml
+  return sum_over_dims(mod_diag_jacobian), None
 
 @operator
 def laplacian_with_pml(
@@ -78,7 +102,6 @@ def laplacian_with_pml(
     def grad_density(rho0):
       rho0 = rho0.params[...,0]
       g_rho0 = jnp.stack([_axis_dx(rho0, axis) for axis in range(rho0.ndim)],-1)
-      print(g_rho0.shape)
       g_rho0 = u.replace_params(g_rho0)
       return g_rho0
 
@@ -129,7 +152,6 @@ def laplacian_with_pml(
     def grad_density(rho0):
       rho0 = rho0.params[...,0]
       g_rho0 = jnp.stack([_axis_dx(rho0, axis) for axis in range(rho0.ndim)],-1)
-      print(g_rho0.shape)
       g_rho0 = u.replace_params(g_rho0)
       return g_rho0
 

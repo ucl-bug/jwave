@@ -13,6 +13,8 @@ theme:
     - navigation.tabs
     - navigation.instant
     - content.code.annotate
+  palette:
+    primary: blue
 
 nav:
   - Home: index.md
@@ -26,15 +28,19 @@ nav:
   - Tutorials:
     - Initial value problems:
       - Homogeneous wave propagation: notebooks/ivp/homogeneous_medium.ipynb
+      - 3D simulations: notebooks/ivp/3d.ipynb
       - Sensors: notebooks/ivp/homogeneous_medium_sensors.ipynb
+      - Custom sensors: notebooks/ivp/custom_sensors.ipynb
       - Automatic differentiation: notebooks/ivp/homogeneous_medium_backprop.ipynb
-    - Homogeneous medium IVP: notebooks/homog_propagation_medium.ipynb
-    - Heterogeneous wave equation: notebooks/sim_wave_equation.ipynb
-    - 3D Simulations: notebooks/homog_propagation_medium_3d.ipynb
-    - Full wave inversion: notebooks/FWI.ipynb
-    - Helmholtz equation: notebooks/helmholtz_problem.ipynb
-    - Focusing single frequency waves: notebooks/helmholtz_solver_differentiable.ipynb
-    - Linear uncertainty propagation: notebooks/uncertainty_propagation.ipynb
+      - Heterogeneous medium: notebooks/ivp/heterogeneous_medium.ipynb
+    - Time varying:
+      - Point sources: notebooks/time_varying/point_sources.ipynb
+      - Full wave inversion: notebooks/time_varying/FWI.ipynb
+    - Time harmonic:
+      - Helmholtz problem: notebooks/harmonic/helmholtz_problem.ipynb
+      - Automatic differentiation: notebooks/harmonic/helmholtz_solver_differentiable.ipynb
+    - Others:
+      - Save video: notebooks/others/save_video.ipynb
   - Benchmarks:
     - Accuracy vs k-Wave: benchmarks/homogeneous_vs_kwave.ipynb
     - Scaling vs timesteps: benchmarks/compute_time_vs_timesteps.ipynb

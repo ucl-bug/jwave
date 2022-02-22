@@ -39,7 +39,8 @@ def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
 
 
 def show_field(x: Field, title="", figsize=(8,6), vmax=None, aspect="auto"):
-  x = x.on_grid
+  if isinstance(x, Field):
+    x = x.on_grid
 
   plt.figure(figsize=figsize)
   maxval = vmax or jnp.amax(jnp.abs(x))

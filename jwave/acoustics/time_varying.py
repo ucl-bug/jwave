@@ -217,9 +217,9 @@ def simulate_wave_propagation(
   smooth_initial = True,
 ):
 
-  # Default sensors simply return the fields
+  # Default sensors simply return the presure field
   if sensors is None:
-    sensors = lambda x: x
+    sensors = lambda p, u, rho: p
 
   # Setup parameters
   if params == None:
@@ -287,7 +287,7 @@ def simulate_wave_propagation(
     rho = alpha*(alpha*rho + dt * drho)
 
     p = pressure_from_density(rho, medium)
-    return [p, u, rho], sensors(p)
+    return [p, u, rho], sensors(p,u,rho)
 
   if checkpoint:
     scan_fun = jax.checkpoint(scan_fun)

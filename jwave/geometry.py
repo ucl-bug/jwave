@@ -337,17 +337,17 @@ class Sensors:
       mask = mask.at[self.positions[0][i], self.positions[1][i]].set(1)
     return mask > 0
 
-  def __call__(self, u: Field):
+  def __call__(self, p: Field, u: Field, rho: Field ):
     r"""Returns the values of the field u at the sensors positions.
     Args:
       u (Field): The field to be sampled.
     """
     if len(self.positions) == 1:
-      return u.on_grid[self.positions[0]]
+      return p.on_grid[self.positions[0]]
     elif len(self.positions) == 2:
-      return u.on_grid[self.positions[0], self.positions[1]]
+      return p.on_grid[self.positions[0], self.positions[1]]
     elif len(self.positions) == 3:
-      return u.on_grid[self.positions[0], self.positions[1], self.positions[2]]
+      return p.on_grid[self.positions[0], self.positions[1], self.positions[2]]
     else:
       raise ValueError("Sensors positions must be 1, 2 or 3 dimensional. Not {}".format(
         len(self.positions)
