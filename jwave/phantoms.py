@@ -20,4 +20,4 @@ def three_circles(N: tuple) -> jnp.ndarray:
     )
     mask3 = _circ_mask(N, radius * 0.15, (int(N[0] / 2), int(N[1] / 2)))
     p0 = 5.0 * mask1 + 3.0 * mask2 + 4.0 * mask3
-    return p0
+    return jnp.expand_dims(p0, -1)
