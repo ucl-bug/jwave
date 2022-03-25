@@ -10,6 +10,9 @@
 #k-wave outputs
 docs/benchmarks/kwave/*.png
 
+# Profiling
+profiling/*
+
 # Misc
 *.DS_Store
 *.env.local

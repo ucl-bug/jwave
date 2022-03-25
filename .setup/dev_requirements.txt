@@ -8,3 +8,7 @@ mkdocs-jupyter
 mkdocstrings
 mkdocs-mermaid2-plugin
 markdown-katex
+mkdocs-macros-plugin
+pre-commit
+pycln
+isort

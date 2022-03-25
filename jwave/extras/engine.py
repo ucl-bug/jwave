@@ -1,6 +1,7 @@
-import matlab.engine
-import os
 import io
+import os
+
+import matlab.engine
 from jax.numpy import ndarray
 
 
@@ -36,8 +37,13 @@ class Matlab(object):
         self._engine = None
         if offgrid_path is None:
             self.kwave_path = os.environ.get("KWAVE_CORE_PATH")
+        else:
+            self.kwave_path = kwave_path
+
         if offgrid_path is None:
             self.offgrid_path = os.environ.get("KWAVE_OFFGRID_PATH")
+        else:
+            self.offgrid_path = offgrid_path
 
         # Redirect outputs
         self.out = io.StringIO()
@@ -62,7 +68,7 @@ class Matlab(object):
 
         # Add paths
         self._engine.addpath(self.kwave_path)
-        #self._engine.addpath(self.offgrid_path)
+        self._engine.addpath(self.offgrid_path)
 
     def run_script(self, script_path: str):
         """Runs a MATLAB script

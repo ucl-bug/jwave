@@ -5,13 +5,16 @@ site_name: j-Wave
 site_author: Antonio Stanziola, Biomedical Ultrasound Group
 site_description: >-
   Fast and differentiable acoustic simulations in JAX
-site_url: https://bug.medphys.ucl.ac.uk
+site_url: https://ucl-bug.github.io/jwave/
 
 theme:
   name: "material"
   features:
     - navigation.tabs
     - navigation.instant
+    - content.code.annotate
+  palette:
+    primary: blue
 
 nav:
   - Home: index.md
@@ -23,13 +26,22 @@ nav:
     - signal_processing: api_signal_processing.md
     - utils: api_utils.md
   - Tutorials:
-    - Homogeneous medium IVP: notebooks/homog_propagation_medium.ipynb
-    - 3D Simulations: notebooks/homog_propagation_medium_3d.ipynb
-    - Full wave inversion: notebooks/FWI.ipynb
-    - Helmholtz equation: notebooks/helmholtz_problem.ipynb
-    - Focusing single frequency waves: notebooks/helmholtz_solver_differentiable.ipynb
-    - Linear uncertainty propagation: notebooks/uncertainty_propagation.ipynb
-  - Benchmarks: 
+    - Initial value problems:
+      - Homogeneous wave propagation: notebooks/ivp/homogeneous_medium.ipynb
+      - 3D simulations: notebooks/ivp/3d.ipynb
+      - Sensors: notebooks/ivp/homogeneous_medium_sensors.ipynb
+      - Custom sensors: notebooks/ivp/custom_sensors.ipynb
+      - Automatic differentiation: notebooks/ivp/homogeneous_medium_backprop.ipynb
+      - Heterogeneous medium: notebooks/ivp/heterogeneous_medium.ipynb
+    - Time varying:
+      - Point sources: notebooks/time_varying/point_sources.ipynb
+      - Full wave inversion: notebooks/time_varying/FWI.ipynb
+    - Time harmonic:
+      - Helmholtz problem: notebooks/harmonic/helmholtz_problem.ipynb
+      - Automatic differentiation: notebooks/harmonic/helmholtz_solver_differentiable.ipynb
+    - Others:
+      - Save video: notebooks/others/save_video.ipynb
+  - Benchmarks:
     - Accuracy vs k-Wave: benchmarks/homogeneous_vs_kwave.ipynb
     - Scaling vs timesteps: benchmarks/compute_time_vs_timesteps.ipynb
     - Scaling vs domain size (2D): benchmarks/compute_time_vs_size_2d.ipynb
@@ -41,12 +53,14 @@ plugins:
       handlers:
         python:
           rendering:
-            show_source: false 
+            show_source: false
       custom_templates: templates
       watch:
         - jwave
   - search
   - mermaid2
+  - macros:
+      module_name: docs/macros
 
 markdown_extensions:
   - toc:
@@ -70,3 +84,5 @@ extra_css:
 
 extra_javascript:
     - https://unpkg.com/mermaid/dist/mermaid.min.js
+
+use_directory_urls: false

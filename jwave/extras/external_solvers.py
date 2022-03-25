@@ -1,11 +1,14 @@
-from jwave.extras.engine import Matlab
-import numpy as np
-import matlab.engine
 from typing import Union
+
+import matlab.engine
+import numpy as np
+
+from jwave.extras.engine import Matlab
+
 
 class kWaveSolver(object):
     r"""
-    This object can be used to use k-Wave in place of the `jwave` solver. 
+    This object can be used to use k-Wave in place of the `jwave` solver.
     Mainly useful for having an external reference to compare results.
     """
     def __init__(self, kwave_path=None, offgrid_path=None):
@@ -24,11 +27,11 @@ class kWaveSolver(object):
         self.start()
 
     def solve(
-        self, 
-        params: dict, 
-        dx: float, 
-        t_end: float, 
-        sources=None, 
+        self,
+        params: dict,
+        dx: float,
+        t_end: float,
+        sources=None,
         sensors=None
     ) -> Union[np.ndarray, np.array]:
         r"""
@@ -98,7 +101,7 @@ class kWaveSolver(object):
 
         # Simulate
         sensor_data = self.matlab.run(
-            'kspaceFirstOrder2D(kgrid, medium, sources, sensors);', 
+            'kspaceFirstOrder2D(kgrid, medium, sources, sensors);',
             nargout=1
         )
         self.matlab.add(sensor_data, "sensor_data")
@@ -117,15 +120,22 @@ class kWaveSolver(object):
 
     def stop(self):
         self.matlab.stop()
-    
+
     def start(self):
         self.matlab.start()
 
 if __name__ == "__main__":
-    from jwave.geometry import Domain
     from jax import numpy as jnp
-    from jwave.geometry import Medium,TimeAxis,_points_on_circle, Sensors, _circ_mask
+
     from jwave.acoustics import ongrid_wave_propagation
+    from jwave.geometry import (
+        Domain,
+        Medium,
+        Sensors,
+        TimeAxis,
+        _circ_mask,
+        _points_on_circle,
+    )
 
     N, dx = (128, 128), (0.1e-3, 0.1e-3)
     domain = Domain(N, dx)
@@ -154,8 +164,8 @@ if __name__ == "__main__":
 
     solver = kWaveSolver()
     p = solver.solve(
-        params, 
-        dx, 
+        params,
+        dx,
         time_axis.t_end,
         sources=None,
         sensors=sensors,

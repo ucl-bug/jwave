@@ -1,7 +1,8 @@
-from jax import numpy as jnp
-from jax import eval_shape, vmap
 from typing import Callable
-import numpy as np
+
+from jax import eval_shape
+from jax import numpy as jnp
+from jax import vmap
 
 
 def analytic_signal(x, axis=-1):
@@ -28,9 +29,6 @@ def analytic_signal(x, axis=-1):
     # Get complex signal
     x = jnp.fft.ifft(spectrum, axis=axis)
     return x
-
-    # Take the inverse fft
-    return jnp.fft.ifft(spectrum, axis=axis)
 
 
 def fourier_downsample(x, subsample=2, discard_last=True):
