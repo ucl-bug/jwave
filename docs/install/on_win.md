@@ -44,7 +44,7 @@ Once logged in, install `cuda`, `python` and all the other dependencies using
 sudo pacman -Syyu pamac base-devel git cudnn python3
 ```
 
-Because we areinstalling packages, the command above requires administrator privilegies on the WSL. Therefore, when prompted, insert your password and answer `Y` to the confirmation prompts.
+Because we are installing packages, the command above requires administrator privilegies on the WSL. Therefore, when prompted, insert your password and answer `Y` to the confirmation prompts.
 
 After the packages are installed, restart the WSL by closing and reopening to make the changes effective.
 

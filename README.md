@@ -11,6 +11,10 @@ Following the phylosophy of [JAX](https://jax.readthedocs.io/en/stable/), j-Wave
 2. Fast via `jit` compilation
 3. Easy to run on GPUs
 
+## Install
+
+Please follow [this guide to install jwave on Linux](docs/install/on_linux.md) and [this one to install it on Windows](docs/install/on_win.md).
+
 
 ## Example
 
