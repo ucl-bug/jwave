@@ -18,6 +18,9 @@ theme:
 
 nav:
   - Home: index.md
+  - Install: 
+    - Linux: install/on_linux.md
+    - Windows: install/on_win.md
   - API:
     - acoustics: api_acoustics.md
     - extras: api_extras.md

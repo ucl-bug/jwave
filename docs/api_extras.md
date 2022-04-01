@@ -62,15 +62,3 @@ p_kwave, kwave_time = k_solver.solve(
     p0=p0
 )
 ```
-
-<br/>
-
-## `jwave.extras`
-
-## ::: jwave.extras
-    handler: python
-    members:
-        - engine
-        - external_solvers
-    show_root_heading: true
-    show_source: false
