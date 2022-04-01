@@ -1,21 +1,6 @@
 # j-Wave
 *Fast and differentiable acoustic simulations in JAX*
 
-```mermaid
-graph TD
-    A(Simulation settings) --> B[Setup]
-    B --> P([Simulation parameters]):::parameter
-    B --> F([Simulation functions])
-    F --> C(Acoustic fields)
-    P --> F
-
-    C -->  D([Loss]):::output
-    D -.-> | - Autodiff - | P
-
-    classDef parameter fill:#7d7,stroke:#000000;
-    classDef output fill:#d77,stroke:#000000;
-```
-
 j-Wave is a library for performing simulations of acoustic problems, and in general for the construction of differentiable PDE and ODE solvers. In its core, is heavily inspired by [k-Wave](http://www.k-wave.org/) (in its essence, most of it is a port of k-Wave in JAX), and its intented to be used as a collection of modular blocks that can be easily included into any machine learning pipeline.
 
 Following the phylosophy of [JAX](https://jax.readthedocs.io/en/stable/), j-Wave is developed with the following principles in mind
