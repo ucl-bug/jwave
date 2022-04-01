@@ -4,9 +4,11 @@ Installing `jwave` on Windows **without CUDA support** can be easily done using 
 
 Installation **with CUDA support** is mainly limited by the lack of `jaxlib` wheels for Windows (see [this issue](https://github.com/google/jax/issues/5795) for more information).
 
-Therefore, `jwave` on the GPU is only partially supported. This guide provides a potential way for installing `jwave` on Windows with GPU support using the Windows Subsystem for Linux.  
+Therefore, `jwave` with GPU is only partially supported on Windows. This guide provides a way for installing `jwave` on Windows with GPU support using the Windows Subsystem for Linux.  
 
-Any help from the community to improve the installation on Windows is more than welcome 😊.
+Alternatively, one can [build JAX from the sources](https://jax.readthedocs.io/en/latest/developer.html) or, if you already have a python environment setup, install [those unofficial wheels](https://github.com/cloudhan/jax-windows-builder).
+
+Any help from to improve the installation on Windows is more than welcome 😊.
 
 **Tested on**:
 
@@ -17,6 +19,14 @@ Any help from the community to improve the installation on Windows is more than 
 ## Install and setup the WSL
 
 (Skip this part if you already have WSL installed)
+
+### Enabling Windows Subsystem for Linux
+
+1. Click `Start` and type `Turn Windows features on and off`, then press enter.
+2. Scroll down until you find `Windows Subsystem for Linux` and enable it by checking the box. Then click `Ok`.
+3. Restart your computer
+
+### Install ManjaroWSL
 
 1. Download the latest zip release of ManjaroWSL [at this page](https://github.com/sileshn/ManjaroWSL/releases)
 2. Extract the contents of the zip file
