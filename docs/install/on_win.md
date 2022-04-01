@@ -8,7 +8,7 @@ Therefore, `jwave` with GPU is only partially supported on Windows. This guide p
 
 Alternatively, one can [build JAX from the sources](https://jax.readthedocs.io/en/latest/developer.html) or, if you already have a python environment setup, install [those unofficial wheels](https://github.com/cloudhan/jax-windows-builder).
 
-Any help from to improve the installation on Windows is more than welcome 😊.
+Any help to improve the installation on Windows is more than welcome 😊.
 
 **Tested on**:
 
