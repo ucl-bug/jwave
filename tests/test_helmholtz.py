@@ -1,7 +1,7 @@
 from jax import numpy as jnp
 
-from jwave.acoustics import ongrid_helmholtz_solver
-from jwave.geometry import Domain, Medium
+from jwave.acoustics.time_harmonic import helmholtz_solver
+from jwave.geometry import Domain, FourierSeries, Medium
 
 
 def test_if_homog_helmholtz_runs():
@@ -9,26 +9,24 @@ def test_if_homog_helmholtz_runs():
     domain = Domain(N,(1.,1.))
     src_field = jnp.zeros(N).astype(jnp.complex64)
     src_field = src_field.at[64, 22].set(1.0)
+    src_field = jnp.expand_dims(src_field, axis=-1)
+    src_field = FourierSeries(src_field, domain)
+
     medium = Medium(
         domain,
-        sound_speed=jnp.ones(N),
-        density=jnp.ones(N),
-        attenuation=None,
+        sound_speed=1.0,
         pml_size=15
     )
 
-    params, solver = ongrid_helmholtz_solver(
+    field = helmholtz_solver(
         medium,
-        omega=1.,
+        1.,
+        src_field,
         tol=1e-5,
         restart=5,
         method="gmres",
         maxiter=10,
-        source = src_field
     )
-
-    # Run simulation
-    field = solver(params)
 
 if __name__ == "__main__":
     test_if_homog_helmholtz_runs()

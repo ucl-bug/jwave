@@ -5,6 +5,18 @@
 *__pycache__
 .venv
 site/*
+build/*
+
+# Nodejs
+node_modules
+package-lock.json
+package.json
+
+
+# Testing
+.coverage
+coverage.xml
+
 
 # Data
 *.mat
