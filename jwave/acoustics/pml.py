@@ -10,8 +10,8 @@ from jwave.geometry import Domain, Medium
 def _base_pml(
   transform_fun: Callable,
   medium: Medium,
-  exponent: 2.0,
-  alpha_max: 2.0
+  exponent: float = 2.0,
+  alpha_max: float = 2.0
 ) -> Field:
   def pml_edge(x):
     return x / 2 - medium.pml_size
