@@ -25,7 +25,8 @@ def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
     matplotlib.pyplot.axes: Axes object.
   """
   fig, axes = plt.subplots(1 ,2, figsize=figsize)
-  field = field.on_grid
+  if isinstance(field, Field):
+    field = field.on_grid
 
   if max_intensity is None:
     max_intensity = jnp.amax(jnp.abs(field))
@@ -59,7 +60,8 @@ def show_field(x: Field, title="", figsize=(8,6), vmax=None, aspect="auto"):
 
 
 def show_positive_field(x: Field, title="", figsize=(8,6), vmax=None, vmin=None, aspect="auto"):
-  x = x.on_grid
+  if isinstance(x, Field):
+    x = x.on_grid
   plt.figure(figsize=figsize)
   if vmax is None:
     vmax = jnp.amax(x)

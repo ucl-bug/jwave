@@ -22,7 +22,7 @@ clean:            ## Clean unused files.
 .PHONY: docs
 docs:             ## Build the documentation.
 	@echo "building documentation ..."
-	@$(ENV_PREFIX)pip install -e .[doc]
+	@$(ENV_PREFIX)pip install -e .[test]
 	@$(ENV_PREFIX)mkdocs build
 	URL="site/index.html"; xdg-open $$URL || sensible-browser $$URL || x-www-browser $$URL || gnome-open $$URL
 
@@ -46,9 +46,9 @@ lint:             ## Runs isort and mypy.
 	$(ENV_PREFIX)isort jwave/
 	@echo "Running flake8 ..."
 	$(ENV_PREFIX)flake8 jwave/  --count --select=E9,F63,F7,F82 --show-source --statistics
-	$(ENV_PREFIX)flake8 jwave/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+	$(ENV_PREFIX)flake8 jwave/ --count --ignore=E111 --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 	@echo "Running mypy ..."
-	$(ENV_PREFIX)mypy --config-file=pyproject.toml jwave/*.py
+	$(ENV_PREFIX)mypy --allow-redefinition --config-file=pyproject.toml jwave/*.py
 
 .PHONY: release
 release:          ## Create a new tag for release.

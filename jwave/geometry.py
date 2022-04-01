@@ -1,6 +1,5 @@
 import math
 from dataclasses import dataclass
-from numbers import Number
 from typing import Tuple, Union
 
 import numpy as np
@@ -11,6 +10,7 @@ from jaxdf.geometry import Domain
 from jaxdf.operators import dot_product, functional
 from plum import parametric, type_of
 
+Number = Union[float, int]
 
 @register_pytree_node_class
 class Medium:
@@ -38,7 +38,7 @@ class Medium:
   sound_speed: Union[Number, Field] = 1.0
   density: Union[Number, Field] = 1.0
   attenuation: Union[Number, Field] = 0.0
-  pml_size: Number = 20
+  pml_size: Number = 20.0
 
   def __init__(
     self, domain, sound_speed = 1.0, density=1.0, attenuation=0.0, pml_size=20
@@ -94,8 +94,9 @@ class MediumObject(Medium):
   pass
 
 @type_of.dispatch
-def type_of(m: Medium):
-  return MediumObject[type(m.sound_speed), type(m.density), type(m.attenuation)]
+def _type_of(m: Medium):
+  # TODO: Not sure why mypy fails here
+  return MediumObject[type(m.sound_speed), type(m.density), type(m.attenuation)] # type: ignore
 
 def _unit_fibonacci_sphere(samples=128):
   # From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
@@ -125,7 +126,6 @@ def _circ_mask(N, radius, centre):
   dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
   mask = (dist_from_centre < radius).astype(int)
   return mask
-
 
 def _sphere_mask(N, radius, centre):
   x, y, z = np.mgrid[0 : N[0], 0 : N[1], 0 : N[2]]
@@ -345,9 +345,9 @@ class Sensors:
     if len(self.positions) == 1:
       return p.on_grid[self.positions[0]]
     elif len(self.positions) == 2:
-      return p.on_grid[self.positions[0], self.positions[1]]
+      return p.on_grid[self.positions[0], self.positions[1]] # type: ignore
     elif len(self.positions) == 3:
-      return p.on_grid[self.positions[0], self.positions[1], self.positions[2]]
+      return p.on_grid[self.positions[0], self.positions[1], self.positions[2]] # type: ignore
     else:
       raise ValueError("Sensors positions must be 1, 2 or 3 dimensional. Not {}".format(
         len(self.positions)
@@ -386,10 +386,3 @@ class TimeAxis:
         sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
       ) / functional(medium.sound_speed)(np.min)
     return TimeAxis(dt=float(dt), t_end=float(t_end))
-
-
-def _circ_mask(N, radius, centre):
-  x, y = np.mgrid[0 : N[0], 0 : N[1]]
-  dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
-  mask = (dist_from_centre < radius).astype(int)
-  return mask

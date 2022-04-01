@@ -1,6 +1,10 @@
 [tool.pycln]
 all = true
 
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ['jaxdf/acoustics/operators.py']
+
 [tool.isort]
 multi_line_output = 3
 include_trailing_comma = true

@@ -1,4 +1,7 @@
 # nopycln: file
-from jwave.extras import engine as engine
-from jwave.extras import export as export
-from jwave.extras import external_solvers as external_solvers
+
+from jwave.extras.engine import Matlab
+from jwave.extras.export import save_video
+from jwave.extras.external_solvers import kWaveSolver
+
+__all__ = ['Matlab', 'save_video', 'kWaveSolver']
