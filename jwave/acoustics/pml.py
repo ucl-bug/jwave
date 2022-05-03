@@ -87,14 +87,14 @@ def td_pml_on_grid(
 
 
 def _sigma(x):
-    alpha = 2.
-    sigma_star = 10.
-    delta_pml = 54.
-    L_half = 64.
+  alpha = 2.
+  sigma_star = 10.
+  delta_pml = 54.
+  L_half = 64.
 
-    abs_x = jnp.abs(x)
-    in_pml_amplitude = (jnp.abs(abs_x-delta_pml)/(L_half - delta_pml))**alpha
-    return jnp.where(abs_x > delta_pml, sigma_star*in_pml_amplitude, 0.)
+  abs_x = jnp.abs(x)
+  in_pml_amplitude = (jnp.abs(abs_x-delta_pml)/(L_half - delta_pml))**alpha
+  return jnp.where(abs_x > delta_pml, sigma_star*in_pml_amplitude, 0.)
 
 @operator
 def complex_pml(
