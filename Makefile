@@ -86,14 +86,14 @@ test:             ## Run tests and generate coverage report.
 testenv:          ## Create a test environment.
 	@echo "creating test environment ..."
 	@python -c "import sys; assert sys.version_info >= (3, 8), 'Python 3.8 or higher is required'" || exit 1
-	@rm -rf .tenv
-	@python3 -m venv .tenv
-	@./.tenv/bin/pip install -U pip
+	@rm -rf .venv
+	@python3 -m venv .venv
+	@./.venv/bin/pip install -U pip
 	@echo "Instaling JaxDF"
 	@./.venv/bin/pip install git+https://github.com/ucl-bug/jaxdf.git
 	@echo "Instaling jwave"
 	@./.venv/bin/pip install -e .[test]
-	@echo "!!! Please run 'source .tenv/bin/activate' to enable the environment !!!"
+	@echo "!!! Please run 'source .venv/bin/activate' to enable the environment !!!"
 	@echo "--- Don't forget to manually reinstall JAX for GPU/TPU support: https://github.com/google/jax#installation"
 
 .PHONY: virtualenv
