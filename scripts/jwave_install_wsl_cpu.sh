@@ -2,6 +2,9 @@
 echo "-- jwave installer: Installing packages, please type your password when prompted"
 sudo pacman -Syyu --noconfirm pamac base-devel git python3 
 
+# Source bashrc
+source ~/.bashrc
+
 # Making virtual environment
 echo "-- jwave installer: Making virtual environment and installing jax[cpu]"
 make virtualenv
