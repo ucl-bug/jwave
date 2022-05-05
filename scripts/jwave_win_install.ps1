@@ -55,8 +55,12 @@ Write-Output "                    and create a new user."
 
 wsl
 
-
 Write-Output "-- jwave installer: WSL is configured. If an extra WSL window has appeared, please close it."
+
+Write-Output "-- jwave installer: Updating WSL."
+wsl sudo pacman -Syyu --noconfirm dos2unix
+dos2unix ./scripts/jwave_install_wsl_gpu.sh
+dos2unix ./scripts/jwave_install_wsl_cpu.sh
 
 # Checking installation type
 $install_type = Read-Host "-- jwave installer: Do you want to install jwave with CPU-only support or with GPU support? (CPU/GPU)"
