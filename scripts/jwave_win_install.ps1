@@ -50,13 +50,13 @@ scoop install manjarowsl
 # Inform user of next steps
 Write-Output "-- jwave installer: Windows Subsystem for Linux (WSL) is installed."
 Write-Output "                    In the next steps, you'll have to finalize its setup."
-Write-Output "                    Type 'wsl', press enter and follow the instructions"
-Write-Output "                    on the screen to resize the WSL and create a new user."
+Write-Output "                    Follow the instructions on the screen to resize the WSL"
+Write-Output "                    and create a new user."
 
 wsl
 
 
-Write-Output "-- jwave installer: WSL is configured."
+Write-Output "-- jwave installer: WSL is configured. If an extra WSL window has appeared, please close it."
 
 # Checking installation type
 $install_type = Read-Host "-- jwave installer: Do you want to install jwave with CPU-only support or with GPU support? (CPU/GPU)"
