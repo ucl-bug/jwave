@@ -35,7 +35,7 @@ help:             ## Show the help.
 
 .PHONY: jaxgpu
 jaxgpu:           ## Installs jax for *nix systems with CUDA
-	@echo "Installing jax..."
+	@echo "Installing jax with GPU support..."
 	@$(ENV_PREFIX)pip install --upgrade pip
 	@$(ENV_PREFIX)pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
@@ -82,9 +82,9 @@ test:             ## Run tests and generate coverage report.
 	$(ENV_PREFIX)coverage xml
 	$(ENV_PREFIX)coverage html
 
-.PHONY: virtualenv
-virtualenv:       ## Create a virtual environment. Checks that python > 3.8
-	@echo "creating virtual environment ..."
+.PHONY: testenv
+testenv:          ## Create a test environment.
+	@echo "creating test environment ..."
 	@python -c "import sys; assert sys.version_info >= (3, 8), 'Python 3.8 or higher is required'" || exit 1
 	@rm -rf .venv
 	@python3 -m venv .venv
@@ -95,6 +95,21 @@ virtualenv:       ## Create a virtual environment. Checks that python > 3.8
 	@./.venv/bin/pip install -e .[test]
 	@echo "!!! Please run 'source .venv/bin/activate' to enable the environment !!!"
 	@echo "--- Don't forget to manually reinstall JAX for GPU/TPU support: https://github.com/google/jax#installation"
+
+.PHONY: virtualenv
+virtualenv:       ## Create a virtual environment. Checks that python > 3.8
+	@echo "creating virtual environment ..."
+	@python -c "import sys; assert sys.version_info >= (3, 8), 'Python 3.8 or higher is required'" || exit 1
+	@rm -rf .venv
+	@python3 -m venv .venv
+	@./.venv/bin/pip install -U pip
+	@echo "Instaling JaxDF"
+	@./.venv/bin/pip install git+https://github.com/ucl-bug/jaxdf.git
+	@echo "Instaling jwave"
+	@./.venv/bin/pip install -e .
+	@echo "!!! Please run 'source .venv/bin/activate' to enable the environment !!!"
+	@echo "--- Don't forget to manually reinstall JAX for GPU/TPU support: https://github.com/google/jax#installation"
+
 
 .PHONY: watch
 watch:            ## Run tests on every change.
