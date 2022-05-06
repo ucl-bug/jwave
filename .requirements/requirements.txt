@@ -1,2 +1,2 @@
-jaxdf
+git+https://github.com/ucl-bug/jaxdf.git
 matplotlib
