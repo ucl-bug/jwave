@@ -1,14 +1,10 @@
 # Initial info.
 Write-Output "jwave Windows installer"
 Write-Output "========================"
-Write-Output "This script will install jwave on your Windows machine with CPU/GPU acceleration."
-Write-Output "It is recommended to use this script if you are a beginner with Python."
+Write-Output "This script will install jwave on your Windows machine using the Windows Subsystem for Linux (WSL)."
 Write-Output ""
-Write-Output "If you don't need hardware acceleration, we recommend to install jwave with pip on an existing python environment, rather than using this script."
 Write-Output "Alternatively, you can build jax (with/without GPU support) from source before installing jwave, see: https://jax.readthedocs.io/en/latest/developer.html,"
 Write-Output "or use the unofficial windows wheels provided in https://github.com/cloudhan/jax-windows-builder"
-Write-Output ""
-Write-Output "This script will install jwave on your Windows machine using the Windows Subsystem for Linux (WSL)."
 Write-Output ""
 
 $continue = Read-Host "Do you want to continue? (Y/N)"
@@ -21,13 +17,13 @@ if ($continue -ne "Y") {
 if (Get-Command scoop -ErrorAction SilentlyContinue) {
     Write-Output "scoop is already installed, skipping."
 } else {
-    Write-Output "-- jwave installer: Installing scoop. Press 'Y' when prompted to install scoop." 
+    Write-Output "-- jwave installer: Installing scoop." 
     Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-WebRequest get.scoop.sh | Invoke-Expression
 }
 
 # Installing Git
-Write-Output "-- jwave installer: Installing Git. Press 'Y' when prompted to install Git."
+Write-Output "-- jwave installer: Installing Git."
 scoop bucket add extras
 scoop install git
 
@@ -39,7 +35,7 @@ Set-Location jwave
 
     
 # Installing Manjaro WSL
-Write-Output "-- jwave installer: Installing Git and Windows Subsystem for Linux (Manjaro)"
+Write-Output "-- jwave installer: Installing the Windows Subsystem for Linux (Manjaro)"
 scoop install manjarowsl
 
 # Inform user of next steps
