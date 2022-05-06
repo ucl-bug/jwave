@@ -19,7 +19,7 @@ if ($continue -ne "Y") {
 
 # Installing scoop if doesn't exists
 if (Get-Command scoop -ErrorAction SilentlyContinue) {
-    Write-Output "scoop is already installed."
+    Write-Output "scoop is already installed, skipping."
 } else {
     Write-Output "-- jwave installer: Installing scoop. Press 'Y' when prompted to install scoop." 
     Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -32,16 +32,11 @@ scoop bucket add extras
 scoop install git
 
 # Cloning jwave
-$confirm = Read-Host "-- jwave installer: Do you want to clone jwave in this folder? (Y/N)"
-if ($confirm -eq "Y") {
-    Write-Output "-- jwave installer: Cloning jwave in this folder."
-    git clone  git@github.com:ucl-bug/jwave.git
-    Set-Location jwave
-}
-else {
-    Write-Output "-- jwave installer: Aborting. Please run this script again from the folder where you want to clone jwave."
-    exit
-}
+Write-Output "-- jwave installer: Cloning jwave."
+Set-Location ~/scoop
+git clone  git@github.com:ucl-bug/jwave.git
+Set-Location jwave
+
     
 # Installing Manjaro WSL
 Write-Output "-- jwave installer: Installing Git and Windows Subsystem for Linux (Manjaro)"
