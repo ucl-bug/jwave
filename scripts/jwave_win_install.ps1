@@ -30,7 +30,7 @@ scoop install git
 # Cloning jwave
 Write-Output "-- jwave installer: Cloning jwave."
 git clone  git@github.com:ucl-bug/jwave.git ~/.jwave
-Set-Location ~/.jwave
+Set-Location $HOME/.jwave
 
     
 # Installing Manjaro WSL
