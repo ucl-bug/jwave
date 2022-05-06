@@ -64,7 +64,7 @@ if ($install_type -eq "CPU") {
     wsl ./scripts/jwave_install_wsl_cpu.sh
 }
 elseif ($install_type -eq "GPU") {
-    Write-Output "-- jwave installer: Installing jwave with CPU support."
+    Write-Output "-- jwave installer: Installing jwave with GPU support."
     Write-Output "                    The script assumes that you have an NVIDIA GPU card"
     wsl chmod +x ./scripts/jwave_install_wsl_gpu.sh
     wsl ./scripts/jwave_install_wsl_gpu.sh
