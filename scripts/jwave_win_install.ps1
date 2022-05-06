@@ -49,6 +49,7 @@ wsl
 Write-Output "-- jwave installer: WSL is configured. If an extra WSL window has appeared, please close it."
 
 Write-Output "-- jwave installer: Updating WSL."
+wsl sudo pacman -Syyu --noconfirm
 wsl sudo pacman -Syyu --noconfirm dos2unix
 wsl dos2unix ./scripts/jwave_install_wsl_gpu.sh
 wsl dos2unix ./scripts/jwave_install_wsl_cpu.sh
