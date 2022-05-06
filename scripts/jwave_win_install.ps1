@@ -29,7 +29,7 @@ scoop install git
 
 # Cloning jwave
 Write-Output "-- jwave installer: Cloning jwave."
-git clone  git@github.com:ucl-bug/jwave.git ~/.jwave
+git clone  git@github.com:ucl-bug/jwave.git $HOME/.jwave
 Set-Location $HOME/.jwave
 
     
