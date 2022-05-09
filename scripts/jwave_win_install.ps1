@@ -35,10 +35,8 @@ Set-Location $HOME/.jwave
     
 # Installing Manjaro WSL
 Write-Output "-- jwave installer: Installing the Windows Subsystem for Linux (Manjaro)"
+wsl --set-default-version 2
 scoop install manjarowsl
-
-# Force WSL2 in case an old version exists
-wsl --set-version Manjaro 2
 
 # Inform user of next steps
 Write-Output "-- jwave installer: Windows Subsystem for Linux (WSL) is installed."
