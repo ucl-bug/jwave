@@ -40,7 +40,7 @@ Similarly, check that the Virtual Machine feature is enabled by typing the follo
 dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
 ```
 
-Close the PowerShell window. 
+Close the PowerShell window and restart your computer.
 
 The next step is to make sure that your system has the latest Linux kernel update. Open [this page](https://www.catalog.update.microsoft.com/Search.aspx?q=wsl) and download he latest kernel update for your system architecture (which often is x64). The downloaded file is a `.cab` file, which needs to be extracted somewhere on your system. After extracting the file, double-click on the extracted file and follow the install instructions.
 
