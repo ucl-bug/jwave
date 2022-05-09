@@ -222,9 +222,9 @@ def simulate_wave_propagation(
     sensors = lambda p, u, rho: p
 
   # Setup parameters
+  dt = time_axis.dt
+  c_ref = functional(medium.sound_speed)(jnp.amax)
   if params == None:
-    c_ref = functional(medium.sound_speed)(jnp.amax)
-    dt = time_axis.dt
 
     t = jnp.arange(0, time_axis.t_end + time_axis.dt, time_axis.dt)
     output_steps = (t / dt).astype(jnp.int32)
@@ -294,7 +294,7 @@ def simulate_wave_propagation(
 
   _, ys = jax.lax.scan(scan_fun, fields, output_steps)
 
-  return ys
+  return ys, params
 
 
 if __name__ == "__main__":
