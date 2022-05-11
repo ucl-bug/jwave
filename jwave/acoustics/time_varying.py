@@ -262,6 +262,9 @@ def simulate_wave_propagation(
       p0_params = jnp.expand_dims(smooth(p0_params), -1)
       p0 = p0.replace_params(p0_params)
 
+    # Force u(t=0) to be zero accounting for time staggered grid
+    u0 = -dt * momentum_conservation_rhs(p0, u0, medium, c_ref, dt, params=params['fourier']) / 2
+
   # Initialize acoustic density
   rho = p0.replace_params(
       jnp.stack([p0.params[...,i] for i in range(p0.ndim)], axis=-1)
