@@ -167,6 +167,7 @@ def mass_conservation_rhs(
   k_vec = params['k_vec']
   k_space_op = params['k_space_op']
   rho0 = medium.density
+  c0 = medium.sound_speed
 
   # Add shift to k vector
   shift_and_k_op = [
@@ -182,7 +183,7 @@ def mass_conservation_rhs(
     return jnp.fft.ifftn(iku).real
 
   du = jnp.stack([single_grad(i, u.params[...,i]) for i in range(p.ndim)], axis=-1)
-  update = -p.replace_params(du) * rho0 + mass_source / du.ndim
+  update = -p.replace_params(du) * rho0 + 2 * mass_source / (c0 * p.ndim * dx)
 
   return update, params
 
