@@ -37,7 +37,7 @@ def _shift_rho_for_fourier(rho0, direction, dx):
   if isinstance(rho0, OnGrid):
     rho0_params = rho0.params[...,0]
     def linear_interp(u, axis):
-      return 0.5*(jnp.roll(u, direction, axis) + u)
+      return 0.5*(jnp.roll(u, -direction, axis) + u)
     rho0 = jnp.stack([linear_interp(rho0_params, n) for n in range(rho0.ndim)], axis=-1)
   elif isinstance(rho0, Field):
     rho0 = shift_operator(rho0, direction*dx)
