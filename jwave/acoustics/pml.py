@@ -46,8 +46,25 @@ def td_pml_on_grid(
     dx=1.0,
     coord_shift=0.0
 ) -> jnp.ndarray:
-    transform_fun = lambda alpha: jnp.exp((-1) * alpha * dt * c0 / 2 / dx)
-    return _base_pml(transform_fun, medium, exponent, alpha_max, coord_shift)
+
+    x_right = ((jnp.arange(1, medium.pml_size+1, 1) + coord_shift) / medium.pml_size)
+    x_left =  ((jnp.arange(medium.pml_size, 0, -1) - coord_shift) / medium.pml_size)
+    x_right = x_right ** exponent
+    x_left = x_left ** exponent
+
+    alpha_left = jnp.exp(alpha_max * (-1) * x_left * dt * c0 / 2 / dx)
+    alpha_right = jnp.exp(alpha_max * (-1) * x_right * dt * c0 / 2 / dx)
+    _alpha_left = jnp.expand_dims(alpha_left, -1)
+    _alpha_right = jnp.expand_dims(alpha_right, -1)
+
+    pml_shape = tuple(list(medium.domain.N) + [len(medium.domain.N)])
+    pml = jnp.ones(pml_shape)
+    pml = pml.at[:medium.pml_size,:,0].set(_alpha_left)
+    pml = pml.at[-medium.pml_size:,:,0].set(_alpha_right)
+    pml = pml.at[:,:medium.pml_size,1].set(alpha_left)
+    pml = pml.at[:,-medium.pml_size:,1].set(alpha_right)
+    return pml
+
 
 def _sigma(x):
     alpha = 2.
