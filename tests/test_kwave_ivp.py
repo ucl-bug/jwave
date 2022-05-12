@@ -1,84 +1,140 @@
-# %% Setup simulation
-from jwave.geometry import Domain, Medium, TimeAxis
-from jwave.geometry import _circ_mask
-from jwave.acoustics import simulate_wave_propagation
 
-from jwave import FourierSeries
+import os
 
+import pytest
 from jax import jit
 from jax import numpy as jnp
+from scipy.io import loadmat, savemat
 
-Nx = (128, 128)
-dx = (0.1e-3, 0.1e-3)
-domain = Domain(Nx, dx)
+from jwave import FourierSeries
+from jwave.acoustics import simulate_wave_propagation
+from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
 
-sound_speed = 1500.0
 
-p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
-p0 =  jnp.expand_dims(p0, -1)
-p0 = FourierSeries(p0, domain)
+# Setting source
+def _get_p0(domain):
+  Nx = domain.N
+  p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
+  p0 =  jnp.expand_dims(p0, -1)
+  p0 = FourierSeries(p0, domain)
+  return p0
 
-def test_ivp(use_plots = False, save_outputs = False):
-    
-  for test_ind in range(4):
-    
-    match test_ind:
-      case 0:
-        pml_size = 0
-        smooth_initial = False
-      case 1:
-        pml_size = 0
-        smooth_initial = True
-      case 2:
-        pml_size = 10
-        smooth_initial = False
-      case 3:
-        pml_size = 10
-        smooth_initial = True
-        
-    medium = Medium(domain = domain, sound_speed = sound_speed, pml_size=pml_size)
-    time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=5e-6)
-      
-    @jit
-    def run_simulation(p0):
-      return simulate_wave_propagation(medium, time_axis, p0=p0, smooth_initial=smooth_initial)
-      
-    acoustic_field = run_simulation(p0)
-    p_final = acoustic_field[-1].on_grid[:,:,1]
-      
-    if save_outputs:
-          
-      from scipy.io import savemat
-          
-      mdic = {"p_final": p_final, "p0": p0.on_grid, "Nx": Nx, "dx": dx, 
-              "Nt": time_axis.Nt, "dt": time_axis.dt, "sound_speed": sound_speed,
-              "Smooth": smooth_initial, "PMLSize": pml_size}
-      savemat("test_kwave_ivp_jwave_results_" + str(test_ind) + ".mat", mdic)
-          
-    else:
-          
-      from scipy.io import loadmat
-         
-      kwave = loadmat("test_kwave_ivp_kwave_results_" + str(test_ind) + ".mat")
-      kwave_p_final = kwave["p_final"]
-      err = abs(p_final - kwave_p_final)
-          
-      maxErr = jnp.amax(err)
-      print('Maximum error = ', maxErr)
-      # assert maxErr < 1e-5
-          
-      if use_plots:
-         plot_comparison(p_final, kwave_p_final)
-         
-            
+TEST_SETTINGS = {
+  "ivp_no_pml_no_smooth_homog": {
+    "N": (128, 128),
+    "dx": (0.1e-3, 0.1e-3),
+    "sound_speed": 1500.0,
+    "smooth_initial": False,
+    "PMLSize": 0,
+    "p0_constructor": _get_p0,
+  },
+  "ivp_pml_no_smooth_homog" : {
+    "N": (128, 128),
+    "dx": (0.1e-3, 0.1e-3),
+    "sound_speed": 1500.0,
+    "smooth_initial": False,
+    "PMLSize": 10,
+    "p0_constructor": _get_p0,
+  },
+  "ivp_no_pml_smooth_homog": {
+    "N": (128, 128),
+    "dx": (0.1e-3, 0.1e-3),
+    "sound_speed": 1500.0,
+    "smooth_initial": True,
+    "PMLSize": 0,
+    "p0_constructor": _get_p0,
+  },
+  "ivp_pml_smooth_homog": {
+    "N": (128, 128),
+    "dx": (0.1e-3, 0.1e-3),
+    "sound_speed": 1500.0,
+    "smooth_initial": True,
+    "PMLSize": 10,
+    "p0_constructor": _get_p0,
+  }
+}
+
+
+@pytest.mark.parametrize("test_name", TEST_SETTINGS.keys())
+def test_ivp(
+  test_name,
+  use_plots = False
+):
+  settings = TEST_SETTINGS[test_name]
+  matfile = test_name + ".mat"
+  dir_path = os.path.dirname(os.path.realpath(__file__))
+
+  # Extract simulation setup
+  domain = Domain(settings["N"], settings["dx"])
+  sound_speed = settings["sound_speed"]
+  p0 = settings["p0_constructor"](domain)
+
+  # Initialize simulation parameters
+  medium = Medium(
+    domain = domain,
+    sound_speed = sound_speed,
+    pml_size=settings["PMLSize"]
+  )
+  time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=5e-6)
+
+  # Run simulation
+  @jit
+  def run_simulation(p0):
+    return simulate_wave_propagation(
+      medium,
+      time_axis,
+      p0=p0,
+      smooth_initial=settings["smooth_initial"]
+    )
+
+  # Extract last field
+  p_final = run_simulation(p0)[-1].on_grid[:,:,0]
+
+  # Generate the matlab results if they don't exist
+  if not os.path.isfile(dir_path + '/kwave_data/' + matfile):
+    print("Generating matlab results")
+    mdict = {
+      "p_final": p_final,
+      "p0": p0.on_grid[...,0],
+      "Nx": domain.N,
+      "dx": domain.dx,
+      "Nt": time_axis.Nt,
+      "dt": time_axis.dt,
+      "sound_speed": sound_speed,
+      "PMLSize": settings["PMLSize"],
+      "smooth_initial": settings["smooth_initial"]
+    }
+    in_filepath = dir_path + '/kwave_data/setup_' + matfile
+    savemat(in_filepath, mdict)
+
+    fun_call = f'''test_kwave_ivp('{in_filepath}')'''
+    mat_command = f"cd('{dir_path}'); test_kwave_ivp(string('{in_filepath}')); exit;"
+    command = f'''matlab -nodisplay -nosplash -nodesktop -r "{mat_command}"'''
+    os.system(command)
+
+  # Load the matlab results
+  out_filepath = dir_path + '/kwave_data/' + matfile
+  kwave = loadmat(out_filepath)
+  kwave_p_final = kwave["p_final"]
+  err = abs(p_final - kwave_p_final)
+
+  # Check maximum error
+  maxErr = jnp.amax(err)
+  print('Maximum error = ', maxErr)
+  # assert maxErr < 1e-5
+
+  if use_plots:
+      plot_comparison(p_final, kwave_p_final)
+
+
 def plot_comparison(jwave, kwave):
-    
-  from mpl_toolkits.axes_grid1 import make_axes_locatable
+
   import matplotlib.pyplot as plt
-  
+  from mpl_toolkits.axes_grid1 import make_axes_locatable
+
   plt.rcParams.update({'font.size': 6})
   plt.rcParams["figure.dpi"] = 300
-    
+
   f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True)
 
   im1 = ax1.imshow(jwave)
@@ -100,8 +156,10 @@ def plot_comparison(jwave, kwave):
   plt.colorbar(im3, cax=cax3)
 
   plt.show()
-    
+
 
 if __name__ == "__main__":
-  test_ivp(use_plots = True, save_outputs = False)
-    
+  test_ivp(
+    "ivp_no_pml_smooth_homog",
+    use_plots = True
+  )
