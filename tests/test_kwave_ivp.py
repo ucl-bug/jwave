@@ -109,7 +109,6 @@ def test_ivp(
 
     fun_call = f'''test_kwave_ivp('{in_filepath}')'''
     mat_command = f"cd('{dir_path}'); test_kwave_ivp(string('{in_filepath}')); exit;"
-    print(mat_command)
     command = f'''matlab -nodisplay -nosplash -nodesktop -r "{mat_command}"'''
     os.system(command)
 
