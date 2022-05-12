@@ -11,13 +11,15 @@ def _base_pml(
   transform_fun: Callable,
   medium: Medium,
   exponent: float = 2.0,
-  alpha_max: float = 2.0
+  alpha_max: float = 2.0,
+  coord_shift=0.0
 ) -> Field:
   def pml_edge(x):
     return x / 2 - medium.pml_size
 
   delta_pml = jnp.asarray(list(map(pml_edge, medium.domain.N)))
   coord_grid = Domain(N=medium.domain.N, dx=tuple([1.0] * len(medium.domain.N))).grid
+  coord_grid = coord_grid + coord_shift
 
   def _pml_fun(x, delta_pml):
     diff = (jnp.abs(x) - 1.0 * delta_pml) / medium.pml_size
@@ -37,10 +39,16 @@ def complex_pml_on_grid(
 
 
 def td_pml_on_grid(
-    medium: Medium, dt: float, exponent=4.0, alpha_max=1.0, c0=1.0, dx=1.0
+    medium: Medium,
+    dt: float,
+    exponent=4.0,
+    alpha_max=2.0,
+    c0=1.0,
+    dx=1.0,
+    coord_shift=0.0
 ) -> jnp.ndarray:
     transform_fun = lambda alpha: jnp.exp((-1) * alpha * dt * c0 / 2 / dx)
-    return _base_pml(transform_fun, medium, exponent, alpha_max)
+    return _base_pml(transform_fun, medium, exponent, alpha_max, coord_shift)
 
 def _sigma(x):
     alpha = 2.

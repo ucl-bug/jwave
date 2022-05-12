@@ -229,33 +229,46 @@ def simulate_wave_propagation(
 
     output_steps = jnp.arange(0, time_axis.Nt, 1)
 
-    # Making PML on grid
-    pml_grid = td_pml_on_grid(medium, dt, c0=c_ref, dx=medium.domain.dx[0])
-    if issubclass(type(pml_grid), Field):
-      pml = medium.sound_speed.replace_params(pml_grid)
-    else:
-      pml = FourierSeries(pml_grid, medium.domain)
+    # Making PML on grid for rho and u
+    def make_pml(staggering=0.0):
+      pml_grid = td_pml_on_grid(
+        medium,
+        dt,
+        c0=c_ref,
+        dx=medium.domain.dx[0],
+        coord_shift=staggering
+      )
+      if issubclass(type(pml_grid), Field):
+        pml = medium.sound_speed.replace_params(pml_grid)
+      else:
+        pml = FourierSeries(pml_grid, medium.domain)
+      return pml
+
+    pml_rho = make_pml()
+    pml_u = make_pml(staggering=0.5)
 
     # Get k-space operator
-    fourier = _get_kspace_op(pml, c_ref, dt)
+    fourier = _get_kspace_op(pml_rho, c_ref, dt)
     params = {
-      'pml': pml,
+      'pml_rho': pml_rho,
+      'pml_u': pml_u,
       'output_steps': output_steps,
       'fourier': fourier,
     }
 
   # Get parameters
-  pml = params['pml']
+  pml_rho = params['pml_rho']
+  pml_u = params['pml_u']
 
   # Initialize variables
   shape = tuple(list(medium.domain.N) + [len(medium.domain.N),])
   shape_one = tuple(list(medium.domain.N) + [1,])
   if u0 is None:
-    u0 = pml.replace_params(jnp.zeros(shape))
+    u0 = pml_u.replace_params(jnp.zeros(shape))
   else:
     assert u0.dim == len(medium.domain.N)
   if p0 is None:
-    p0 = pml.replace_params(jnp.zeros(shape_one))
+    p0 = pml_rho.replace_params(jnp.zeros(shape_one))
   else:
     if smooth_initial:
       p0_params = p0.params[...,0]
@@ -273,7 +286,6 @@ def simulate_wave_propagation(
 
   # define functions to integrate
   fields = [p0, u0, rho]
-  alpha = params['pml']
   output_steps = params['output_steps']
 
   def scan_fun(fields, n):
@@ -284,10 +296,10 @@ def simulate_wave_propagation(
       mass_src_field = sources.on_grid(n)
 
     du = momentum_conservation_rhs(p, u, medium, c_ref, dt, params=params['fourier'])
-    u = alpha*(alpha*u + dt * du)
+    u = pml_u*(pml_u*u + dt * du)
 
     drho = mass_conservation_rhs(p, u, mass_src_field, medium, c_ref, dt, params=params['fourier'])
-    rho = alpha*(alpha*rho + dt * drho)
+    rho = pml_rho*(pml_rho*rho + dt * drho)
 
     p = pressure_from_density(rho, medium)
     return [p, u, rho], sensors(p,u,rho)
