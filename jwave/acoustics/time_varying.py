@@ -215,6 +215,7 @@ def simulate_wave_propagation(
   checkpoint: bool = False,
   params = None,
   smooth_initial = True,
+  return_params = False,
 ):
 
   # Default sensors simply return the presure field
@@ -297,7 +298,10 @@ def simulate_wave_propagation(
 
   _, ys = jax.lax.scan(scan_fun, fields, output_steps)
 
-  return ys, params
+  if return_params:
+    return ys, params
+  else:
+    return ys
 
 
 if __name__ == "__main__":
