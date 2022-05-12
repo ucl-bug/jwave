@@ -10,6 +10,7 @@ from jwave import FourierSeries
 from jwave.acoustics import simulate_wave_propagation
 from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
 
+import numpy as np
 
 # Setting source
 def _get_p0(domain):
@@ -19,38 +20,97 @@ def _get_p0(domain):
   p0 = FourierSeries(p0, domain)
   return p0
 
+# Setting sound speed
+def _get_heterog_sound_speed(domain):
+  sound_speed = np.ones(domain.N) * 1500.0
+  sound_speed[50:90, 65:100] = 2300.0
+  sound_speed = FourierSeries(np.expand_dims(sound_speed, -1), domain)
+  return sound_speed
+
+def _get_homog_sound_speed(domain):
+  return 1500.0
+
+# Setting density
+def _get_heterog_density(domain):
+  density = np.ones(domain.N) * 1000.0
+  density[20:40, 65:100] = 2000.0
+  density = FourierSeries(np.expand_dims(density, -1), domain)
+  return density
+
+def _get_homog_density(domain):
+  return 1000.0
+
+
 TEST_SETTINGS = {
   "ivp_no_pml_no_smooth_homog": {
     "N": (128, 128),
     "dx": (0.1e-3, 0.1e-3),
-    "sound_speed": 1500.0,
     "smooth_initial": False,
     "PMLSize": 0,
     "p0_constructor": _get_p0,
+    "c0_constructor": _get_homog_sound_speed,
+    "rho0_constructor": _get_homog_density,
+    "max_err": 1e-5,
   },
   "ivp_pml_no_smooth_homog" : {
     "N": (128, 128),
     "dx": (0.1e-3, 0.1e-3),
-    "sound_speed": 1500.0,
     "smooth_initial": False,
     "PMLSize": 10,
     "p0_constructor": _get_p0,
+    "c0_constructor": _get_homog_sound_speed,
+    "rho0_constructor": _get_homog_density,
+    "max_err": 1e-5,
   },
   "ivp_no_pml_smooth_homog": {
     "N": (128, 128),
     "dx": (0.1e-3, 0.1e-3),
-    "sound_speed": 1500.0,
     "smooth_initial": True,
     "PMLSize": 0,
     "p0_constructor": _get_p0,
+    "c0_constructor": _get_homog_sound_speed,
+    "rho0_constructor": _get_homog_density,
+    "max_err": 1e-2,
   },
   "ivp_pml_smooth_homog": {
     "N": (128, 128),
     "dx": (0.1e-3, 0.1e-3),
-    "sound_speed": 1500.0,
     "smooth_initial": True,
     "PMLSize": 10,
     "p0_constructor": _get_p0,
+    "c0_constructor": _get_homog_sound_speed,
+    "rho0_constructor": _get_homog_density,
+    "max_err": 1e-2,
+  },
+  "ivp_no_pml_no_smooth_heterog_c0": {
+    "N": (128, 128),
+    "dx": (0.1e-3, 0.1e-3),
+    "smooth_initial": False,
+    "PMLSize": 0,
+    "p0_constructor": _get_p0,
+    "c0_constructor": _get_heterog_sound_speed,
+    "rho0_constructor": _get_homog_density,
+    "max_err": 1e-5,
+  },
+  "ivp_no_pml_no_smooth_heterog_rho0": {
+    "N": (128, 128),
+    "dx": (0.1e-3, 0.1e-3),
+    "smooth_initial": False,
+    "PMLSize": 0,
+    "p0_constructor": _get_p0,
+    "c0_constructor": _get_homog_sound_speed,
+    "rho0_constructor": _get_heterog_density,
+    "max_err": 1e-5,
+  },
+  "ivp_no_pml_no_smooth_heterog_c0_rho0": {
+    "N": (128, 128),
+    "dx": (0.1e-3, 0.1e-3),
+    "smooth_initial": False,
+    "PMLSize": 0,
+    "p0_constructor": _get_p0,
+    "c0_constructor": _get_heterog_sound_speed,
+    "rho0_constructor": _get_heterog_density,
+    "max_err": 1e-5,
   }
 }
 
@@ -66,13 +126,15 @@ def test_ivp(
 
   # Extract simulation setup
   domain = Domain(settings["N"], settings["dx"])
-  sound_speed = settings["sound_speed"]
+  sound_speed = settings["c0_constructor"](domain)
+  density = settings["rho0_constructor"](domain)
   p0 = settings["p0_constructor"](domain)
 
   # Initialize simulation parameters
   medium = Medium(
     domain = domain,
     sound_speed = sound_speed,
+    density = density,
     pml_size=settings["PMLSize"]
   )
   time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=5e-6)
@@ -93,6 +155,13 @@ def test_ivp(
   # Generate the matlab results if they don't exist
   if not os.path.isfile(dir_path + '/kwave_data/' + matfile):
     print("Generating matlab results")
+
+    if isinstance(sound_speed, FourierSeries):
+      sound_speed = sound_speed.on_grid
+
+    if isinstance(density, FourierSeries):
+      density = density.on_grid
+
     mdict = {
       "p_final": p_final,
       "p0": p0.on_grid[...,0],
@@ -101,6 +170,7 @@ def test_ivp(
       "Nt": time_axis.Nt,
       "dt": time_axis.dt,
       "sound_speed": sound_speed,
+      "density": density,
       "PMLSize": settings["PMLSize"],
       "smooth_initial": settings["smooth_initial"]
     }
@@ -120,11 +190,13 @@ def test_ivp(
 
   # Check maximum error
   maxErr = jnp.amax(err)
-  print('Maximum error = ', maxErr)
-  # assert maxErr < 1e-5
+  print('Test name: ' + test_name)
+  print('  Maximum error = ', maxErr)
+  assert maxErr < settings["max_err"], "Test failed, error above maximum limit of " + str(settings["max_err"])
+  print('  Test pass')
 
   if use_plots:
-      plot_comparison(p_final, kwave_p_final)
+    plot_comparison(p_final, kwave_p_final)
 
 
 def plot_comparison(jwave, kwave):
@@ -159,7 +231,5 @@ def plot_comparison(jwave, kwave):
 
 
 if __name__ == "__main__":
-  test_ivp(
-    "ivp_no_pml_smooth_homog",
-    use_plots = True
-  )
+  for key in TEST_SETTINGS:
+    test_ivp(key, use_plots = True)

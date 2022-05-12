@@ -1,14 +1,11 @@
 function test_kwave_ivp(in_filename, plot_tests)
-% Function to generate k-Wave results compare j-Wave and k-Wave. The k-Wave simulation is run for
-% one
-% extra time step, as j-Wave assigns p0 at the beginning of the time loop,
-% and k-Wave at the end.
+% Function to generate k-Wave results compare j-Wave and k-Wave. The k-Wave
+% simulation is run for one extra time step, as j-Wave assigns p0 at the
+% beginning of the time loop, and k-Wave at the end.
 %
 % Arguments:
 % in_filename: name of the input file to setup the simulation
 % plot_tests: boolean to plot the results of the tests
-
-
 
   arguments
       in_filename
@@ -24,6 +21,7 @@ function test_kwave_ivp(in_filename, plot_tests)
   kgrid.setTime(jw.Nt + 1, jw.dt);
 
   medium.sound_speed = jw.sound_speed;
+  medium.density = jw.density;
   source.p0 = jw.p0;
   sensor.record = {'p_final'};
 
