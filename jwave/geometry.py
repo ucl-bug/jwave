@@ -56,14 +56,14 @@ class Medium:
     self.pml_size = pml_size
 
   def tree_flatten(self):
-    children = (self.sound_speed, self.density, self.attenuation, self.pml_size)
-    aux = (self.domain,)
+    children = (self.sound_speed, self.density, self.attenuation)
+    aux = (self.domain, self.pml_size)
     return (children, aux)
 
   @classmethod
   def tree_unflatten(cls, aux, children):
-    sound_speed, density, attenuation, pml_size = children
-    domain = aux[0]
+    sound_speed, density, attenuation = children
+    domain, pml_size = aux
     a = cls(domain, sound_speed, density, attenuation, pml_size)
     return a
 

@@ -160,6 +160,6 @@ def plot_comparison(jwave, kwave):
 
 if __name__ == "__main__":
   test_ivp(
-    "ivp_pml_no_smooth_homog",
+    "ivp_no_pml_smooth_homog",
     use_plots = True
   )
