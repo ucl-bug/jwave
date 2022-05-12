@@ -365,9 +365,15 @@ class TimeAxis:
   dt: float
   t_end: float
 
+  @property
+  def Nt(self):
+    r"""Returns the number of time steps"""
+    return np.ceil(self.t_end/self.dt)
+
   def to_array(self):
     r"""Returns the time-axis as an array"""
-    return jnp.arange(0, self.t_end, self.dt)
+    out_steps = jnp.arange(0, self.Nt, 1)
+    return out_steps*self.dt
 
   @staticmethod
   def from_medium(medium: Medium, cfl: float = 0.3, t_end=None):

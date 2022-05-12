@@ -161,7 +161,7 @@ def mass_conservation_rhs(
   if params == None:
     params = _get_kspace_op(p, c_ref, dt)
 
-  dx = np.asarray(u.domain.dx)
+  dx = np.asarray(p.domain.dx)
   direction = -1
 
   k_vec = params['k_vec']
@@ -227,8 +227,7 @@ def simulate_wave_propagation(
   c_ref = functional(medium.sound_speed)(jnp.amax)
   if params == None:
 
-    t = jnp.arange(0, time_axis.t_end + time_axis.dt, time_axis.dt)
-    output_steps = (t / dt).astype(jnp.int32)
+    output_steps = jnp.arange(0, time_axis.Nt, 1)
 
     # Making PML on grid
     pml_grid = td_pml_on_grid(medium, dt, c0=c_ref, dx=medium.domain.dx[0])
