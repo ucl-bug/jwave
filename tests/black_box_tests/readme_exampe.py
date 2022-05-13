@@ -22,11 +22,12 @@ def solver(medium, p0):
 
 pressure = solver(medium, p0)
 
-from matplotlib import pyplot as plt
+if __name__ == "__main__":
+  from matplotlib import pyplot as plt
 
-# Save the results
-from jwave.utils import show_field
+  # Save the results
+  from jwave.utils import show_field
 
-_ = show_field(pressure[250])
-plt.title(f'Pressure at time t={time_axis.to_array()[250]}')
-plt.savefig('docs/assets/images/readme_example_reconimage.png')
+  _ = show_field(pressure[250])
+  plt.title(f'Pressure at time t={time_axis.to_array()[250]}')
+  plt.savefig('docs/assets/images/readme_example_reconimage.png')
