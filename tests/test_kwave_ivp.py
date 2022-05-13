@@ -269,7 +269,7 @@ def test_ivp(
   maxErr = jnp.amax(err)
   print('Test name: ' + test_name)
   print('  Maximum error = ', maxErr)
-  assert maxErr < settings["max_err"], "Test failed, error above maximum limit of " + str(settings["max_err"])
+  assert maxErr < settings["max_err"] #, "Test failed, error above maximum limit of " + str(settings["max_err"])
   print('  Test pass')
 
   if use_plots:
