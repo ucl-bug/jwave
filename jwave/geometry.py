@@ -195,7 +195,7 @@ class Sources:
       return src
 
     idx = n.astype(jnp.int32)
-    signals = self.signals[:, idx] / len(self.domain.N)
+    signals = self.signals[:, idx]
     src = src.at[self.positions].add(signals)
     return jnp.expand_dims(src, -1)
 
@@ -247,7 +247,7 @@ class DistributedTransducer:
       return 0.
 
     idx = n.astype(jnp.int32)
-    signal = self.signal[idx] / len(self.domain.N)
+    signal = self.signal[idx]
     return signal*self.mask
 
 
