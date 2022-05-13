@@ -37,7 +37,7 @@ jobs:
         run: |
           coverage run --source=jwave -m pytest
           coverage xml
-	        coverage html
+          coverage html
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v1
         with:
