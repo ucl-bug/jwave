@@ -353,7 +353,7 @@ class Sensors:
         len(self.positions)
       ))
 
-@dataclass
+@register_pytree_node_class
 class TimeAxis:
   r"""Temporal vector to be used for acoustic
   simulation based on the pseudospectral method of
@@ -364,6 +364,20 @@ class TimeAxis:
   """
   dt: float
   t_end: float
+
+  def __init__(self, dt, t_end):
+    self.dt = dt
+    self.t_end = t_end
+
+  def tree_flatten(self):
+    children = (None, )
+    aux = (self.dt, self.t_end)
+    return (children, aux)
+
+  @classmethod
+  def tree_unflatten(cls, aux, children):
+    dt, t_end = aux
+    return cls(dt, t_end)
 
   @property
   def Nt(self):
