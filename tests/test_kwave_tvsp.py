@@ -1,28 +1,29 @@
 
 import os
+from functools import partial
 
+import numpy as np
 import pytest
-from jax import jit
+from jax import device_put, devices, jit
 from jax import numpy as jnp
 from scipy.io import loadmat, savemat
 
 from jwave import FourierSeries
 from jwave.acoustics import simulate_wave_propagation
-from jwave.geometry import Domain, Medium, TimeAxis, Sources
+from jwave.geometry import Domain, Medium, Sources, TimeAxis
 from jwave.signal_processing import gaussian_window
 
-import numpy as np
 
 # Setting source
 def _get_sources(domain, time_axis):
-  
+
   t = time_axis.to_array()
   s = jnp.sin(2 * jnp.pi * 4e6 * t)
-  
+
   s1 = gaussian_window(s, t, 0.5e-6, 4e-7)
   s2 = gaussian_window(s, t, 1.5e-6, 4e-7)
   s3 = gaussian_window(s, t, 1.5e-6, 4e-7)
-  
+
   sources = Sources(
     positions=((28, 64, 80), (32, 32, 100)),
     signals=jnp.stack([s1, s2, s3]),
@@ -102,7 +103,7 @@ TEST_SETTINGS = {
 
 
 @pytest.mark.parametrize("test_name", TEST_SETTINGS.keys())
-def test_ivp(
+def test_tvsp(
   test_name,
   use_plots = False
 ):
@@ -115,6 +116,11 @@ def test_ivp(
   sound_speed = settings["c0_constructor"](domain)
   density = settings["rho0_constructor"](domain)
 
+  # Move to the CPU
+  cpu = devices("cpu")[0]
+  sound_speed = device_put(sound_speed, device=cpu)
+  density = device_put(density, device=cpu)
+
   # Initialize simulation parameters
   medium = Medium(
     domain = domain,
@@ -124,9 +130,10 @@ def test_ivp(
   )
   time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=4e-6)
   sources = settings["source_constructor"](domain, time_axis)
+  sources = device_put(sources, device=cpu)
 
   # Run simulation
-  @jit
+  @partial(jit, backend='cpu')
   def run_simulation(sources):
     return simulate_wave_propagation(
       medium,
@@ -216,4 +223,4 @@ def plot_comparison(jwave, kwave):
 
 if __name__ == "__main__":
   for key in TEST_SETTINGS:
-    test_ivp(key, use_plots = True)
+    test_tvsp(key, use_plots = True)

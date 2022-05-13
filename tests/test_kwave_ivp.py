@@ -1,8 +1,10 @@
 
 import os
+from functools import partial
 
+import numpy as np
 import pytest
-from jax import jit
+from jax import device_put, devices, jit
 from jax import numpy as jnp
 from scipy.io import loadmat, savemat
 
@@ -10,7 +12,6 @@ from jwave import FourierSeries
 from jwave.acoustics import simulate_wave_propagation
 from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
 
-import numpy as np
 
 # Setting source
 def _get_p0(domain):
@@ -200,6 +201,12 @@ def test_ivp(
   density = settings["rho0_constructor"](domain)
   p0 = settings["p0_constructor"](domain)
 
+  # Move everything to the CPU
+  cpu = devices("cpu")[0]
+  sound_speed = device_put(sound_speed, device=cpu)
+  density = device_put(density, device=cpu)
+  p0 = device_put(p0, device=cpu)
+
   # Initialize simulation parameters
   medium = Medium(
     domain = domain,
@@ -210,7 +217,7 @@ def test_ivp(
   time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=5e-6)
 
   # Run simulation
-  @jit
+  @partial(jit, backend='cpu')
   def run_simulation(p0):
     return simulate_wave_propagation(
       medium,
