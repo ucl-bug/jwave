@@ -23,7 +23,8 @@ function test_kwave_tvsp(in_filename, plot_tests)
     
     source.p_mask = zeros(kgrid.Nx, kgrid.Ny);
     for ind = 1:size(jw.source_positions, 2)
-        source.p_mask(jw.source_positions(1, ind), jw.source_positions(2, ind)) = 1;
+        % we have to add one here, as python is 0-indexed
+        source.p_mask(jw.source_positions(1, ind) + 1, jw.source_positions(2, ind) + 1) = 1;
     end
     source.p = jw.source_signals;
     source.p_mode = 'additive-no-correction';

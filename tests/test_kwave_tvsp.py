@@ -60,7 +60,7 @@ TEST_SETTINGS = {
     "source_constructor": _get_sources,
     "c0_constructor": _get_homog_sound_speed,
     "rho0_constructor": _get_homog_density,
-    "max_err": 1e5,
+    "max_err": 1e-5,
   },
   "tvsp_pml_homog" : {
     "N": (128, 128),
@@ -69,7 +69,7 @@ TEST_SETTINGS = {
     "source_constructor": _get_sources,
     "c0_constructor": _get_homog_sound_speed,
     "rho0_constructor": _get_homog_density,
-    "max_err": 1e5,
+    "max_err": 1e-5,
   },
   "tvsp_no_pml_heterog_c0": {
     "N": (128, 128),
@@ -78,7 +78,7 @@ TEST_SETTINGS = {
     "source_constructor": _get_sources,
     "c0_constructor": _get_heterog_sound_speed,
     "rho0_constructor": _get_homog_density,
-    "max_err": 1e5,
+    "max_err": 1e-5,
   },
   "tvsp_no_pml_heterog_rho0": {
     "N": (128, 128),
@@ -87,7 +87,7 @@ TEST_SETTINGS = {
     "source_constructor": _get_sources,
     "c0_constructor": _get_homog_sound_speed,
     "rho0_constructor": _get_heterog_density,
-    "max_err": 1e5,
+    "max_err": 1e-5,
   },
   "tvsp_no_pml_heterog_c0_rho0": {
     "N": (128, 128),
@@ -96,7 +96,7 @@ TEST_SETTINGS = {
     "source_constructor": _get_sources,
     "c0_constructor": _get_heterog_sound_speed,
     "rho0_constructor": _get_heterog_density,
-    "max_err": 1e5,
+    "max_err": 1e-5,
   }
 }
 
