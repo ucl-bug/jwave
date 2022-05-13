@@ -46,26 +46,41 @@ def td_pml_on_grid(
     coord_shift=0.0
 ) -> jnp.ndarray:
 
-    if medium.pml_size == 0:
-        return 1.0
+  if medium.domain.ndim not in [1,2,3]:
+    raise NotImplementedError(f"Can't make a PML for a domain of dimensions {medium.domain.ndim}")
 
-    x_right = ((jnp.arange(1, medium.pml_size+1, 1) + coord_shift) / medium.pml_size)
-    x_left =  ((jnp.arange(medium.pml_size, 0, -1) - coord_shift) / medium.pml_size)
-    x_right = x_right ** exponent
-    x_left = x_left ** exponent
+  if medium.pml_size == 0:
+      return 1.0
 
-    alpha_left = jnp.exp(alpha_max * (-1) * x_left * dt * c0 / 2 / dx)
-    alpha_right = jnp.exp(alpha_max * (-1) * x_right * dt * c0 / 2 / dx)
-    _alpha_left = jnp.expand_dims(alpha_left, -1)
-    _alpha_right = jnp.expand_dims(alpha_right, -1)
+  x_right = ((jnp.arange(1, medium.pml_size+1, 1) + coord_shift) / medium.pml_size)
+  x_left =  ((jnp.arange(medium.pml_size, 0, -1) - coord_shift) / medium.pml_size)
+  x_right = x_right ** exponent
+  x_left = x_left ** exponent
 
-    pml_shape = tuple(list(medium.domain.N) + [len(medium.domain.N)])
-    pml = jnp.ones(pml_shape)
-    pml = pml.at[:medium.pml_size,:,0].set(_alpha_left)
-    pml = pml.at[-medium.pml_size:,:,0].set(_alpha_right)
-    pml = pml.at[:,:medium.pml_size,1].set(alpha_left)
-    pml = pml.at[:,-medium.pml_size:,1].set(alpha_right)
-    return pml
+  alpha_left = jnp.exp(alpha_max * (-1) * x_left * dt * c0 / 2 / dx)
+  alpha_right = jnp.exp(alpha_max * (-1) * x_right * dt * c0 / 2 / dx)
+
+
+  pml_shape = tuple(list(medium.domain.N) + [len(medium.domain.N)])
+  pml = jnp.ones(pml_shape)
+
+  if medium.domain.ndim >= 1:
+    pml = pml.at[...,:medium.pml_size,-1].set(alpha_left)
+    pml = pml.at[...,-medium.pml_size:,-1].set(alpha_right)
+
+  if medium.domain.ndim >= 2:
+    alpha_left = jnp.expand_dims(alpha_left, -1)
+    alpha_right = jnp.expand_dims(alpha_right, -1)
+    pml = pml.at[...,:medium.pml_size,:,-2].set(alpha_left)
+    pml = pml.at[...,-medium.pml_size:,:,-2].set(alpha_right)
+
+  if medium.domain.ndim == 3:
+    alpha_left = jnp.expand_dims(alpha_left, -1)
+    alpha_right = jnp.expand_dims(alpha_right, -1)
+    pml = pml.at[:medium.pml_size,  :, :, -3].set(alpha_left)
+    pml = pml.at[-medium.pml_size:, :, :, -3].set(alpha_right)
+
+  return pml
 
 
 def _sigma(x):
