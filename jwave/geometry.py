@@ -56,14 +56,14 @@ class Medium:
     self.pml_size = pml_size
 
   def tree_flatten(self):
-    children = (self.sound_speed, self.density, self.attenuation, self.pml_size)
-    aux = (self.domain,)
+    children = (self.sound_speed, self.density, self.attenuation)
+    aux = (self.domain, self.pml_size)
     return (children, aux)
 
   @classmethod
   def tree_unflatten(cls, aux, children):
-    sound_speed, density, attenuation, pml_size = children
-    domain = aux[0]
+    sound_speed, density, attenuation = children
+    domain, pml_size = aux
     a = cls(domain, sound_speed, density, attenuation, pml_size)
     return a
 
@@ -195,7 +195,7 @@ class Sources:
       return src
 
     idx = n.astype(jnp.int32)
-    signals = self.signals[:, idx] / len(self.domain.N)
+    signals = self.signals[:, idx]
     src = src.at[self.positions].add(signals)
     return jnp.expand_dims(src, -1)
 
@@ -247,7 +247,7 @@ class DistributedTransducer:
       return 0.
 
     idx = n.astype(jnp.int32)
-    signal = self.signal[idx] / len(self.domain.N)
+    signal = self.signal[idx]
     return signal*self.mask
 
 
@@ -353,7 +353,7 @@ class Sensors:
         len(self.positions)
       ))
 
-@dataclass
+@register_pytree_node_class
 class TimeAxis:
   r"""Temporal vector to be used for acoustic
   simulation based on the pseudospectral method of
@@ -365,9 +365,29 @@ class TimeAxis:
   dt: float
   t_end: float
 
+  def __init__(self, dt, t_end):
+    self.dt = dt
+    self.t_end = t_end
+
+  def tree_flatten(self):
+    children = (None, )
+    aux = (self.dt, self.t_end)
+    return (children, aux)
+
+  @classmethod
+  def tree_unflatten(cls, aux, children):
+    dt, t_end = aux
+    return cls(dt, t_end)
+
+  @property
+  def Nt(self):
+    r"""Returns the number of time steps"""
+    return np.ceil(self.t_end/self.dt)
+
   def to_array(self):
     r"""Returns the time-axis as an array"""
-    return jnp.arange(0, self.t_end, self.dt)
+    out_steps = jnp.arange(0, self.Nt, 1)
+    return out_steps*self.dt
 
   @staticmethod
   def from_medium(medium: Medium, cfl: float = 0.3, t_end=None):

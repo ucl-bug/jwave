@@ -16,7 +16,6 @@ on:
 jobs:
   tests_linux:
     strategy:
-      fail-fast: false
       matrix:
         python-version: [3.9]
         os: [ubuntu-latest]
@@ -26,11 +25,23 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Making virtual environment, linting and testing
+      - name: Making virtual environment, linting
         run: |
           make testenv
-          make lint
-          make test
+          source .venv/bin/activate
+          isort jwave/
+          flake8 jwave/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 jwave/ --count --ignore=E111 --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          mypy --allow-redefinition --config-file=pyproject.toml jwave/*.py
+      - name: Downloading test data
+        run: |
+          make get_test_data
+      - name: Running tests
+        run: |
+          source .venv/bin/activate
+          coverage run --source=jwave -m pytest
+          coverage xml
+          coverage html
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v1
         with:

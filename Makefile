@@ -26,6 +26,11 @@ docs:             ## Build the documentation.
 	@$(ENV_PREFIX)mkdocs build
 	URL="site/index.html"; xdg-open $$URL || sensible-browser $$URL || x-www-browser $$URL || gnome-open $$URL
 
+.PHONY: get_test_data
+get_test_data:
+	@chmod +x ./scripts/get_test_data.sh
+	@./scripts/get_test_data.sh
+
 .PHONY: help
 help:             ## Show the help.
 	@echo "Usage: make <target>"

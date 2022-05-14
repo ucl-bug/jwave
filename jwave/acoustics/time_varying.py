@@ -18,13 +18,13 @@ from jwave.signal_processing import smooth
 from .pml import td_pml_on_grid
 
 
-def _get_kspace_op(field, c_ref, dt):
+def _get_kspace_op(domain, c_ref, dt):
   # Get the frequency axis manually, since we
   # are nor using the rFFT
   # TODO: Implement operators with rFFT
   def f(N, dx):
     return jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
-  k_vec = [f(n, delta) for n, delta in zip(field.domain.N, field.domain.dx)]
+  k_vec = [f(n, delta) for n, delta in zip(domain.N, domain.dx)]
 
   # Building k-space operator
   K = jnp.stack(jnp.meshgrid(*k_vec, indexing='ij'))
@@ -37,7 +37,7 @@ def _shift_rho_for_fourier(rho0, direction, dx):
   if isinstance(rho0, OnGrid):
     rho0_params = rho0.params[...,0]
     def linear_interp(u, axis):
-      return 0.5*(jnp.roll(u, direction, axis) + u)
+      return 0.5*(jnp.roll(u, -direction, axis) + u)
     rho0 = jnp.stack([linear_interp(rho0_params, n) for n in range(rho0.ndim)], axis=-1)
   elif isinstance(rho0, Field):
     rho0 = shift_operator(rho0, direction*dx)
@@ -161,12 +161,13 @@ def mass_conservation_rhs(
   if params == None:
     params = _get_kspace_op(p, c_ref, dt)
 
-  dx = np.asarray(u.domain.dx)
+  dx = np.asarray(p.domain.dx)
   direction = -1
 
   k_vec = params['k_vec']
   k_space_op = params['k_space_op']
   rho0 = medium.density
+  c0 = medium.sound_speed
 
   # Add shift to k vector
   shift_and_k_op = [
@@ -182,7 +183,7 @@ def mass_conservation_rhs(
     return jnp.fft.ifftn(iku).real
 
   du = jnp.stack([single_grad(i, u.params[...,i]) for i in range(p.ndim)], axis=-1)
-  update = -p.replace_params(du) * rho0 + mass_source / du.ndim
+  update = -p.replace_params(du) * rho0 + 2 * mass_source / (c0 * p.ndim * dx)
 
   return update, params
 
@@ -214,7 +215,7 @@ def simulate_wave_propagation(
   p0 = None,
   checkpoint: bool = False,
   params = None,
-  smooth_initial = True,
+  smooth_initial = True
 ):
 
   # Default sensors simply return the presure field
@@ -222,45 +223,57 @@ def simulate_wave_propagation(
     sensors = lambda p, u, rho: p
 
   # Setup parameters
+  dt = time_axis.dt
+  c_ref = functional(medium.sound_speed)(jnp.amax)
+
   if params == None:
-    c_ref = functional(medium.sound_speed)(jnp.amax)
-    dt = time_axis.dt
+    output_steps = jnp.arange(0, time_axis.Nt, 1)
 
-    t = jnp.arange(0, time_axis.t_end + time_axis.dt, time_axis.dt)
-    output_steps = (t / dt).astype(jnp.int32)
-
-    # Making PML on grid
-    pml_grid = td_pml_on_grid(medium, dt, c0=c_ref, dx=medium.domain.dx[0])
-    if issubclass(type(pml_grid), Field):
-      pml = medium.sound_speed.replace_params(pml_grid)
-    else:
+    # Making PML on grid for rho and u
+    def make_pml(staggering=0.0):
+      pml_grid = td_pml_on_grid(
+        medium,
+        dt,
+        c0=c_ref,
+        dx=medium.domain.dx[0],
+        coord_shift=staggering
+      )
       pml = FourierSeries(pml_grid, medium.domain)
+      return pml
+
+    pml_rho = make_pml()
+    pml_u = make_pml(staggering=0.5)
 
     # Get k-space operator
-    fourier = _get_kspace_op(pml, c_ref, dt)
+    fourier = _get_kspace_op(medium.domain, c_ref, dt)
     params = {
-      'pml': pml,
+      'pml_rho': pml_rho,
+      'pml_u': pml_u,
       'output_steps': output_steps,
       'fourier': fourier,
     }
 
   # Get parameters
-  pml = params['pml']
+  pml_rho = params['pml_rho']
+  pml_u = params['pml_u']
 
   # Initialize variables
   shape = tuple(list(medium.domain.N) + [len(medium.domain.N),])
   shape_one = tuple(list(medium.domain.N) + [1,])
   if u0 is None:
-    u0 = pml.replace_params(jnp.zeros(shape))
+    u0 = pml_u.replace_params(jnp.zeros(shape))
   else:
     assert u0.dim == len(medium.domain.N)
   if p0 is None:
-    p0 = pml.replace_params(jnp.zeros(shape_one))
+    p0 = pml_rho.replace_params(jnp.zeros(shape_one))
   else:
     if smooth_initial:
       p0_params = p0.params[...,0]
       p0_params = jnp.expand_dims(smooth(p0_params), -1)
       p0 = p0.replace_params(p0_params)
+
+    # Force u(t=0) to be zero accounting for time staggered grid
+    u0 = -dt * momentum_conservation_rhs(p0, u0, medium, c_ref, dt, params=params['fourier']) / 2
 
   # Initialize acoustic density
   rho = p0.replace_params(
@@ -270,7 +283,6 @@ def simulate_wave_propagation(
 
   # define functions to integrate
   fields = [p0, u0, rho]
-  alpha = params['pml']
   output_steps = params['output_steps']
 
   def scan_fun(fields, n):
@@ -281,10 +293,10 @@ def simulate_wave_propagation(
       mass_src_field = sources.on_grid(n)
 
     du = momentum_conservation_rhs(p, u, medium, c_ref, dt, params=params['fourier'])
-    u = alpha*(alpha*u + dt * du)
+    u = pml_u*(pml_u*u + dt * du)
 
     drho = mass_conservation_rhs(p, u, mass_src_field, medium, c_ref, dt, params=params['fourier'])
-    rho = alpha*(alpha*rho + dt * drho)
+    rho = pml_rho*(pml_rho*rho + dt * drho)
 
     p = pressure_from_density(rho, medium)
     return [p, u, rho], sensors(p,u,rho)
@@ -294,7 +306,7 @@ def simulate_wave_propagation(
 
   _, ys = jax.lax.scan(scan_fun, fields, output_steps)
 
-  return ys
+  return ys, params
 
 
 if __name__ == "__main__":
