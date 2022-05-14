@@ -6,11 +6,13 @@ import numpy as np
 import pytest
 from jax import device_put, devices, jit
 from jax import numpy as jnp
+from matplotlib import pyplot as plt
 from scipy.io import loadmat, savemat
 
 from jwave import FourierSeries
 from jwave.acoustics import simulate_wave_propagation
 from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
+from jwave.utils import plot_comparison
 
 
 # Setting source
@@ -273,39 +275,8 @@ def test_ivp(
   print('  Test pass')
 
   if use_plots:
-    plot_comparison(p_final, kwave_p_final)
-
-
-def plot_comparison(jwave, kwave):
-
-  import matplotlib.pyplot as plt
-  from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-  plt.rcParams.update({'font.size': 6})
-  plt.rcParams["figure.dpi"] = 300
-
-  f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True)
-
-  im1 = ax1.imshow(jwave)
-  ax1.set_title('j-Wave')
-  divider1 = make_axes_locatable(ax1)
-  cax1 = divider1.append_axes("right", size="5%", pad=0.05)
-  plt.colorbar(im1, cax=cax1)
-
-  im2 = ax2.imshow(kwave)
-  ax2.set_title('k-Wave')
-  divider2 = make_axes_locatable(ax2)
-  cax2 = divider2.append_axes("right", size="5%", pad=0.05)
-  plt.colorbar(im2, cax=cax2)
-
-  im3 = ax3.imshow((jwave - kwave))
-  ax3.set_title('Difference')
-  divider3 = make_axes_locatable(ax3)
-  cax3 = divider3.append_axes("right", size="5%", pad=0.05)
-  plt.colorbar(im3, cax=cax3)
-
-  plt.show()
-
+    plot_comparison(p_final, kwave_p_final, test_name, ['j-Wave', 'k-Wave'])
+    plt.show()
 
 if __name__ == "__main__":
   for key in TEST_SETTINGS:

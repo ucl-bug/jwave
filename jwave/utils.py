@@ -1,6 +1,59 @@
+from typing import Iterable
+
+import numpy as np
 from jax import numpy as jnp
 from jaxdf import Field
 from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+plt.rcParams.update({'font.size': 12})
+plt.rcParams["figure.dpi"] = 300
+
+def plot_comparison(
+  field1: jnp.ndarray,
+  field2: jnp.ndarray,
+  title: str ='',
+  names: Iterable[str] = ('','')
+) -> Figure:
+  r"""Plots two 2D fields side by side, and shows the difference between them.
+
+  Args:
+      field1 (jnp.ndarray): First field
+      field2 (jnp.ndarray): Second Field
+      title (str, optional): Title of the plot. Defaults to ''.
+      names (Iterable[str], optional): Names of the fields . Defaults to `('','')`.
+
+  Returns:
+      Figure: Figure object.
+  """
+  maxval = np.amax(np.abs(field2))
+
+  f, (ax1, ax2, ax3) = plt.subplots(
+    1, 3, figsize=(12,4), sharey=True)
+  plt.suptitle(title)
+
+  im1 = ax1.imshow(field1, vmin=-maxval, vmax=maxval, cmap='seismic')
+  ax1.set_title(names[0])
+  divider1 = make_axes_locatable(ax1)
+  cax1 = divider1.append_axes("right", size="5%", pad=0.05)
+  plt.colorbar(im1, cax=cax1)
+
+  im2 = ax2.imshow(field2, vmin=-maxval, vmax=maxval, cmap='seismic')
+  ax2.set_title(names[1])
+  divider2 = make_axes_locatable(ax2)
+  cax2 = divider2.append_axes("right", size="5%", pad=0.05)
+  plt.colorbar(im2, cax=cax2)
+
+  diff = field1 - field2
+  maxval = np.amax(np.abs(diff))
+  im3 = ax3.imshow(diff, vmin=-maxval, vmax=maxval, cmap='seismic')
+  ax3.set_title('Difference')
+  divider3 = make_axes_locatable(ax3)
+  cax3 = divider3.append_axes("right", size="5%", pad=0.05)
+  plt.colorbar(im3, cax=cax3)
+
+  return f
 
 
 def is_numeric(x):
