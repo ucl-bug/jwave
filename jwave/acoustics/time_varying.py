@@ -18,13 +18,13 @@ from jwave.signal_processing import smooth
 from .pml import td_pml_on_grid
 
 
-def _get_kspace_op(field, c_ref, dt):
+def _get_kspace_op(domain, c_ref, dt):
   # Get the frequency axis manually, since we
   # are nor using the rFFT
   # TODO: Implement operators with rFFT
   def f(N, dx):
     return jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
-  k_vec = [f(n, delta) for n, delta in zip(field.domain.N, field.domain.dx)]
+  k_vec = [f(n, delta) for n, delta in zip(domain.N, domain.dx)]
 
   # Building k-space operator
   K = jnp.stack(jnp.meshgrid(*k_vec, indexing='ij'))
@@ -215,8 +215,7 @@ def simulate_wave_propagation(
   p0 = None,
   checkpoint: bool = False,
   params = None,
-  smooth_initial = True,
-  return_params = False,
+  smooth_initial = True
 ):
 
   # Default sensors simply return the presure field
@@ -226,8 +225,8 @@ def simulate_wave_propagation(
   # Setup parameters
   dt = time_axis.dt
   c_ref = functional(medium.sound_speed)(jnp.amax)
-  if params == None:
 
+  if params == None:
     output_steps = jnp.arange(0, time_axis.Nt, 1)
 
     # Making PML on grid for rho and u
@@ -239,17 +238,14 @@ def simulate_wave_propagation(
         dx=medium.domain.dx[0],
         coord_shift=staggering
       )
-      if issubclass(type(pml_grid), Field):
-        pml = medium.sound_speed.replace_params(pml_grid)
-      else:
-        pml = FourierSeries(pml_grid, medium.domain)
+      pml = FourierSeries(pml_grid, medium.domain)
       return pml
 
     pml_rho = make_pml()
     pml_u = make_pml(staggering=0.5)
 
     # Get k-space operator
-    fourier = _get_kspace_op(pml_rho, c_ref, dt)
+    fourier = _get_kspace_op(medium.domain, c_ref, dt)
     params = {
       'pml_rho': pml_rho,
       'pml_u': pml_u,
@@ -310,10 +306,7 @@ def simulate_wave_propagation(
 
   _, ys = jax.lax.scan(scan_fun, fields, output_steps)
 
-  if return_params:
-    return ys, params
-  else:
-    return ys
+  return ys, params
 
 
 if __name__ == "__main__":
