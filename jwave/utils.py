@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Tuple
 
 import numpy as np
 from jax import numpy as jnp
@@ -14,7 +14,7 @@ def plot_comparison(
   field1: jnp.ndarray,
   field2: jnp.ndarray,
   title: str ='',
-  names: Iterable[str] = ('','')
+  names: Tuple[str, str] = ('','')
 ) -> Figure:
   r"""Plots two 2D fields side by side, and shows the difference between them.
 
