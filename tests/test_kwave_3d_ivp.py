@@ -80,6 +80,10 @@ TEST_SETTINGS = {
   "ivp_3d_no_pml_no_smooth_heterog_c0": _test_setter(
     c0_constructor = _get_heterog_sound_speed,
   ),
+  "ivp_3d_no_pml_smooth_homog": _test_setter(
+    smooth_initial=True,
+    max_err = 1e-2
+  ),
 }
 
 
