@@ -39,7 +39,7 @@ jobs:
       - name: Running tests
         run: |
           source .venv/bin/activate
-          coverage run --source=jwave -m pytest
+          coverage run --source=jwave -m pytest -vs
           coverage xml
           coverage html
       - name: "Upload coverage to Codecov"
