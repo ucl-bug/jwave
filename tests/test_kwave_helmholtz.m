@@ -22,6 +22,7 @@ function test_kwave_helmholtz(in_filename, plot_tests);
   medium.sound_speed = single(jw.sound_speed);
   medium.density = single(jw.density);
   medium.alpha_coeff = single(jw.attenuation);
+  medium.alpha_power = 2.0;
   source_mag = single(jw.source_magnitude);
   source_location = jw.source_location;
   pml_size = single(jw.pml_size);

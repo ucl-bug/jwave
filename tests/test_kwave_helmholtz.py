@@ -12,21 +12,13 @@ from scipy.io import loadmat, savemat
 
 from jwave import FourierSeries
 from jwave.acoustics.time_harmonic import helmholtz_solver
-from jwave.geometry import Domain, Medium, _circ_mask
+from jwave.geometry import Domain, Medium
 from jwave.utils import plot_comparison
 
 # Default figure settings
 plt.rcParams.update({'font.size': 12})
 plt.rcParams["figure.dpi"] = 300
 
-
-# Setting source
-def _get_p0(domain):
-  Nx = domain.N
-  p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
-  p0 =  jnp.expand_dims(p0, -1)
-  p0 = FourierSeries(p0, domain)
-  return p0
 
 # Setting sound speed
 def _get_heterog_sound_speed(domain):
@@ -62,7 +54,7 @@ def _homog_attenuation_constructor(value = 0.1):
 def heterog_attenuation_constructor(value = 0.1):
   def _att_setter(domain):
     att = np.zeros(domain.N)
-    att[50:90, 32:100] = value
+    att[30:90, 64:100] = value
     att = FourierSeries(np.expand_dims(att, -1), domain)
     return att
   return _att_setter
@@ -110,6 +102,12 @@ TEST_SETTINGS = {
     rho0_constructor = _get_heterog_density,
     omega=1e6,
     rel_err=0.04
+  ),
+  "helmholtz_heterog_alpha": _test_setter(
+    src_location = (25,64),
+    alpha_constructor = heterog_attenuation_constructor(100.0),
+    omega=1e6,
+    rel_err=0.01
   )
 }
 
@@ -208,7 +206,8 @@ def test_helmholtz(
       test_name,
       ['j-Wave (abs)', 'k-Wave (abs)'],
       cmap="inferno",
-      vmin=0
+      vmin=0,
+      vmax=0.2
     )
     plt.show()
 
@@ -220,5 +219,8 @@ def test_helmholtz(
   print('  Test pass')
 
 if __name__ == "__main__":
-  for key in TEST_SETTINGS:
-    test_helmholtz(key, use_plots = False)
+  #for key in TEST_SETTINGS:
+  #  test_helmholtz(key, use_plots = False)
+  test_helmholtz(
+    "helmholtz_heterog_alpha", True, True
+  )

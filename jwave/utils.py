@@ -25,6 +25,8 @@ def plot_comparison(
       title (str, optional): Title of the plot. Defaults to ''.
       names (Iterable[str], optional): Names of the fields . Defaults to `('','')`.
       cmap (str, optional): Colormap to use. Defaults to 'seismic'.
+      vmin (float, optional): Minimum value to use for the colormap. Defaults to None.
+      vmax (float, optional): Maximum value to use for the colormap. Defaults to None.
 
   Returns:
       Figure: Figure object.
@@ -32,7 +34,7 @@ def plot_comparison(
   if vmax is None:
     maxval = np.amax(np.abs(field2))
   else:
-    vmax = float(vmax)
+    maxval = float(vmax)
 
   if vmin is None:
     minval = -maxval
