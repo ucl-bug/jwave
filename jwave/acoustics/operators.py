@@ -6,7 +6,13 @@ from jaxdf.discretization import (
     FourierSeries,
     OnGrid,
 )
-from jaxdf.operators import compose, diag_jacobian, gradient, sum_over_dims
+from jaxdf.operators import (
+    compose,
+    diag_jacobian,
+    gradient,
+    shift_operator,
+    sum_over_dims,
+)
 
 from jwave.geometry import Medium
 
@@ -124,16 +130,19 @@ def laplacian_with_pml(
   # Initialize pml parameters if not provided
   if params == None:
     params = {
-      'pml_on_grid': u.replace_params(complex_pml_on_grid(medium, omega)),
+      'pml_on_grid': [
+        u.replace_params(complex_pml_on_grid(medium, omega, shift= u.domain.dx[0]/2)),
+        u.replace_params(complex_pml_on_grid(medium, omega, shift=-u.domain.dx[0]/2))
+      ],
       'fft_u':  gradient(u)._op_params,
     }
 
   pml = params['pml_on_grid']
 
   # Making laplacian
-  grad_u = gradient(u, params=params['fft_u'])
-  mod_grad_u = grad_u*pml
-  mod_diag_jacobian = diag_jacobian(mod_grad_u, params=params['fft_u']) * pml
+  grad_u = gradient(u, stagger=[0.5], params=params['fft_u'])
+  mod_grad_u = grad_u*pml[0]
+  mod_diag_jacobian = diag_jacobian(mod_grad_u, stagger=[-0.5], params=params['fft_u']) * pml[1]
   nabla_u = sum_over_dims(mod_diag_jacobian)
 
   # Density term
@@ -141,23 +150,15 @@ def laplacian_with_pml(
     # Assume it is a number
     rho_u = 0.
   else:
+    assert isinstance(rho0, FourierSeries), "rho0 must be a FourierSeries or a number when used with FourierSeries fields"
+
     if not('fft_rho0' in params.keys()):
       params['fft_rho0'] = gradient(rho0)._op_params
 
-    def _axis_dx(rho0, axis):
-      su = jnp.roll(rho0, -1, axis)
-      g_rho0 = (su - rho0) / u.domain.dx[axis]
-      return g_rho0
-
-    def grad_density(rho0):
-      rho0 = rho0.params[...,0]
-      g_rho0 = jnp.stack([_axis_dx(rho0, axis) for axis in range(rho0.ndim)],-1)
-      g_rho0 = u.replace_params(g_rho0)
-      return g_rho0
-
-    grad_rho0 = gradient(rho0, params=params['fft_rho0'])
-    #grad_rho0 = grad_density(rho0)
-    rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
+    grad_rho0 = gradient(rho0, stagger=[0.5], params=params['fft_rho0'])
+    dx = list(map(lambda x: -x/2, u.domain.dx))
+    _ru = shift_operator(mod_grad_u * grad_rho0, dx)
+    rho_u = sum_over_dims(_ru) / rho0
 
   # Put everything together
   return nabla_u - rho_u, params

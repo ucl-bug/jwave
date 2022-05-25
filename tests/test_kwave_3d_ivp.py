@@ -15,6 +15,10 @@ from jwave.acoustics import simulate_wave_propagation
 from jwave.geometry import Domain, Medium, TimeAxis, _sphere_mask
 from jwave.utils import plot_comparison
 
+# Default figure settings
+plt.rcParams.update({'font.size': 12})
+plt.rcParams["figure.dpi"] = 300
+
 
 # Setting source
 def _get_p0(domain):
