@@ -134,7 +134,7 @@ def laplacian_with_pml(
         u.replace_params(complex_pml_on_grid(medium, omega, shift= u.domain.dx[0]/2)),
         u.replace_params(complex_pml_on_grid(medium, omega, shift=-u.domain.dx[0]/2))
       ],
-      'fft_u':  gradient(u)._op_params,
+      'fft_u':  gradient.default_params(u),
     }
 
   pml = params['pml_on_grid']
@@ -153,7 +153,7 @@ def laplacian_with_pml(
     assert isinstance(rho0, FourierSeries), "rho0 must be a FourierSeries or a number when used with FourierSeries fields"
 
     if not('fft_rho0' in params.keys()):
-      params['fft_rho0'] = gradient(rho0)._op_params
+      params['fft_rho0'] = gradient.default_params(rho0)
 
     grad_rho0 = gradient(rho0, stagger=[0.5], params=params['fft_rho0'])
     dx = list(map(lambda x: -x/2, u.domain.dx))
@@ -221,7 +221,7 @@ def helmholtz(
   params = None
 ):
   if params == None:
-    params = laplacian_with_pml(u, medium, omega)._op_params
+    params = laplacian_with_pml.default_params(u, medium, omega)
 
   # Get the modified laplacian
   L = laplacian_with_pml(u, medium, omega, params=params)

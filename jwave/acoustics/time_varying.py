@@ -205,17 +205,51 @@ FourierOrScalars = Union[
   MediumObject[object,object,object],
 ]
 
-@operator
+def fourier_wave_prop_params(
+  medium: FourierOrScalars,
+  time_axis: TimeAxis,
+  *args,
+  **kwargs,
+):
+  dt = time_axis.dt
+  c_ref = functional(medium.sound_speed)(jnp.amax)
+
+  # Making PML on grid for rho and u
+  def make_pml(staggering=0.0):
+    pml_grid = td_pml_on_grid(
+      medium,
+      dt,
+      c0=c_ref,
+      dx=medium.domain.dx[0],
+      coord_shift=staggering
+    )
+    pml = FourierSeries(pml_grid, medium.domain)
+    return pml
+
+  pml_rho = make_pml()
+  pml_u = make_pml(staggering=0.5)
+
+  # Get k-space operator
+  fourier = _get_kspace_op(medium.domain, c_ref, dt)
+
+  return {
+    'pml_rho': pml_rho,
+    'pml_u': pml_u,
+    'fourier': fourier,
+  }
+
+@operator(init_params=fourier_wave_prop_params)
 def simulate_wave_propagation(
   medium: FourierOrScalars,
   time_axis: TimeAxis,
+  *,
   sources = None,
   sensors = None,
   u0 = None,
   p0 = None,
   checkpoint: bool = False,
-  params = None,
-  smooth_initial = True
+  smooth_initial = True,
+  params = None
 ):
 
   # Default sensors simply return the presure field
@@ -223,35 +257,11 @@ def simulate_wave_propagation(
     sensors = lambda p, u, rho: p
 
   # Setup parameters
+  output_steps = jnp.arange(0, time_axis.Nt, 1)
   dt = time_axis.dt
   c_ref = functional(medium.sound_speed)(jnp.amax)
-
   if params == None:
-    output_steps = jnp.arange(0, time_axis.Nt, 1)
-
-    # Making PML on grid for rho and u
-    def make_pml(staggering=0.0):
-      pml_grid = td_pml_on_grid(
-        medium,
-        dt,
-        c0=c_ref,
-        dx=medium.domain.dx[0],
-        coord_shift=staggering
-      )
-      pml = FourierSeries(pml_grid, medium.domain)
-      return pml
-
-    pml_rho = make_pml()
-    pml_u = make_pml(staggering=0.5)
-
-    # Get k-space operator
-    fourier = _get_kspace_op(medium.domain, c_ref, dt)
-    params = {
-      'pml_rho': pml_rho,
-      'pml_u': pml_u,
-      'output_steps': output_steps,
-      'fourier': fourier,
-    }
+    params = fourier_wave_prop_params(medium, time_axis)
 
   # Get parameters
   pml_rho = params['pml_rho']
@@ -283,7 +293,6 @@ def simulate_wave_propagation(
 
   # define functions to integrate
   fields = [p0, u0, rho]
-  output_steps = params['output_steps']
 
   def scan_fun(fields, n):
     p, u, rho = fields
@@ -306,7 +315,7 @@ def simulate_wave_propagation(
 
   _, ys = jax.lax.scan(scan_fun, fields, output_steps)
 
-  return ys, params
+  return ys
 
 
 if __name__ == "__main__":

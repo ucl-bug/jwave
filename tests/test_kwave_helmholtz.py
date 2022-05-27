@@ -219,8 +219,5 @@ def test_helmholtz(
   print('  Test pass')
 
 if __name__ == "__main__":
-  #for key in TEST_SETTINGS:
-  #  test_helmholtz(key, use_plots = False)
-  test_helmholtz(
-    "helmholtz_heterog_alpha", True, True
-  )
+  for key in TEST_SETTINGS:
+    test_helmholtz(key, use_plots = False)

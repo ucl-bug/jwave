@@ -31,7 +31,7 @@ def helmholtz_solver(
   source = source  * 2 / (source.domain.dx[0] * min_sos)
 
   if params is None:
-    params = helmholtz(source, medium, omega)._op_params
+    params = helmholtz.default_params(source, medium, omega)
 
   def helm_func(u):
     return helmholtz(u, medium, omega, params=params)
