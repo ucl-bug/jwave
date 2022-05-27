@@ -55,7 +55,7 @@ function test_kwave_helmholtz(in_filename, plot_tests);
   source.p = createCWSignals(kgrid.t_array, source_freq, source_mag, 0);
 
   % set the sensor mask to cover the entire grid
-  sensor.mask = ones(Nx(1), Nx(1));
+  sensor.mask = ones(Nx(1), Nx(2));
 
   % record the last 3 cycles in steady state
   num_periods = 3;
