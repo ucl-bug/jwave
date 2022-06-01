@@ -14,7 +14,7 @@ Any help to improve the installation on Windows is more than welcome 😊.
 
 <br/>
 
-## Install on an isolated WSL 
+## Install on an isolated WSL
 
 This is the easiest option. It uses the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) (WSL) to install an [Arch-based Linux distribution](https://github.com/sileshn/ManjaroWSL), in which python and the required packages are installed.
 
@@ -77,7 +77,7 @@ This method assumes that you've aready setup a Python environment in your Window
 ### How to install
 After activating your python environment, follow [the README](https://github.com/cloudhan/jax-windows-builder/blob/main/README.md) to install `jax` for your python and (if needed) CUDA version.
 
-Then install `jwave` using 
+Then install `jwave` using
 
 ```powershell
 pip install git+https://github.com/ucl-bug/jwave`
@@ -91,8 +91,8 @@ The latest method is to build `jax` from source. This is not recommended for use
 ### How to install
 Follow the [guide on the jax docs](https://jax.readthedocs.io/en/latest/developer.html#additional-notes-for-building-jaxlib-from-source-on-windows) for building `jax` from source, up to the end of the *"Running the tests"* section
 
-Then install `jwave` using 
+Then install `jwave` using
 
 ```powershell
-pip install git+https://github.com/ucl-bug/jwave`
+pip install git+https://github.com/ucl-bug/jwave
 ```

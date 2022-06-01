@@ -12,3 +12,4 @@ mkdocs-macros-plugin
 pre-commit
 pycln
 isort
+jupytext

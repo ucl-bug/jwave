@@ -6,7 +6,29 @@ from jaxdf import Field
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from PIL import Image
 
+
+def load_image_to_numpy(
+  filepath: str,
+  padding: int = 0,
+  image_size: Tuple[int, int] = None,
+) -> np.ndarray:
+  r"""Loads an image from a filepath and returns it as a numpy array.
+
+  Args:
+      filepath (str): Filepath to the image.
+      padding (int, optional): Padding to add to the image. Defaults to 0.
+      image_size (Tuple[int, int], optional): Size of the image (excluding padding). Defaults to None.
+
+  Returns:
+      np.ndarray: Image as a numpy array.
+  """
+  img = Image.open(filepath).convert("L")
+  img = img.resize(image_size)
+  if padding is not None:
+    img = np.pad(img, padding, mode="constant")
+  return np.array(img).astype(np.float32)
 
 def plot_comparison(
   field1: jnp.ndarray,
