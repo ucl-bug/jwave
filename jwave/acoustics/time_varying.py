@@ -1,4 +1,4 @@
-from typing import Iterable, Union
+from typing import Union
 
 import jax
 import numpy as np
@@ -292,7 +292,7 @@ def simulate_wave_propagation(
   checkpoint: bool = False,
   smooth_initial = True,
   params = None
-) -> Iterable:
+):
   r"""Simulate the wave propagation operator.
 
   Args:
@@ -318,7 +318,7 @@ def simulate_wave_propagation(
     params: The operator parameters.
 
   Returns:
-    Iterable: The recording of the sensors at each time step.
+    Any: The recording of the sensors at each time step.
   """
 
   # Default sensors simply return the presure field
@@ -468,7 +468,7 @@ def simulate_wave_propagation(
     params: The operator parameters.
 
   Returns:
-    Iterable: The recording of the sensors at each time step.
+    Any: The recording of the sensors at each time step.
   """
   # Default sensors simply return the presure field
   if sensors is None:
