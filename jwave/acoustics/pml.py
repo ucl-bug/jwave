@@ -102,6 +102,7 @@ def complex_pml(
   omega= 1.0,
   sigma_star = 10.,
   alpha = 2.0,
+  params = None
 ):
   dx = x.domain.dx
   N = x.domain.N

@@ -1,5 +1,3 @@
-site_name: j-Wave
-
 # Project info
 site_name: j-Wave
 site_author: Antonio Stanziola, Biomedical Ultrasound Group
@@ -15,6 +13,7 @@ theme:
     - content.code.annotate
   palette:
     primary: blue
+  logo: assets/images/jwave_logo.png
 
 nav:
   - Home: index.md

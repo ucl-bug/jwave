@@ -1,5 +1,13 @@
 import inspect
 
+from griffe.dataclasses import Docstring
+from griffe.docstrings.dataclasses import (
+    DocstringSectionParameters,
+    DocstringSectionReturns,
+    DocstringSectionText,
+)
+from griffe.docstrings.parsers import Parser, parse
+from markdown import markdown
 from plum.function import Function
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -10,7 +18,7 @@ class Implementation(object):
   def __init__(self, name, params, docs):
     self.name = name
     self.params = params
-    self.docs = docs
+    self.docs = self.parse_docs(docs)
 
   def __str__(self):
     return self.__repr__()
@@ -21,6 +29,72 @@ class Implementation(object):
     string += self.docs if self.docs else ''
     string += '\n'
     return string
+
+  def parse_docs(self, docs):
+    # Extracting text and parameters
+    docstring = Docstring(docs)
+    parsed = parse(docstring, Parser.google)
+
+    text = [x for x in parsed if isinstance(x, DocstringSectionText)][0].value
+    try:
+      params = [x for x in parsed if isinstance(x, DocstringSectionParameters)][0]
+    except:
+      params = None
+
+    try:
+      returns = [x for x in parsed if isinstance(x, DocstringSectionReturns)][0]
+    except:
+      returns = None
+
+    # Transform parameters into table
+    if params:
+      text += '<p><strong>Parameters:</strong></p>'
+      table = '<div class="md-typeset__scrollwrap"><div class="md-typeset__table"><table>'
+      table += '<thead><tr><th>Name</th><th>Type</th><th>Description</th><th>Default</th></tr></thead>'
+      table += '<tbody>'
+
+      for p in params.value:
+        table += '<tr>'
+        table += f'<td><code>{p.name}</code></td>'
+
+        if p.annotation:
+          table += f'<td><code>{p.annotation}</code></td>'
+        else:
+          table += '<td></td>'
+        if p.description:
+          table += f'<td>{markdown(p.description)}</td>'
+        else:
+          table += '<td></td>'
+
+        # Get default value
+        default = self.params[p.name]._default
+        this_param_default = '<em>required</em>' if default == inspect._empty else f'<code>{default}</code>'
+        table += f'<td>{this_param_default}</td>'
+        table += '</tr>'
+
+      table += '</tbody></table></div></div>'
+      text += table
+
+    # Transform returns into table
+    if returns:
+      text += '<p><strong>Returns:</strong></p>'
+      table = '<div class="md-typeset__scrollwrap"><div class="md-typeset__table"><table>'
+      table += '<thead><tr><th>Type</th><th>Description</th></tr></thead>'
+      table += '<tbody>'
+
+      for r in returns.value:
+        table += '<tr>'
+        table += f'<td><code>{r.name}</code></td>'
+        if r.description:
+          table += f'<td>{markdown(r.description)}</td>'
+        else:
+          table += '<td></td>'
+        table += '</tr>'
+      table += '</tbody></table></div></div>'
+      text += table
+
+    return text
+
 
   @staticmethod
   def param_to_string(names, types, defaults):
@@ -51,7 +125,7 @@ class Implementation(object):
     string = string.replace('</div>', '</code>')
 
     # Wrap around various containers
-    string = '<h3 class="doc doc-heading operator-implementation">' + string + '</h3>'
+    string = '<h3 class="doc doc-heading">&#9654; ' + string + '</h3>'
 
     return string
 
@@ -135,5 +209,5 @@ def define_env(env):
         return (2.3 * x) + 7
 
 if __name__ == '__main__':
-  _ = mod_to_string('jaxdf.operators.functions')
+  _ = mod_to_string('jwave.acoustics.operators', 'laplacian_with_pml')
   print(_)

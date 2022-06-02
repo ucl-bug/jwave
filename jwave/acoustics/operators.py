@@ -25,7 +25,18 @@ def laplacian_with_pml(
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> Continuous:
+  r"""Laplacian operator with PML for `Continuous` complex fields.
+
+  Args:
+    u (Continuous): Continuous complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    Continuous: Modified Laplacian operator applied to `u`.
+  """
   # Initialize coordinate filed
   x = Continuous(None, u.domain, lambda p, x: x)
 
@@ -45,7 +56,18 @@ def laplacian_with_pml(
   omega = 1.0,
   *,
   params = None
-):
+) -> OnGrid:
+  r"""Laplacian operator with PML for `OnGrid` complex fields.
+
+  Args:
+    u (OnGrid): OnGrid complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    OnGrid: Modified Laplacian operator applied to `u`.
+  """
   pml_grid = complex_pml_on_grid(medium, omega)
   pml = u.replace_params(pml_grid)
 
@@ -72,12 +94,21 @@ def laplacian_with_pml(
   u: FiniteDifferences,
   medium: Medium,
   omega = 1.0,
-  accuracy = 4,
   params = None
-):
+) -> FiniteDifferences:
+  r"""Laplacian operator with PML for `FiniteDifferences` complex fields.
+
+  Args:
+    u (FiniteDifferences): FiniteDifferences complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    FiniteDifferences: Modified Laplacian operator applied to `u`.
+  """
   rho0 = medium.density
   if params == None:
-    dx = list(map(lambda x: -x/2, u.domain.dx))
     params = {
       'pml_on_grid': [
         u.replace_params(complex_pml_on_grid(medium, omega, shift= u.domain.dx[0]/2)),
@@ -116,7 +147,18 @@ def laplacian_with_pml(
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> FourierSeries:
+  r"""Laplacian operator with PML for `FourierSeries` complex fields.
+
+  Args:
+    u (FourierSeries): FourierSeries complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    FourierSeries: Modified Laplacian operator applied to `u`.
+  """
   rho0 = medium.density
 
   # Initialize pml parameters if not provided
@@ -161,9 +203,17 @@ def wavevector(
   medium: Medium,
   omega = 1.0,
   params = None
-):
-  """
-  Calculate the wavevector field.
+)  -> Field:
+  r"""Wavevector operator for a generic `Field`.
+
+  Args:
+    u (Field): Complex field.
+    medium (Medium): Medium object. Contains the value for `\alpha_0` and `c_0`.
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    Field: Wavevector operator applied to `u`.
   """
   c = medium.sound_speed
   alpha = medium.attenuation
@@ -178,7 +228,18 @@ def helmholtz(
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> Field:
+  r"""Evaluates the Helmholtz operator on a field $`u`$ with a PML.
+
+  Args:
+    u (Field): Complex field.
+    medium (Medium): Medium object.
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator. **Unused**.
+
+  Returns:
+    Field: Helmholtz operator applied to `u`.
+  """
   # Get the modified laplacian
   L = laplacian_with_pml(u, medium, omega)
 
@@ -193,7 +254,19 @@ def helmholtz(
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> OnGrid:
+  r"""Evaluates the Helmholtz operator on a field $`u`$ with a PML. This
+  implementation exposes the laplacian parameters to the user.
+
+  Args:
+    u (OnGrid): Complex field.
+    medium (Medium): Medium object.
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    OnGrid: Helmholtz operator applied to `u`.
+  """
   if params == None:
     params = laplacian_with_pml.default_params(u, medium, omega)
 
