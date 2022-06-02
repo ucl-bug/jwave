@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Iterable, Union
 
 import jax
 import numpy as np
@@ -50,10 +50,23 @@ def momentum_conservation_rhs(
   p: OnGrid,
   u: OnGrid,
   medium: Medium,
-  c_ref,
-  dt,
+  c_ref = 1.0,
+  dt = 1.0,
   params = None
 ) -> OnGrid:
+  r"""Staggered implementation of the momentum conservation equation.
+
+  Args:
+    p (OnGrid): The pressure field.
+    u (OnGrid): The velocity field.
+    medium (Medium): The medium.
+    c_ref (float): The reference sound speed. **Unused**
+    dt (float): The time step. **Unused**
+    params: The operator parameters. **Unused**
+
+  Returns:
+    OnGrid: The right hand side of the momentum conservation equation.
+  """
   # Staggered implementation
   dx = np.asarray(u.domain.dx)
   rho0 = _shift_rho(medium.density, 1, dx)
@@ -66,11 +79,23 @@ def momentum_conservation_rhs(
   p: FourierSeries,
   u: FourierSeries,
   medium: Medium,
-  c_ref,
-  dt,
+  c_ref = 1.0,
+  dt = 1.0,
   params = None
 ) -> FourierSeries:
+  r"""Staggered implementation of the momentum conservation equation.
 
+  Args:
+    p (FourierSeries): The pressure field.
+    u (FourierSeries): The velocity field.
+    medium (Medium): The medium.
+    c_ref (float): The reference sound speed. Used to calculate the k-space operator.
+    dt (float): The time step. Used to calculate the k-space operator.
+    params: The operator parameters.
+
+  Returns:
+    FourierSeries: The right hand side of the momentum conservation equation.
+  """
   if params == None:
     params = _get_kspace_op(p.domain, c_ref, dt)
 
@@ -112,7 +137,24 @@ def mass_conservation_rhs(
   c_ref,
   dt,
   params = None
-) -> Field:
+) -> OnGrid:
+  r"""Implementation of the mass conservation equation. The pressure field
+  is assumed to be staggered forward for each component, and will be staggered
+  backward before being multiplied by the ambient density.
+
+  Args:
+    p (OnGrid): The pressure field.
+    u (OnGrid): The velocity field.
+    mass_source (object): The mass source.
+    medium (Medium): The medium.
+    c_ref (float): The reference sound speed. **Unused**
+    dt (float): The time step. **Unused**
+    params: The operator parameters. **Unused**
+
+  Returns:
+    OnGrid: The right hand side of the mass conservation equation.
+  """
+
   rho0 = medium.density
   c0 = medium.sound_speed
   dx = np.asarray(p.domain.dx)
@@ -134,6 +176,22 @@ def mass_conservation_rhs(
   dt,
   params = None
 ) -> FourierSeries:
+  r"""Implementation of the mass conservation equation. The pressure field
+  is assumed to be staggered forward for each component, and will be staggered
+  backward before being multiplied by the ambient density.
+
+  Args:
+    p (FourierSeries): The pressure field.
+    u (FourierSeries): The velocity field.
+    mass_source (object): The mass source.
+    medium (Medium): The medium.
+    c_ref (float): The reference sound speed. Used to calculate the k-space operator.
+    dt (float): The time step. Used to calculate the k-space operator.
+    params: The operator parameters.
+
+  Returns:
+    FourierSeries: The right hand side of the mass conservation equation.
+  """
 
   if params == None:
     params = _get_kspace_op(p.domain, c_ref, dt)
@@ -170,6 +228,16 @@ def pressure_from_density(
   medium: Medium,
   params = None
 ) -> Field:
+  r"""Compute the pressure field from the density field.
+
+  Args:
+    rho (Field): The density field.
+    medium (Medium): The medium.
+    params: The operator parameters. **Unused**
+
+  Returns:
+    Field: The pressure field.
+  """
   rho_sum = sum_over_dims(rho)
   c0 = medium.sound_speed
   return (c0**2) * rho_sum, params
@@ -224,7 +292,34 @@ def simulate_wave_propagation(
   checkpoint: bool = False,
   smooth_initial = True,
   params = None
-):
+) -> Iterable:
+  r"""Simulate the wave propagation operator.
+
+  Args:
+    medium (OnGridOrScalars): The medium.
+    time_axis (TimeAxis): The time axis.
+    sources (Any): The source terms. It can be any jax traceable object that
+      implements the method `sources.on_grid(n)`, which returns the source
+      field at the nth time step.
+    sensors (Any): The sensor terms. It can be any jax traceable object that
+      can be called as `sensors(p,u,rho)`, where `p` is the pressure field,
+      `u` is the velocity field, and `rho` is the density field. The return
+      value of this function is the recorded field. If `sensors` is not
+      specified, the recorded field is the entire pressure field.
+    u0 (Field): The initial velocity field. If `None`, the initial velocity
+      field is set depending on the `p0` value, such that `u(t=0)=0`. Note that
+      the velocity field is staggered forward by half time step relative to the
+      pressure field.
+    p0 (Field): The initial pressure field. If `None`, the initial pressure
+      field is set to zero.
+    checkpoint (bool): Whether to checkpoint the simulation at each time step.
+      See [jax.checkpoint](https://jax.readthedocs.io/en/latest/_autosummary/jax.checkpoint.html)
+    smooth_initial (bool): Whether to smooth the initial conditions.
+    params: The operator parameters.
+
+  Returns:
+    Iterable: The recording of the sensors at each time step.
+  """
 
   # Default sensors simply return the presure field
   if sensors is None:
@@ -346,7 +441,35 @@ def simulate_wave_propagation(
   smooth_initial = True,
   params = None
 ):
+  r"""Simulates the wave propagation operator using the PSTD method. This
+  implementation is equivalent to the `kspaceFirstOrderND` function in the
+  k-Wave Toolbox.
 
+  Args:
+    medium (FourierOrScalars): The medium.
+    time_axis (TimeAxis): The time axis.
+    sources (Any): The source terms. It can be any jax traceable object that
+      implements the method `sources.on_grid(n)`, which returns the source
+      field at the nth time step.
+    sensors (Any): The sensor terms. It can be any jax traceable object that
+      can be called as `sensors(p,u,rho)`, where `p` is the pressure field,
+      `u` is the velocity field, and `rho` is the density field. The return
+      value of this function is the recorded field. If `sensors` is not
+      specified, the recorded field is the entire pressure field.
+    u0 (Field): The initial velocity field. If `None`, the initial velocity
+      field is set depending on the `p0` value, such that `u(t=0)=0`. Note that
+      the velocity field is staggered forward by half time step relative to the
+      pressure field.
+    p0 (Field): The initial pressure field. If `None`, the initial pressure
+      field is set to zero.
+    checkpoint (bool): Whether to checkpoint the simulation at each time step.
+      See [jax.checkpoint](https://jax.readthedocs.io/en/latest/_autosummary/jax.checkpoint.html)
+    smooth_initial (bool): Whether to smooth the initial conditions.
+    params: The operator parameters.
+
+  Returns:
+    Iterable: The recording of the sensors at each time step.
+  """
   # Default sensors simply return the presure field
   if sensors is None:
     sensors = lambda p, u, rho: p
