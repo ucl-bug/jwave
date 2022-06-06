@@ -25,12 +25,12 @@ Follow the instructions to install [Jax with CUDA support](https://github.com/go
 Then, simply install `jwave` using pip
 
 ```bash
-pip install git+ssh://git@github.com/ucl-bug/jwave.git
+pip install git+https://github.com/ucl-bug/jwave.git
 ```
 
 For more details, see the [Linux install guide](docs/install/on_linux.md).
 
-Because JAX has limited support on Windows, j-Wave can be run on windows machines only using the Windows Subsystem for Linux. See the [Install on Windows](docs/install/on_win.md) guide for more details.
+Because JAX has limited support on Windows, j-Wave can be run on Windows machines only using the Windows Subsystem for Linux. See the [Install on Windows](docs/install/on_win.md) guide for more details.
 
 <br/>
 
