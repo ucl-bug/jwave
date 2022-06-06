@@ -1,5 +1,14 @@
 import inspect
+import re
 
+from griffe.dataclasses import Docstring
+from griffe.docstrings.dataclasses import (
+    DocstringSectionParameters,
+    DocstringSectionReturns,
+    DocstringSectionText,
+)
+from griffe.docstrings.parsers import Parser, parse
+from markdown import markdown
 from plum.function import Function
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -10,7 +19,7 @@ class Implementation(object):
   def __init__(self, name, params, docs):
     self.name = name
     self.params = params
-    self.docs = docs
+    self.docs = self.parse_docs(docs)
 
   def __str__(self):
     return self.__repr__()
@@ -22,10 +31,76 @@ class Implementation(object):
     string += '\n'
     return string
 
+  def parse_docs(self, docs):
+    # Extracting text and parameters
+    docstring = Docstring(docs)
+    parsed = parse(docstring, Parser.google)
+
+    text = [x for x in parsed if isinstance(x, DocstringSectionText)][0].value
+    try:
+      params = [x for x in parsed if isinstance(x, DocstringSectionParameters)][0]
+    except:
+      params = None
+
+    try:
+      returns = [x for x in parsed if isinstance(x, DocstringSectionReturns)][0]
+    except:
+      returns = None
+
+    # Transform parameters into table
+    if params:
+      text += '<p><strong>Parameters:</strong></p>'
+      table = '<div class="md-typeset__scrollwrap"><div class="md-typeset__table"><table>'
+      table += '<thead><tr><th>Name</th><th>Type</th><th>Description</th><th>Default</th></tr></thead>'
+      table += '<tbody>'
+
+      for p in params.value:
+        table += '<tr>'
+        table += f'<td><code>{p.name}</code></td>'
+
+        if p.annotation:
+          table += f'<td><code>{p.annotation}</code></td>'
+        else:
+          table += '<td></td>'
+        if p.description:
+          table += f'<td>{markdown(p.description)}</td>'
+        else:
+          table += '<td></td>'
+
+        # Get default value
+        default = self.params[p.name]._default
+        this_param_default = '<em>required</em>' if default == inspect._empty else f'<code>{default}</code>'
+        table += f'<td>{this_param_default}</td>'
+        table += '</tr>'
+
+      table += '</tbody></table></div></div>'
+      text += table
+
+    # Transform returns into table
+    if returns:
+      text += '<p><strong>Returns:</strong></p>'
+      table = '<div class="md-typeset__scrollwrap"><div class="md-typeset__table"><table>'
+      table += '<thead><tr><th>Type</th><th>Description</th></tr></thead>'
+      table += '<tbody>'
+
+      for r in returns.value:
+        table += '<tr>'
+        table += f'<td><code>{r.name}</code></td>'
+        if r.description:
+          table += f'<td>{markdown(r.description)}</td>'
+        else:
+          table += '<td></td>'
+        table += '</tr>'
+      table += '</tbody></table></div></div>'
+      text += table
+
+    return text
+
+
   @staticmethod
   def param_to_string(names, types, defaults):
     namestring = f'{names}'
-    typestring = ': '+str(types.__name__) if types != inspect._empty else ''
+    typestring = ': '+ strip_modules(str(types)) if types != inspect._empty else ''
     defaultstring = f' = {defaults}' if defaults != inspect._empty else ''
     return namestring + typestring + defaultstring
 
@@ -42,6 +117,7 @@ class Implementation(object):
     string += ')'
     string = highlight(string, PythonLexer(), HtmlFormatter())
 
+    string = var_to_bold(string)
 
     # Change outer <div> form class "highlight" to class "highlight language-python
     string = string.replace('<div class="highlight">', '<code class="highlight language-python">')
@@ -51,9 +127,41 @@ class Implementation(object):
     string = string.replace('</div>', '</code>')
 
     # Wrap around various containers
-    string = '<h3 class="doc doc-heading operator-implementation">' + string + '</h3>'
+    string = '<h3 class="doc doc-heading">' + string + '</h3>'
 
     return string
+
+def var_to_bold(string):
+  # Make variable names in the string bold
+  # example "... <span class="n">text</span><span class="p">:</span> ..."
+  # becomes
+  # "... <span class="n"><strong>text_value</strong></span><span class="p">:</span> ..."
+  string = re.sub(r'<span class="n">([^<]+)</span><span class="p">:</span>', r'<span class="n"><strong>\1</strong></span><span class="p">:</span>', string)
+  string = re.sub(r'<span class="n">([^<]+)</span> <span class="o">=</span>', r'<span class="n"><strong>\1</strong></span> <span class="o">=</span>', string)
+  string = re.sub(r'<span class="n">([^<]+)</span><span class="p">,</span>', r'<span class="n"><strong>\1</strong></span><span class="p">,</span>', string)
+
+  return string
+
+def strip_modules(string):
+  # Removes the module roots and the <class > tags from the string.
+  # Example:
+  # typing.Union[jwave.geometry.MediumObject[<class 'object'>, <class 'object'>, <class 'jaxdf.discretization.OnGrid'>], jwave.geometry.MediumObject[<class 'object'>, <class 'jaxdf.discretization.OnGrid'>, <class 'object'>]]
+  # becomes
+  # Union[MediumObject[object, object, OnGrid], MediumObject[object, OnGrid, object]]
+  to_change = {
+    "typing.Union": "Union",
+    "jwave.geometry.MediumObject": "Medium",
+    "<class ": "",
+    ">": "",
+    "jaxdf.discretization.": "",
+    "jwave.geometry.": "",
+    "jaxdf.core.": ""
+  }
+  for key, value in to_change.items():
+    string = string.replace(key, value)
+  return string
+
+
 
 def _extract_implementations(plum_func):
   name, function = plum_func
@@ -135,5 +243,5 @@ def define_env(env):
         return (2.3 * x) + 7
 
 if __name__ == '__main__':
-  _ = mod_to_string('jaxdf.operators.functions')
+  _ = mod_to_string('jwave.acoustics.time_varying', 'simulate_wave_propagation')
   print(_)

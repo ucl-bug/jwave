@@ -4,7 +4,8 @@ import jax
 from jax import numpy as jnp
 from jax.scipy.sparse.linalg import bicgstab, gmres
 from jaxdf import operator
-from jaxdf.discretization import OnGrid
+from jaxdf.discretization import Field, OnGrid
+from jaxdf.operators import functional
 
 from jwave.geometry import Medium
 
@@ -22,9 +23,15 @@ def helmholtz_solver(
   params = None,
   **kwargs
 ):
+  if isinstance(medium.sound_speed, Field):
+    min_sos = functional(medium.sound_speed)(jnp.amin)
+  else:
+    min_sos = jnp.amin(medium.sound_speed)
+
+  source = source  * 2 / (source.domain.dx[0] * min_sos)
 
   if params is None:
-    params = helmholtz(source, medium, omega)._op_params
+    params = helmholtz.default_params(source, medium, omega)
 
   def helm_func(u):
     return helmholtz(u, medium, omega, params=params)
@@ -43,7 +50,7 @@ def helmholtz_solver(
     out = gmres(helm_func, source, guess, tol=tol, restart=restart, maxiter=maxiter, solve_method=solve_method)[0]
   elif method == 'bicgstab':
     out = bicgstab(helm_func, source, guess, tol=tol, maxiter=maxiter)[0]
-  return out, None
+  return -1j*omega*out, None
 
 
 def helmholtz_solver_verbose(
@@ -72,6 +79,11 @@ def helmholtz_solver_verbose(
   kwargs['tol'] = 0.0
   iterations = 0
 
+  if isinstance(medium.sound_speed, Field):
+    min_sos = functional(medium.sound_speed)(jnp.amin)
+  else:
+    min_sos = jnp.amin(medium.sound_speed)
+
   @jax.jit
   def solver(medium, guess, source):
     guess = helmholtz_solver(medium, omega, source, guess, 'gmres', **kwargs, params=params)
@@ -90,4 +102,4 @@ def helmholtz_solver_verbose(
         flush=True,
     )
 
-  return guess*src_magn
+  return -1j*omega*guess* src_magn * 2 / (source.domain.dx[0] * min_sos)

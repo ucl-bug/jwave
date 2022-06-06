@@ -83,7 +83,7 @@ show:             ## Show the current environment.
 
 .PHONY: test
 test:             ## Run tests and generate coverage report.
-	$(ENV_PREFIX)coverage run --source=jwave -m pytest
+	$(ENV_PREFIX)coverage run --source=jwave -m pytest -vs
 	$(ENV_PREFIX)coverage xml
 	$(ENV_PREFIX)coverage html
 

@@ -12,7 +12,7 @@ from scipy.io import loadmat, savemat
 
 from jwave import FourierSeries
 from jwave.acoustics import simulate_wave_propagation
-from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
+from jwave.geometry import Domain, Medium, TimeAxis, _sphere_mask
 from jwave.utils import plot_comparison
 
 # Default figure settings
@@ -23,7 +23,7 @@ plt.rcParams["figure.dpi"] = 300
 # Setting source
 def _get_p0(domain):
   Nx = domain.N
-  p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
+  p0 = 4.0 * _sphere_mask(Nx, 5, (40, 36, 33))
   p0 =  jnp.expand_dims(p0, -1)
   p0 = FourierSeries(p0, domain)
   return p0
@@ -31,7 +31,7 @@ def _get_p0(domain):
 # Setting sound speed
 def _get_heterog_sound_speed(domain):
   sound_speed = np.ones(domain.N) * 1500.0
-  sound_speed[50:90, 32:100] = 2300.0
+  sound_speed[25:30, 32:46, 32:46] = 2300.0
   sound_speed = FourierSeries(np.expand_dims(sound_speed, -1), domain)
   return sound_speed
 
@@ -49,7 +49,7 @@ def _get_homog_density(domain):
   return 1000.0
 
 def _test_setter(
-  N: Tuple[int] = (128,128),
+  N: Tuple[int] = (64,64,64),
   dx = 0.1e-3,
   smooth_initial: bool = False,
   PMLSize: int = 0,
@@ -71,90 +71,23 @@ def _test_setter(
   }
 
 TEST_SETTINGS = {
-  "ivp_no_pml_no_smooth_homog": _test_setter(),
-  "ivp_pml_no_smooth_homog" : _test_setter(
+  "ivp_3d_no_pml_no_smooth_homog": _test_setter(),
+  "ivp_3d_no_pml_no_smooth_homog_odd": _test_setter(
+    N = (65,65,65)
+  ),
+  "ivp_3d_no_pml_no_smooth_homog_non_cube": _test_setter(
+    N = (65,76,67)
+  ),
+  "ivp_3d_pml_no_smooth_homog" : _test_setter(
     PMLSize = 10,
   ),
-  "ivp_no_pml_smooth_homog": _test_setter(
-    smooth_initial = True,
-    max_err = 1e-2,
+  "ivp_3d_no_pml_no_smooth_heterog_c0": _test_setter(
+    c0_constructor = _get_heterog_sound_speed,
   ),
-  "ivp_pml_smooth_homog": _test_setter(
-    PMLSize = 10,
+  "ivp_3d_no_pml_smooth_homog": _test_setter(
     smooth_initial=True,
-    max_err = 1e-2,
+    max_err = 1e-2
   ),
-  "ivp_no_pml_no_smooth_heterog_c0": _test_setter(
-    c0_constructor = _get_heterog_sound_speed,
-  ),
-  "ivp_no_pml_no_smooth_heterog_rho0": _test_setter(
-    rho0_constructor = _get_heterog_density,
-  ),
-  "ivp_no_pml_no_smooth_heterog_c0_rho0": _test_setter(
-    c0_constructor = _get_heterog_sound_speed,
-    rho0_constructor = _get_heterog_density,
-  ),
-  "ivp_no_pml_no_smooth_homog_odd": _test_setter(
-    N = (125,125),
-  ),
-  "ivp_no_pml_no_smooth_homog_tall": _test_setter(
-    N = (192,128),
-    max_err = 2e-5,
-  ),
-  "ivp_no_pml_no_smooth_homog_wide": _test_setter(
-    N = (128,192),
-    max_err = 2e-5,
-  ),
-  "ivp_no_pml_no_smooth_homog_rect": _test_setter(
-    N = (127,145),
-    max_err = 2e-5,
-  ),
-  "ivp_no_pml_no_smooth_homog_tall_heterog": _test_setter(
-    N = (192,128),
-    max_err = 2e-5,
-    rho0_constructor=_get_heterog_density,
-    c0_constructor=_get_heterog_sound_speed,
-  ),
-  "ivp_no_pml_no_smooth_homog_wide_heterog": _test_setter(
-    N = (128,192),
-    max_err = 2e-5,
-    rho0_constructor=_get_heterog_density,
-    c0_constructor=_get_heterog_sound_speed,
-  ),
-  "ivp_no_pml_no_smooth_homog_rect_heterog": _test_setter(
-    N = (127,145),
-    max_err = 2e-5,
-    rho0_constructor=_get_heterog_density,
-    c0_constructor=_get_heterog_sound_speed,
-  ),
-  "ivp_pml_no_smooth_homog_odd" : _test_setter(
-    N = (125,125),
-    PMLSize = 10,
-  ),
-  "ivp_no_pml_smooth_homog_odd":  _test_setter(
-    N = (125,125),
-    smooth_initial = True,
-    max_err = 1e-2,
-  ),
-  "ivp_pml_smooth_homog_odd": _test_setter(
-    N = (125,125),
-    smooth_initial = True,
-    PMLSize=10,
-    max_err = 1e-2,
-  ),
-  "ivp_no_pml_no_smooth_heterog_c0_odd": _test_setter(
-    N = (125,125),
-    c0_constructor=_get_heterog_sound_speed,
-  ),
-  "ivp_no_pml_no_smooth_heterog_rho0_odd": _test_setter(
-    N = (125,125),
-    rho0_constructor=_get_heterog_density,
-  ),
-  "ivp_no_pml_no_smooth_heterog_c0_rho0_odd": _test_setter(
-    N = (125,125),
-    rho0_constructor=_get_heterog_density,
-    c0_constructor=_get_heterog_sound_speed,
-  )
 }
 
 
@@ -186,7 +119,7 @@ def test_ivp(
     density = density,
     pml_size=settings["PMLSize"]
   )
-  time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=5e-6)
+  time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=2.5e-6)
 
   # Run simulation
   @partial(jit, backend='cpu')
@@ -199,7 +132,7 @@ def test_ivp(
     )
 
   # Extract last field
-  p_final = run_simulation(p0)[-1].on_grid[:,:,0]
+  p_final = run_simulation(p0)[-1].on_grid[...,0]
 
   # Generate the matlab results if they don't exist
   if not os.path.isfile(dir_path + '/kwave_data/' + matfile):
@@ -226,8 +159,7 @@ def test_ivp(
     in_filepath = dir_path + '/kwave_data/setup_' + matfile
     savemat(in_filepath, mdict)
 
-    fun_call = f'''test_kwave_ivp('{in_filepath}')'''
-    mat_command = f"cd('{dir_path}'); test_kwave_ivp(string('{in_filepath}')); exit;"
+    mat_command = f"cd('{dir_path}'); test_kwave_3d_ivp(string('{in_filepath}')); exit;"
     command = f'''matlab -nodisplay -nosplash -nodesktop -r "{mat_command}"'''
     os.system(command)
 
@@ -238,7 +170,14 @@ def test_ivp(
   err = abs(p_final - kwave_p_final)
 
   if use_plots:
-    plot_comparison(p_final, kwave_p_final, test_name, ['j-Wave', 'k-Wave'])
+    jslice = p_final[settings["N"][0]//2]
+    kslice = kwave_p_final[settings["N"][0]//2]
+    plot_comparison(jslice, kslice, test_name, ['(yz) j-Wave', '(yz) k-Wave'])
+    plt.show()
+
+    jslice = p_final[:,settings["N"][0]//2]
+    kslice = kwave_p_final[:,settings["N"][0]//2]
+    plot_comparison(jslice, kslice, test_name, ['(xz) j-Wave', '(xz) k-Wave'])
     plt.show()
 
   # Check maximum error

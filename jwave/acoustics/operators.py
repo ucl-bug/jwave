@@ -1,4 +1,3 @@
-from jax import numpy as jnp
 from jaxdf import Field, operator
 from jaxdf.discretization import (
     Continuous,
@@ -6,7 +5,13 @@ from jaxdf.discretization import (
     FourierSeries,
     OnGrid,
 )
-from jaxdf.operators import compose, diag_jacobian, gradient, sum_over_dims
+from jaxdf.operators import (
+    compose,
+    diag_jacobian,
+    gradient,
+    shift_operator,
+    sum_over_dims,
+)
 
 from jwave.geometry import Medium
 
@@ -20,7 +25,18 @@ def laplacian_with_pml(
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> Continuous:
+  r"""Laplacian operator with PML for `Continuous` complex fields.
+
+  Args:
+    u (Continuous): Continuous complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    Continuous: Modified Laplacian operator applied to `u`.
+  """
   # Initialize coordinate filed
   x = Continuous(None, u.domain, lambda p, x: x)
 
@@ -38,8 +54,20 @@ def laplacian_with_pml(
   u: OnGrid,
   medium: Medium,
   omega = 1.0,
+  *,
   params = None
-):
+) -> OnGrid:
+  r"""Laplacian operator with PML for `OnGrid` complex fields.
+
+  Args:
+    u (OnGrid): OnGrid complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    OnGrid: Modified Laplacian operator applied to `u`.
+  """
   pml_grid = complex_pml_on_grid(medium, omega)
   pml = u.replace_params(pml_grid)
 
@@ -66,50 +94,51 @@ def laplacian_with_pml(
   u: FiniteDifferences,
   medium: Medium,
   omega = 1.0,
-  accuracy = 4,
   params = None
-):
+) -> FiniteDifferences:
+  r"""Laplacian operator with PML for `FiniteDifferences` complex fields.
+
+  Args:
+    u (FiniteDifferences): FiniteDifferences complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    FiniteDifferences: Modified Laplacian operator applied to `u`.
+  """
   rho0 = medium.density
   if params == None:
     params = {
-      'pml_on_grid': u.replace_params(complex_pml_on_grid(medium, omega)),
+      'pml_on_grid': [
+        u.replace_params(complex_pml_on_grid(medium, omega, shift= u.domain.dx[0]/2)),
+        u.replace_params(complex_pml_on_grid(medium, omega, shift=-u.domain.dx[0]/2))
+      ],
       'stencils':  {
-        'gradient': gradient(u, accuracy=accuracy, staggered='forward')._op_params,
-        'diag_jacobian': gradient(u, accuracy=accuracy, staggered='backward')._op_params,
-      }}
+        'gradient': gradient.default_params(u, stagger=[0.5]),
+        'gradient_unstaggered': gradient.default_params(u),
+        'diag_jacobian': diag_jacobian.default_params(u, stagger=[-0.5]),
+      }
+    }
 
   pml = params['pml_on_grid']
   stencils = params['stencils']
 
   # Making laplacian
-  grad_u = gradient(u, stencils['gradient'])
-  mod_grad_u = grad_u*pml
-  mod_diag_jacobian = diag_jacobian(mod_grad_u, stencils['diag_jacobian'])
-  nabla_u = sum_over_dims(mod_diag_jacobian * pml)
+  grad_u = gradient(u, [0.5], params=stencils['gradient'])
+  mod_grad_u = grad_u*pml[0]
+  mod_diag_jacobian = diag_jacobian(mod_grad_u, [-0.5], params=stencils['diag_jacobian'])
+  nabla_u = sum_over_dims(mod_diag_jacobian * pml[1])
 
   if not(issubclass(type(rho0), Field)):
     # Assume it is a number
     rho_u = 0.
   else:
-    if not('fft_rho0' in params.keys()):
-      params['fft_rho0'] = gradient(rho0)._op_params
-
-    def _axis_dx(rho0, axis):
-      su = jnp.roll(rho0, -1, axis)
-      g_rho0 = (su - rho0) / u.domain.dx[axis]
-      return g_rho0
-
-    def grad_density(rho0):
-      rho0 = rho0.params[...,0]
-      g_rho0 = jnp.stack([_axis_dx(rho0, axis) for axis in range(rho0.ndim)],-1)
-      g_rho0 = u.replace_params(g_rho0)
-      return g_rho0
-
-    grad_rho0 = gradient(rho0, params=params['fft_rho0'])
-    #grad_rho0 = grad_density(rho0)
+    grad_u = gradient(u,params=stencils['gradient_unstaggered'])
+    grad_rho0 = gradient(rho0, [0], params=stencils['gradient_unstaggered'])
     rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
 
-  return nabla_u, params
+  return nabla_u - rho_u, params
 
 
 @operator
@@ -118,22 +147,36 @@ def laplacian_with_pml(
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> FourierSeries:
+  r"""Laplacian operator with PML for `FourierSeries` complex fields.
+
+  Args:
+    u (FourierSeries): FourierSeries complex field.
+    medium (Medium): Medium object
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    FourierSeries: Modified Laplacian operator applied to `u`.
+  """
   rho0 = medium.density
 
   # Initialize pml parameters if not provided
   if params == None:
     params = {
-      'pml_on_grid': u.replace_params(complex_pml_on_grid(medium, omega)),
-      'fft_u':  gradient(u)._op_params,
+      'pml_on_grid': [
+        u.replace_params(complex_pml_on_grid(medium, omega, shift= u.domain.dx[0]/2)),
+        u.replace_params(complex_pml_on_grid(medium, omega, shift=-u.domain.dx[0]/2))
+      ],
+      'fft_u':  gradient.default_params(u),
     }
 
   pml = params['pml_on_grid']
 
   # Making laplacian
-  grad_u = gradient(u, params=params['fft_u'])
-  mod_grad_u = grad_u*pml
-  mod_diag_jacobian = diag_jacobian(mod_grad_u, params=params['fft_u']) * pml
+  grad_u = gradient(u, stagger=[0.5], params=params['fft_u'])
+  mod_grad_u = grad_u*pml[0]
+  mod_diag_jacobian = diag_jacobian(mod_grad_u, stagger=[-0.5], params=params['fft_u']) * pml[1]
   nabla_u = sum_over_dims(mod_diag_jacobian)
 
   # Density term
@@ -141,23 +184,15 @@ def laplacian_with_pml(
     # Assume it is a number
     rho_u = 0.
   else:
+    assert isinstance(rho0, FourierSeries), "rho0 must be a FourierSeries or a number when used with FourierSeries fields"
+
     if not('fft_rho0' in params.keys()):
-      params['fft_rho0'] = gradient(rho0)._op_params
+      params['fft_rho0'] = gradient.default_params(rho0)
 
-    def _axis_dx(rho0, axis):
-      su = jnp.roll(rho0, -1, axis)
-      g_rho0 = (su - rho0) / u.domain.dx[axis]
-      return g_rho0
-
-    def grad_density(rho0):
-      rho0 = rho0.params[...,0]
-      g_rho0 = jnp.stack([_axis_dx(rho0, axis) for axis in range(rho0.ndim)],-1)
-      g_rho0 = u.replace_params(g_rho0)
-      return g_rho0
-
-    grad_rho0 = gradient(rho0, params=params['fft_rho0'])
-    #grad_rho0 = grad_density(rho0)
-    rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
+    grad_rho0 = gradient(rho0, stagger=[0.5], params=params['fft_rho0'])
+    dx = list(map(lambda x: -x/2, u.domain.dx))
+    _ru = shift_operator(mod_grad_u * grad_rho0, dx)
+    rho_u = sum_over_dims(_ru) / rho0
 
   # Put everything together
   return nabla_u - rho_u, params
@@ -168,9 +203,17 @@ def wavevector(
   medium: Medium,
   omega = 1.0,
   params = None
-):
-  """
-  Calculate the wavevector field.
+)  -> Field:
+  r"""Wavevector operator for a generic `Field`.
+
+  Args:
+    u (Field): Complex field.
+    medium (Medium): Medium object. Contains the value for `\alpha_0` and `c_0`.
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    Field: Wavevector operator applied to `u`.
   """
   c = medium.sound_speed
   alpha = medium.attenuation
@@ -179,31 +222,24 @@ def wavevector(
   k_mod = (omega / c) ** 2 + 2j * (omega ** 3) * alpha / c
   return u * k_mod, None
 
-
-@operator
-def helmholtz(
-  u: FiniteDifferences,
-  medium: Medium,
-  omega = 1.0,
-  params = None
-):
-  if params == None:
-    params = laplacian_with_pml(u, medium, omega)._op_params
-
-  # Get the modified laplacian
-  L = laplacian_with_pml(u, medium, omega)
-
-  # Add the wavenumber term
-  k = wavevector(u, medium, omega)
-  return L + k, params
-
 @operator
 def helmholtz(
   u: Field,
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> Field:
+  r"""Evaluates the Helmholtz operator on a field $`u`$ with a PML.
+
+  Args:
+    u (Field): Complex field.
+    medium (Medium): Medium object.
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator. **Unused**.
+
+  Returns:
+    Field: Helmholtz operator applied to `u`.
+  """
   # Get the modified laplacian
   L = laplacian_with_pml(u, medium, omega)
 
@@ -214,13 +250,25 @@ def helmholtz(
 
 @operator
 def helmholtz(
-  u: FourierSeries,
+  u: OnGrid,
   medium: Medium,
   omega = 1.0,
   params = None
-):
+) -> OnGrid:
+  r"""Evaluates the Helmholtz operator on a field $`u`$ with a PML. This
+  implementation exposes the laplacian parameters to the user.
+
+  Args:
+    u (OnGrid): Complex field.
+    medium (Medium): Medium object.
+    omega (float): Angular frequency.
+    params (None, optional): Parameters for the operator.
+
+  Returns:
+    OnGrid: Helmholtz operator applied to `u`.
+  """
   if params == None:
-    params = laplacian_with_pml(u, medium, omega)._op_params
+    params = laplacian_with_pml.default_params(u, medium, omega)
 
   # Get the modified laplacian
   L = laplacian_with_pml(u, medium, omega, params=params)

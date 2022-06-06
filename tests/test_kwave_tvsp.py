@@ -15,6 +15,10 @@ from jwave.geometry import Domain, Medium, Sources, TimeAxis
 from jwave.signal_processing import gaussian_window
 from jwave.utils import plot_comparison
 
+# Default figure settings
+plt.rcParams.update({'font.size': 12})
+plt.rcParams["figure.dpi"] = 300
+
 
 # Setting source
 def _get_sources(domain, time_axis):

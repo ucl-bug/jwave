@@ -1,5 +1,3 @@
-site_name: j-Wave
-
 # Project info
 site_name: j-Wave
 site_author: Antonio Stanziola, Biomedical Ultrasound Group
@@ -15,14 +13,18 @@ theme:
     - content.code.annotate
   palette:
     primary: blue
+  logo: assets/images/jwave_logo.png
 
 nav:
   - Home: index.md
-  - Install: 
+  - Install:
     - Linux: install/on_linux.md
     - Windows: install/on_win.md
   - API:
-    - acoustics: api_acoustics.md
+    - acoustics:
+      - conversion: api_conversion.md
+      - operators: api_operators.md
+      - time_varying: api_time_varying.md
     - extras: api_extras.md
     - geometry: api_geometry.md
     - phantoms: api_phantoms.md
@@ -72,11 +74,6 @@ markdown_extensions:
       no_inline_svg: True
       insert_fonts_css: True
   - pymdownx.highlight
-  - pymdownx.superfences:
-       custom_fences:
-         - name: mermaid
-           class: mermaid
-           format: !!python/name:pymdownx.superfences.fence_div_format
 
   - admonition
   - attr_list
