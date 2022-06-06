@@ -402,7 +402,7 @@ class TimeAxis:
     """
     dt = cfl * min(medium.domain.dx) / functional(medium.sound_speed)(np.max)
     if t_end is None:
-      t_end = jnp.sqrt(
+      t_end = np.sqrt(
         sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
       ) / functional(medium.sound_speed)(np.min)
     return TimeAxis(dt=float(dt), t_end=float(t_end))
