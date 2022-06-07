@@ -46,11 +46,6 @@ nav:
       - Automatic differentiation: notebooks/harmonic/helmholtz_solver_differentiable.ipynb
     - Others:
       - Save video: notebooks/others/save_video.ipynb
-  - Benchmarks:
-    - Accuracy vs k-Wave: benchmarks/homogeneous_vs_kwave.ipynb
-    - Scaling vs timesteps: benchmarks/compute_time_vs_timesteps.ipynb
-    - Scaling vs domain size (2D): benchmarks/compute_time_vs_size_2d.ipynb
-    - Scaling vs domain size (3D): benchmarks/compute_time_vs_size_3d.ipynb
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:

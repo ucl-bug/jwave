@@ -186,7 +186,10 @@ def smoothing_filter(sample_input) -> Callable:
     return smooth_fun
 
 
-def smooth(x: jnp.ndarray) -> jnp.ndarray:
+def smooth(
+  x: jnp.ndarray,
+  exponent: float = 1.0,
+) -> jnp.ndarray:
     """Smooths a  n-dimensioanl signal by multiplying its
     spectrum by a blackman window.
 
@@ -210,6 +213,7 @@ def smooth(x: jnp.ndarray) -> jnp.ndarray:
             filter_kernel_2d = jnp.outer(*axis[1:])
             third_component = jnp.expand_dims(jnp.expand_dims(axis[0], 1), 2)
             filter_kernel = jnp.fft.fftshift(third_component * filter_kernel_2d)
+    filter_kernel = filter_kernel**exponent
     return jnp.fft.ifftn(filter_kernel * jnp.fft.fftn(x)).real
 
 
