@@ -3,15 +3,9 @@ flake8
 mypy
 pytest
 matplotlib
-mkdocs-material
-mkdocs-jupyter
-mkdocstrings
-mkdocs-mermaid2-plugin
-markdown-katex
-mkdocs-macros-plugin
 pre-commit
 pycln
 isort
-jupytext
-griffe
-mkdocstrings-python
+gitchangelog
+mako
+jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=

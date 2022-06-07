@@ -71,6 +71,13 @@ pressure = solver(medium, p0)
 
 <br/>
 
+### Citing
+
+A preprint describing the main functionality of j-Wave will be released soon.
+
+
+<br/>
+
 ### Related Projects
 
 1. [`ADSeismic.jl`](https://github.com/kailaix/ADSeismic.jl): a finite difference acoustic simulator with support for AD and JIT compilation in Julia.
