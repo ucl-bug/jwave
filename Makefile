@@ -60,13 +60,11 @@ release:          ## Create a new tag for release.
 	@echo "WARNING: This operation will create s version tag and push to github"
 	@read -p "Version? (provide the next x.y.z semver) : " TAG
 	@echo "$${TAG}" > jwave/VERSION
-	@$(ENV_PREFIX)gitchangelog > HISTORY.md
+	@gitchangelog > HISTORY.md
 	@git add jwave/VERSION HISTORY.md
 	@git commit -m "release: version $${TAG} 🚀"
 	@echo "creating git tag : $${TAG}"
 	@git tag $${TAG}
-	@git push -u origin HEAD --tags
-	@echo "Github Actions will detect the new tag and release the new version."
 
 .PHONY: serve_docs
 serve_docs:       ## Serve the documentation and update it automatically.
@@ -94,8 +92,6 @@ testenv:          ## Create a test environment.
 	@rm -rf .venv
 	@python3 -m venv .venv
 	@./.venv/bin/pip install -U pip
-	@echo "Instaling JaxDF"
-	@./.venv/bin/pip install git+https://github.com/ucl-bug/jaxdf.git
 	@echo "Instaling jwave"
 	@./.venv/bin/pip install -e .[test]
 	@echo "!!! Please run 'source .venv/bin/activate' to enable the environment !!!"
@@ -108,8 +104,6 @@ virtualenv:       ## Create a virtual environment. Checks that python > 3.8
 	@rm -rf .venv
 	@python3 -m venv .venv
 	@./.venv/bin/pip install -U pip
-	@echo "Instaling JaxDF"
-	@./.venv/bin/pip install git+https://github.com/ucl-bug/jaxdf.git
 	@echo "Instaling jwave"
 	@./.venv/bin/pip install -e .
 	@echo "!!! Please run 'source .venv/bin/activate' to enable the environment !!!"
