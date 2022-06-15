@@ -1,4 +1,3 @@
-
 import os
 from functools import partial
 from typing import Tuple
@@ -14,6 +13,8 @@ from jwave import FourierSeries
 from jwave.acoustics.time_harmonic import helmholtz_solver
 from jwave.geometry import Domain, Medium
 from jwave.utils import plot_comparison
+
+from .utils import log_accuracy
 
 # Default figure settings
 plt.rcParams.update({'font.size': 12})
@@ -70,7 +71,7 @@ def _test_setter(
   c0_constructor = _get_homog_sound_speed,
   rho0_constructor = _get_homog_density,
   alpha_constructor = _homog_attenuation_constructor(0.0),
-  rel_err = 1e-3,
+  rel_err = 1e-2,
 ):
   dx = tuple([dx]*len(N))
   assert len(N) == len(src_location), "src_location must have same length as N"
@@ -216,7 +217,8 @@ def test_helmholtz(
   print('Test name: ' + test_name)
   print('  Relative max error = ', 100*relErr, '%')
   assert relErr < settings["rel_err"], "Test failed, error above maximum limit of " + str(100*settings["rel_err"]) + "%"
-  print('  Test pass')
+
+  log_accuracy(test_name, relErr)
 
 if __name__ == "__main__":
   for key in TEST_SETTINGS:

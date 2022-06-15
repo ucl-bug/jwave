@@ -15,6 +15,8 @@ from jwave.acoustics import simulate_wave_propagation
 from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
 from jwave.utils import plot_comparison
 
+from .utils import log_accuracy
+
 # Default figure settings
 plt.rcParams.update({'font.size': 12})
 plt.rcParams["figure.dpi"] = 300
@@ -75,9 +77,10 @@ def _test_setter(
 TEST_SETTINGS = {
   "ivp_fd_no_pml": _test_setter(),
   "ivp_fd_pml": _test_setter(
-    PMLSize = 16
+    PMLSize = 16,
+    max_err = 0.1,
   ),
-  "ivp_fd_heterog_p0": _test_setter(
+  "ivp_fd_heterog_c0": _test_setter(
     PMLSize = 16,
     c0_constructor = _get_heterog_sound_speed,
     max_err=0.2
@@ -180,11 +183,13 @@ def test_ivp(
     plt.show()
 
   # Check maximum error
-  maxErr = jnp.amax(err)
+  maxErr = jnp.amax(err)/jnp.amax(jnp.abs(kwave_p_final))
   print('Test name: ' + test_name)
   print('  Maximum error = ', 100*maxErr, "%")
   assert maxErr < settings["max_err"] #, "Test failed, error above maximum limit of " + str(settings["max_err"])
-  print('  Test pass')
+
+  # Log error
+  log_accuracy(test_name, maxErr)
 
 if __name__ == "__main__":
   for key in TEST_SETTINGS:

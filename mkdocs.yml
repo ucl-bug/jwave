@@ -46,6 +46,8 @@ nav:
       - Automatic differentiation: notebooks/harmonic/helmholtz_solver_differentiable.ipynb
     - Others:
       - Save video: notebooks/others/save_video.ipynb
+  - Benchmarks:
+    - Accuracy: test_reports/test_report.md
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:
