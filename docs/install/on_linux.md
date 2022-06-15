@@ -34,9 +34,8 @@ Then install jax with GPU support (assumes CUDA > 11.1) using
 make jaxgpu
 ```
 
-Before using `jwave`,  activate the environment from the root folder of jwave using 
+Before using `jwave`,  activate the environment from the root folder of jwave using
 
 ```
-sorce .venv/bin/activate
+source .venv/bin/activate
 ```
-
