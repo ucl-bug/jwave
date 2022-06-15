@@ -293,6 +293,12 @@ class TimeHarmonicSource:
     """
     return self.amplitude * jnp.exp(1j * self.omega * t)
 
+  @staticmethod
+  def from_point_sources(domain, x, y, value, omega):
+    src_field = jnp.zeros(domain.N, dtype=jnp.complex64)
+    src_field = src_field.at[x, y].set(value)
+    return TimeHarmonicSource(src_field, omega, domain)
+
 
 @register_pytree_node_class
 class Sensors:
