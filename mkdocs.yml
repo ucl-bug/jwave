@@ -31,6 +31,7 @@ nav:
     - signal_processing: api_signal_processing.md
     - utils: api_utils.md
   - Tutorials:
+    - Prerequisites: notebooks/prerequisites.ipynb
     - Initial value problems:
       - Homogeneous wave propagation: notebooks/ivp/homogeneous_medium.ipynb
       - 3D simulations: notebooks/ivp/3d.ipynb
