@@ -64,8 +64,11 @@ release:          ## Create a new tag for release.
 	@gitchangelog > HISTORY.md
 	@git add jwave/VERSION HISTORY.md
 	@git commit -m "release: version $${TAG} 🚀"
+	@git add jwave/VERSION HISTORY.md
+	@git commit -m "release: version $${TAG} 🚀"
 	@echo "creating git tag : $${TAG}"
 	@git tag $${TAG}
+#	@git push --tags
 
 .PHONY: serve_docs
 serve_docs:       ## Serve the documentation and update it automatically.
@@ -82,7 +85,7 @@ show:             ## Show the current environment.
 
 .PHONY: test
 test:             ## Run tests and generate coverage report.
-	$(ENV_PREFIX)coverage run --source=jwave -m pytest -vs --maxfail 1
+	$(ENV_PREFIX)coverage run --source=jwave -m pytest -vs
 	$(ENV_PREFIX)coverage xml
 	$(ENV_PREFIX)coverage html
 
