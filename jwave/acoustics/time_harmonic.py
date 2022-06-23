@@ -23,6 +23,20 @@ def helmholtz_solver(
   params = None,
   **kwargs
 ):
+  """_summary_
+
+  Args:
+      medium (Medium): _description_
+      omega (object): _description_
+      source (OnGrid): _description_
+      guess (Union[OnGrid, None], optional): _description_. Defaults to None.
+      method (str, optional): _description_. Defaults to 'gmres'.
+      checkpoint (bool, optional): _description_. Defaults to True.
+      params (_type_, optional): _description_. Defaults to None.
+
+  Returns:
+      _type_: _description_
+  """
   if isinstance(medium.sound_speed, Field):
     min_sos = functional(medium.sound_speed)(jnp.amin)
   else:

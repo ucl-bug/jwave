@@ -137,7 +137,7 @@ def show_field(x: Field, title="", figsize=(8,6), vmax=None, aspect="auto"):
     cmap="RdBu_r",
     vmin=-maxval,
     vmax=maxval,
-    interpolation="spline36",
+    interpolation="nearest",
     aspect=aspect,
   )
   plt.colorbar()

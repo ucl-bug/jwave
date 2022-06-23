@@ -17,6 +17,10 @@ package.json
 .coverage
 coverage.xml
 
+# Pages to be generated
+docs/test_reports/test_accuracy.png
+docs/test_reports/test_data.txt
+docs/test_reports/test_report.md
 
 # Data
 *.mat

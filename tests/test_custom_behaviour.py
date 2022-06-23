@@ -44,6 +44,8 @@ def test_changing_params_wave_prop():
 
   new_fields = run_simulation(wave_params, p0)
 
+  return "mama"
+
 def test_differentiating_params():
   domain = Domain(
     TEST_SETTINGS["N"], TEST_SETTINGS["dx"]

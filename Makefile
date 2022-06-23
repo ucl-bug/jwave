@@ -41,8 +41,9 @@ help:             ## Show the help.
 .PHONY: jaxgpu
 jaxgpu:           ## Installs jax for *nix systems with CUDA
 	@echo "Installing jax with GPU support..."
+	@$(ENV_PREFIX)pip uninstall jax
 	@$(ENV_PREFIX)pip install --upgrade pip
-	@$(ENV_PREFIX)pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
+	@$(ENV_PREFIX)pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
 .PHONY: lint
@@ -81,7 +82,7 @@ show:             ## Show the current environment.
 
 .PHONY: test
 test:             ## Run tests and generate coverage report.
-	$(ENV_PREFIX)coverage run --source=jwave -m pytest -vs
+	$(ENV_PREFIX)coverage run --source=jwave -m pytest -vs --maxfail 1
 	$(ENV_PREFIX)coverage xml
 	$(ENV_PREFIX)coverage html
 

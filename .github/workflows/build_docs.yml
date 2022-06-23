@@ -24,6 +24,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r .requirements/requirements.txt
         pip install -r .requirements/requirements-docs.txt
+        pip install -r .requirements/requirements-test.txt
         pip install -e .
+    - name: Test and get accuracy file
+      run: |
+        echo "Testing and saving accuracy file..."
+        pytest
     - name: Build documentation
       run: mkdocs gh-deploy --force

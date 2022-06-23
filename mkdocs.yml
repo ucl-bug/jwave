@@ -12,7 +12,7 @@ theme:
     - navigation.instant
     - content.code.annotate
   palette:
-    primary: blue
+    primary: blue gray
   logo: assets/images/jwave_logo.png
 
 nav:
@@ -24,6 +24,7 @@ nav:
     - acoustics:
       - conversion: api_conversion.md
       - operators: api_operators.md
+      - time_harmonic: api_time_harmonic.md
       - time_varying: api_time_varying.md
     - extras: api_extras.md
     - geometry: api_geometry.md
@@ -31,6 +32,7 @@ nav:
     - signal_processing: api_signal_processing.md
     - utils: api_utils.md
   - Tutorials:
+    - Prerequisites: notebooks/prerequisites.ipynb
     - Initial value problems:
       - Homogeneous wave propagation: notebooks/ivp/homogeneous_medium.ipynb
       - 3D simulations: notebooks/ivp/3d.ipynb
@@ -47,10 +49,7 @@ nav:
     - Others:
       - Save video: notebooks/others/save_video.ipynb
   - Benchmarks:
-    - Accuracy vs k-Wave: benchmarks/homogeneous_vs_kwave.ipynb
-    - Scaling vs timesteps: benchmarks/compute_time_vs_timesteps.ipynb
-    - Scaling vs domain size (2D): benchmarks/compute_time_vs_size_2d.ipynb
-    - Scaling vs domain size (3D): benchmarks/compute_time_vs_size_3d.ipynb
+    - Accuracy: test_reports/test_report.md
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:
