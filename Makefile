@@ -41,8 +41,9 @@ help:             ## Show the help.
 .PHONY: jaxgpu
 jaxgpu:           ## Installs jax for *nix systems with CUDA
 	@echo "Installing jax with GPU support..."
+	@$(ENV_PREFIX)pip uninstall jax
 	@$(ENV_PREFIX)pip install --upgrade pip
-	@$(ENV_PREFIX)pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
+	@$(ENV_PREFIX)pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
 .PHONY: lint
