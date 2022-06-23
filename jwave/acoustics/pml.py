@@ -52,7 +52,8 @@ def td_pml_on_grid(
     raise NotImplementedError(f"Can't make a PML for a domain of dimensions {medium.domain.ndim}")
 
   if medium.pml_size == 0:
-      return 1.0
+    size = tuple(list(medium.domain.N) + [1])
+    return jnp.ones(size)
 
   x_right = ((jnp.arange(1, medium.pml_size+1, 1) + coord_shift) / medium.pml_size)
   x_left =  ((jnp.arange(medium.pml_size, 0, -1) - coord_shift) / medium.pml_size)
