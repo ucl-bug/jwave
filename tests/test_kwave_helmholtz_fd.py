@@ -27,7 +27,7 @@ def _get_heterog_sound_speed(domain):
   sound_speed = np.ones(domain.N) * 1500.0
   sound_speed[50:90, 32:100] = 2300.0
   sound_speed = FiniteDifferences(
-    np.expand_dims(sound_speed, -1), domain, accuracy=8)
+    np.expand_dims(sound_speed, -1), domain, accuracy=16)
   return sound_speed
 
 def _get_homog_sound_speed(domain):
@@ -37,13 +37,13 @@ def _get_homog_sound_speed(domain):
 def _get_heterog_density(domain):
   density = np.ones(domain.N) * 1000.0
   density[20:40, 65:100] = 2000.0
-  density = FiniteDifferences(np.expand_dims(density, -1), domain, accuracy=8)
+  density = FiniteDifferences(np.expand_dims(density, -1), domain, accuracy=16)
   return density
 
 def _get_density_interface(domain):
   density = np.ones(domain.N) * 1000.0
   density[64:] = 2000.0
-  density = FiniteDifferences(np.expand_dims(density, -1), domain, accuracy=8)
+  density = FiniteDifferences(np.expand_dims(density, -1), domain, accuracy=16)
   return density
 
 def _get_homog_density(domain):
@@ -58,7 +58,7 @@ def heterog_attenuation_constructor(value = 0.1):
   def _att_setter(domain):
     att = np.zeros(domain.N)
     att[30:90, 64:100] = value
-    att = FiniteDifferences(np.expand_dims(att, -1), domain, accuracy=8)
+    att = FiniteDifferences(np.expand_dims(att, -1), domain, accuracy=16)
     return att
   return _att_setter
 

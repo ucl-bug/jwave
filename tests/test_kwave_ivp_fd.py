@@ -27,26 +27,26 @@ def _get_p0(domain):
   Nx = domain.N
   p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
   p0 =  jnp.expand_dims(p0, -1)
-  p0 = FiniteDifferences(p0, domain)
+  p0 = FiniteDifferences(p0, domain, accuracy=8)
   return p0
 
 # Setting sound speed
 def _get_heterog_sound_speed(domain):
   sound_speed = np.ones(domain.N) * 1500.0
   sound_speed[50:90, 32:100] = 2300.0
-  sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1), domain, accuracy=16)
+  sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1), domain, accuracy=8)
   return sound_speed
 
 def _get_homog_sound_speed(domain):
   sound_speed = np.ones(domain.N) * 1500.0
-  sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1), domain, accuracy=16)
+  sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1), domain, accuracy=8)
   return sound_speed
 
 # Setting density
 def _get_heterog_density(domain):
   density = np.ones(domain.N) * 1000.0
   density[20:40, 65:100] = 2000.0
-  density = FiniteDifferences(np.expand_dims(density, -1), domain)
+  density = FiniteDifferences(np.expand_dims(density, -1), domain, accuracy=8)
   return density
 
 def _get_homog_density(domain):
