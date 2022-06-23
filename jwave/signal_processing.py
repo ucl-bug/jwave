@@ -25,6 +25,7 @@ def analytic_signal(x, axis=-1):
     slices[axis] = positive_indices
     slices = tuple(slices)
     spectrum = spectrum.at[slices].set(0.0)
+    spectrum = spectrum*2.
 
     # Get complex signal
     x = jnp.fft.ifft(spectrum, axis=axis)
