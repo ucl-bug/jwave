@@ -1,5 +1,4 @@
 from jax import jit
-from jax import numpy as jnp
 
 from jwave import FourierSeries
 from jwave.acoustics.time_varying import simulate_wave_propagation
@@ -14,7 +13,7 @@ time_axis = TimeAxis.from_medium(medium, cfl=0.3, t_end=.8e-05)
 
 # Initial pressure field
 p0 = load_image_to_numpy("docs/assets/images/jwave.png", image_size=N)/255.
-p0 = FourierSeries(jnp.expand_dims(p0,-1), domain)
+p0 = FourierSeries(p0, domain)
 
 # Compile and run the simulation
 @jit
