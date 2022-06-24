@@ -1,12 +1,12 @@
-coverage
-flake8
-mypy
-pytest
-matplotlib
-pre-commit
-pycln
-isort
-gitchangelog
-mako
+coverage==6.4.1
+flake8==4.0.1
+mypy==0.961
+pytest==7.1.2
+matplotlib==3.5.2
+pre-commit==2.19.0
+pycln==1.3.5
+isort==5.10.1
+gitchangelog==3.0.4
+mako==1.2.0
 jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
-pystache
+pystache==0.6.0
