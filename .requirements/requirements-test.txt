@@ -9,3 +9,4 @@ isort
 gitchangelog
 mako
 jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
+pystache

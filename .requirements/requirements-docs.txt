@@ -18,3 +18,4 @@ mypy
 pre-commit
 pycln
 pytest
+pystache
