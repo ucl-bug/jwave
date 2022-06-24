@@ -162,6 +162,7 @@ def test_helmholtz(
   src_field = jnp.zeros(domain.N, dtype=jnp.complex64)
   src_field = src_field.at[src_location].set(magnitude)
   src_field = FiniteDifferences(jnp.expand_dims(src_field, -1), domain)
+  src_field = device_put(src_field, device=cpu)
 
   # Run simulation
   @partial(jit, backend='cpu')

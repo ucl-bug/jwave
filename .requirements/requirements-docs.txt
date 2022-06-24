@@ -1,18 +1,20 @@
 coverage
 flake8
-mypy
-pytest
-matplotlib
-mkdocs-material
-mkdocs-jupyter
-mkdocstrings
-mkdocs-mermaid2-plugin
+gitchangelog
+griffe
+isort
+jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
+jupytext
+mako
 markdown-katex
+matplotlib
+mkdocs-jupyter
 mkdocs-macros-plugin
+mkdocs-material
+mkdocs-mermaid2-plugin
+mkdocstrings
+mkdocstrings-python
+mypy
 pre-commit
 pycln
-isort
-jupytext
-griffe
-mkdocstrings-python
-jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
+pytest
