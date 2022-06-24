@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.10]
 
     steps:
     - uses: actions/checkout@v2
@@ -24,11 +24,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r .requirements/requirements.txt
         pip install -r .requirements/requirements-docs.txt
-        pip install -r .requirements/requirements-test.txt
         pip install -e .
     - name: Test and get accuracy file
       run: |
         echo "Testing and saving accuracy file..."
-        pytest
+        make get_test_data
+        coverage run --source=jwave -m pytest -vs
     - name: Build documentation
       run: mkdocs gh-deploy --force
