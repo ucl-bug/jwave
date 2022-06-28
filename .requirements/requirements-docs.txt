@@ -6,7 +6,7 @@ isort==5.10.1
 jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
 jupytext==1.13.8
 mako==1.2.0
-markdown-katex==202112.103
+markdown-katex==202112.1034
 matplotlib==3.5.2
 mkdocs-jupyter==0.21.0
 mkdocs-macros-plugin==0.7.0
