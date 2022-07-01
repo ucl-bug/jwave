@@ -4,7 +4,7 @@ import jax
 from jax import numpy as jnp
 from jax.scipy.sparse.linalg import bicgstab, gmres
 from jaxdf import operator
-from jaxdf.discretization import Field, OnGrid, FourierSeries
+from jaxdf.discretization import Field, FourierSeries, OnGrid
 from jaxdf.operators import functional
 
 from jwave.geometry import Medium
@@ -21,10 +21,10 @@ def rayleigh_integral(
   params=None,
 ):
   """
-  Rayleigh integral for a given pressure field on a finite plane.
+  Rayleigh integral for a `FourierSeries` field.
 
-  Attributes:
-    pressure (FourierSeries): pressure field
+  Args:
+    pressure (FourierSeries): pressure field, corresponding to $`u`$ on the plane.
     r (jnp.ndarray): distance from the origin of the pressure plane.
       Must be a 3D array.
     f0 (float): frequency of the source.
@@ -50,7 +50,7 @@ def rayleigh_integral(
   def exp_term(x, y ,z):
     """The exponential term of the Rayleigh integral
     (first kind). This is basically the Green's function
-    of a dirac delta."""
+    of a dirac delta with Sommerfield radiation conditions."""
     r = jnp.sqrt(x**2 + y**2 + z**2)
     return jnp.exp(1j*k*r)/r
 
