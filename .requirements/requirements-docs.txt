@@ -1,7 +1,7 @@
 coverage==6.4.1
 flake8==4.0.1
 gitchangelog==3.0.4
-griffe==0.20.0
+griffe==0.22.0
 isort==5.10.1
 jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
 jupytext==1.13.8
