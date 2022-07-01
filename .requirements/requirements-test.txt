@@ -7,6 +7,6 @@ pre-commit==2.19.0
 pycln==1.3.5
 isort==5.10.1
 gitchangelog==3.0.4
-mako==1.2.0
+mako==1.2.1
 jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
 pystache==0.6.0
