@@ -5,11 +5,98 @@ from jax import numpy as jnp
 from jax.scipy.sparse.linalg import bicgstab, gmres
 from jaxdf import operator
 from jaxdf.discretization import Field, FourierSeries, OnGrid
+from jaxdf.geometry import Domain
 from jaxdf.operators import functional
 
 from jwave.geometry import Medium
 
+from .conversion import db2neper
 from .operators import helmholtz
+
+
+@operator
+def angular_spectrum(
+  pressure: FourierSeries,
+  *,
+  z_pos: float,
+  f0: float,
+  medium: Medium,
+  padding: int = 0,
+  angular_restriction: bool = True,
+  params = None
+) -> FourierSeries:
+  """Similar to `angularSpectrumCW` from the k-Wave toolbox.
+
+  Projects an input plane of single-frequency
+  continuous wave data to the parallel plane specified by z_pos using the
+  angular spectrum method. The implementation follows the spectral
+  propagator with angular restriction described in reference [1].
+
+  For linear projections in a lossless medium, just the sound speed can
+  be specified. For projections in a lossy medium, the parameters are
+  given as fields to the input structure medium.
+
+  See [[Zeng and McGhough, 2008](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3408224/)] for
+  more details.
+
+
+  Args:
+      pressure (FourierSeries): omplex pressure values over the input plane $`[Pa]`$
+      z_pos (float): Specifies the relative z-position of the plane of projection.
+      f0 (float): The frequency of the input plane.
+      medium (Medium): Specifies the speed of sound, density and absorption in the medium.
+      padding (Union[str, int], optional): Controls the grid expansion used for
+        evaluating the angular spectrum. Defaults to 0.
+      angular_restriction (bool, optional): If true, uses the angular restriction method
+        specified in [[Zeng and McGhough, 2008](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3408224/)]. Defaults to True.
+
+  Returns:
+      FourierSeries: _description_
+  """
+  # Get literals
+  c0 = medium.sound_speed
+  k = 2 * jnp.pi * f0 / c0
+  k_t_sq = k**2
+
+  # Pad the input field
+  p = pressure.on_grid
+  p = jnp.pad(p, padding, mode='constant', constant_values=0)
+
+  # Update the domain
+  domain = Domain(
+    (p.shape[0], p.shape[1]), # (Nx, Ny)
+    pressure.domain.dx        # Grid spacing doesn't change
+  )
+  pressure_padded = FourierSeries(p, domain)
+
+  # Define cutoffs
+  freq_grid = pressure_padded._freq_grid
+  k_x_sq = jnp.sum(freq_grid ** 2, axis=-1)
+  kz = jnp.sqrt(k_t_sq - k_x_sq +0j)
+
+  # Evaluate base propagator
+  H = jnp.conj(jnp.exp(1j * z_pos * kz))
+
+  # Apply angular restriction, i.e. a hard low-pass filter
+  D = min(pressure_padded.domain.size)
+  kc = k * jnp.sqrt(0.5 * D**2 / (0.5 * D**2 + z_pos**2))
+  H_restrict = jnp.where(k_x_sq <= kc**2, H, 0.j)
+  H = jnp.where(angular_restriction, H_restrict, H)
+
+  # Add attenuation
+  alpha_np = db2neper(medium.attenuation, 2)
+  H = H = H * jnp.exp(-alpha_np * z_pos * k / kz)
+
+  # Apply the spectral porpagator
+  p_hat = jnp.fft.fftn(pressure_padded.on_grid[...,0])
+  p_hat_plane = p_hat * H
+  p_plane = jnp.fft.ifftn(p_hat_plane)
+
+  # Unpad
+  if padding > 0:
+    p_plane = p_plane[padding:-padding, padding:-padding]
+
+  return FourierSeries(p_plane, domain)
 
 
 @operator

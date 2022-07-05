@@ -30,6 +30,9 @@ def pytest_sessionstart(session):
 @pytest.hookimpl()
 def pytest_sessionfinish(session, exitstatus):
   # Load the test report data
+  if not os.path.exists(TEST_REPORT_DATA):
+    open(TEST_REPORT_DATA, "w").close()
+
   with open(TEST_REPORT_DATA, "r") as f:
     test_data = f.readlines()
   os.remove(TEST_REPORT_DATA)
