@@ -75,14 +75,24 @@ pressure = solver(medium, p0)
 
 <br/>
 
-### Citing
+## Citation
 
-A preprint describing the main functionality of j-Wave will be released soon.
+[![arXiv](https://img.shields.io/badge/arXiv-2207.01499-b31b1b.svg?style=flat)](https://arxiv.org/abs/2207.01499)
 
+If you use `jwave` for your research, please consider citing it as:
+
+```bibtex
+@article{stanziola2022jwave,
+    author={Stanziola, Antonio and Arridge, Simon R. and Cox, Ben T. and Treeby, Bradley E.},
+    title = {j-Wave: An open-source differentiable wave simulator},
+    publisher = {arXiv},
+    year = {2022},
+}
+```
 
 <br/>
 
-### Related Projects
+## Related Projects
 
 1. [`ADSeismic.jl`](https://github.com/kailaix/ADSeismic.jl): a finite difference acoustic simulator with support for AD and JIT compilation in Julia.
 2. [`stride`](https://github.com/trustimaging/stride): a general optimisation framework for medical ultrasound tomography.
