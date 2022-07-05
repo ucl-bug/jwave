@@ -1,0 +1,21 @@
+.doc-attribute{
+    border-top: 1px solid #ccc;
+}
+
+.doc-method {
+    border-top: 1px solid #ccc;
+}
+
+.doc-function {
+    border-top: 1px solid #ccc;
+}
+
+.doc-class {
+    border-top: 5px solid var(--md-code-bg-color);
+}
+
+/* Remove the `In` and `Out` block in rendered Jupyter notebooks */
+.md-container .jp-Cell-outputWrapper .jp-OutputPrompt.jp-OutputArea-prompt,
+.md-container .jp-Cell-inputWrapper .jp-InputPrompt.jp-InputArea-prompt {
+  display: none !important;
+}

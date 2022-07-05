@@ -1,0 +1,653 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="Fast and differentiable acoustic simulations in JAX" name="description"/>
+<meta content="Antonio Stanziola, Biomedical Ultrasound Group" name="author"/>
+<link href="https://ucl-bug.github.io/jwave/install/on_win.html" rel="canonical"/>
+<link href="../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.3.0, mkdocs-material-8.3.8" name="generator"/>
+<title>Windows - j-Wave</title>
+<link href="../assets/stylesheets/main.1d29e8d0.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/palette.cbb835fc.min.css" rel="stylesheet"/>
+<meta content="" name="theme-color"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../assets/_mkdocstrings.css" rel="stylesheet"/>
+<link href="../stylesheets/extra.css" rel="stylesheet"/>
+<script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="" data-md-color-primary="blue-gray" data-md-color-scheme="" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#install-on-windows">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="j-Wave" class="md-header__button md-logo" data-md-component="logo" href="../index.html" title="j-Wave">
+<img alt="logo" src="../assets/images/jwave_logo.png"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            j-Wave
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Windows
+            
+          </span>
+</div>
+</div>
+</div>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"></path></svg>
+</button>
+</nav>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<nav aria-label="Tabs" class="md-tabs" data-md-component="tabs">
+<div class="md-tabs__inner md-grid">
+<ul class="md-tabs__list">
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../index.html">
+      Home
+    </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link md-tabs__link--active" href="on_linux.html">
+        Install
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../api_conversion.html">
+        API
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../notebooks/prerequisites.html">
+        Tutorials
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../test_reports/test_report.html">
+        Benchmarks
+      </a>
+</li>
+</ul>
+</div>
+</nav>
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary md-nav--lifted" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="j-Wave" class="md-nav__button md-logo" data-md-component="logo" href="../index.html" title="j-Wave">
+<img alt="logo" src="../assets/images/jwave_logo.png"/>
+</a>
+    j-Wave
+  </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../index.html">
+        Home
+      </a>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2">
+          Install
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Install" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+          Install
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="on_linux.html">
+        Linux
+      </a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" data-md-toggle="toc" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+          Windows
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="on_win.html">
+        Windows
+      </a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#install-on-an-isolated-wsl">
+    Install on an isolated WSL
+  </a>
+<nav aria-label="Install on an isolated WSL" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#prerequisites">
+    Prerequisites
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-install">
+    How to install
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-uninstall">
+    How to uninstall
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#install-using-the-unofficial-jax-wheels">
+    Install using the unofficial jax wheels
+  </a>
+<nav aria-label="Install using the unofficial jax wheels" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#prerequisites_1">
+    Prerequisites
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-install_1">
+    How to install
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#building-jax-from-source">
+    Building jax from source
+  </a>
+<nav aria-label="Building jax from source" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-install_2">
+    How to install
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3">
+          API
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="API" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+          API
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1" id="__nav_3_1" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3_1">
+          acoustics
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="acoustics" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_3_1">
+<span class="md-nav__icon md-icon"></span>
+          acoustics
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_conversion.html">
+        conversion
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_operators.html">
+        operators
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_time_harmonic.html">
+        time_harmonic
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_time_varying.html">
+        time_varying
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_extras.html">
+        extras
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_geometry.html">
+        geometry
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_phantoms.html">
+        phantoms
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_signal_processing.html">
+        signal_processing
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api_utils.html">
+        utils
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4">
+          Tutorials
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Tutorials" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+          Tutorials
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/prerequisites.html">
+        Prerequisites
+      </a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_2" id="__nav_4_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4_2">
+          Initial value problems
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Initial value problems" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_4_2">
+<span class="md-nav__icon md-icon"></span>
+          Initial value problems
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/ivp/homogeneous_medium.html">
+        Homogeneous Medium
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/ivp/3d.html">
+        3D simulations
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/ivp/homogeneous_medium_sensors.html">
+        Sensors
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/ivp/custom_sensors.html">
+        Custom sensors
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/ivp/homogeneous_medium_backprop.html">
+        Automatic differentiation
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/ivp/heterogeneous_medium.html">
+        Heterogeneous medium
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_3" id="__nav_4_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4_3">
+          Time varying
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Time varying" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_4_3">
+<span class="md-nav__icon md-icon"></span>
+          Time varying
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/time_varying/point_sources.html">
+        Point sources
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/time_varying/FWI.html">
+        Full Wave Inversion
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_4" id="__nav_4_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4_4">
+          Time harmonic
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Time harmonic" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_4_4">
+<span class="md-nav__icon md-icon"></span>
+          Time harmonic
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/harmonic/helmholtz_problem.html">
+        Helmholtz problem
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/harmonic/helmholtz_solver_differentiable.html">
+        Optimizing trough GMRES
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_5" id="__nav_4_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4_5">
+          Others
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Others" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_4_5">
+<span class="md-nav__icon md-icon"></span>
+          Others
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../notebooks/others/save_video.html">
+        Save video
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5">
+          Benchmarks
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Benchmarks" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+          Benchmarks
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../test_reports/test_report.html">
+        Accuracy
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#install-on-an-isolated-wsl">
+    Install on an isolated WSL
+  </a>
+<nav aria-label="Install on an isolated WSL" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#prerequisites">
+    Prerequisites
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-install">
+    How to install
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-uninstall">
+    How to uninstall
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#install-using-the-unofficial-jax-wheels">
+    Install using the unofficial jax wheels
+  </a>
+<nav aria-label="Install using the unofficial jax wheels" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#prerequisites_1">
+    Prerequisites
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-install_1">
+    How to install
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#building-jax-from-source">
+    Building jax from source
+  </a>
+<nav aria-label="Building jax from source" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-install_2">
+    How to install
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1 id="install-on-windows">Install on Windows</h1>
+<p><code>jwave</code> is based on JAX, which currently offers <a href="https://github.com/google/jax#installation">limited support for Windows platforms</a> (see <a href="https://github.com/google/jax/issues/5795">this issue</a> for more information).</p>
+<p>Following are a few workarounds for running <code>jax</code> (and, therefore, <code>jwave</code>) on a Windows machine:</p>
+<ol>
+<li><a href="#install-on-an-isolated-wsl">Install on an isolated WSL</a></li>
+<li><a href="#install-using-the-unofficial-jax-wheels">Install using the unofficial jax wheels</a></li>
+<li><a href="#building-jax-from-source">Building jax from source</a></li>
+</ol>
+<p>Before running any of them, please make sure that your Windows machine is up-to-date, by clicking on <code>Start</code>, then typing <code>Check for updates</code> in the search bar and pressing enter. Install any updates that are available.</p>
+<p>Any help to improve the installation on Windows is more than welcome 😊.</p>
+<p><br/></p>
+<h2 id="install-on-an-isolated-wsl">Install on an isolated WSL</h2>
+<p>This is the easiest option. It uses the <a href="https://docs.microsoft.com/en-us/windows/wsl/about">Windows Subsystem for Linux</a> (WSL) to install an <a href="https://github.com/sileshn/ManjaroWSL">Arch-based Linux distribution</a>, in which python and the required packages are installed.</p>
+<p>The WSL and other required programs are installed using <a href="https://scoop.sh/"><code>scoop</code></a> without Adiministrator privileges, which ensures that they are isolated from the rest of the system and minimizes the risk of interference with other programs.</p>
+<p>The WSL shares the same filesystem as the host machine, therefore all files can be accessed directly from the Windows File Explorer. For developing your Python code, we recommend to use Visual Studio Code with the <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl">Remote - WSL</a> extension: see <a href="https://code.visualstudio.com/docs/remote/wsl-tutorial">this page</a> for a detailed tutorial.</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<p>You must be running Windows 10 version 2004 and higher (Build 19041 and higher) or Windows 11.</p>
+<p>Make sure that the Windows Subsystem for Linux feature is enabled in your system. Click on <code>Start</code>, type <code>PowerShell</code>, then right-click on <code>Windows PowerShell</code> and click <code>Run As Administrator</code>.</p>
+<p>In the PowerShell window, type the following command and press <code>Enter</code>:</p>
+<pre><code class="language-powershell">dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+</code></pre>
+<p>Similarly, check that the Virtual Machine feature is enabled by typing the following command and pressing <code>Enter</code>:</p>
+<pre><code class="language-powershell">dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+</code></pre>
+<p>Close the PowerShell window and restart your computer.</p>
+<p>The next step is to make sure that your system has the latest Linux kernel update, by downloading and installing <a href="https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi">this package</a>.</p>
+<h3 id="how-to-install">How to install</h3>
+<p>Open a <code>PowerShell</code> instance and paste this</p>
+<pre><code class="language-ps">$JwaveWinInstaller = Invoke-WebRequest https://raw.githubusercontent.com/ucl-bug/jwave/main/scripts/jwave_win_install.ps1
+Invoke-Expression $($JwaveWinInstaller.Content)
+</code></pre>
+<p>then follow the instructions to install <code>jwave</code>.</p>
+<h3 id="how-to-uninstall">How to uninstall</h3>
+<p>If you have installed <code>jwave</code> using the script above, open a <code>PowerShell</code> instance and type</p>
+<pre><code class="language-ps">scoop uninstall scoop
+</code></pre>
+<p>to completely remove jwave and all other programs installed (e.g. the virtual machine).</p>
+<p><br/></p>
+<h2 id="install-using-the-unofficial-jax-wheels">Install using the unofficial jax wheels</h2>
+<p>⚠️ This method uses a <a href="https://github.com/cloudhan/jax-windows-builder">community supported Windows build for jax</a>, which is in alpha state and is not guaranteed to work. Only CPU and CUDA 11.x are supported.</p>
+<h3 id="prerequisites_1">Prerequisites</h3>
+<p>This method assumes that you've aready setup a Python environment in your Windows machine. We recommend to use Anaconda to keep your Python installation separate from the rest of your system: <a href="https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html">this page</a> offers a relatively quick guide to Anaconda installation and how to manage environments.</p>
+<h3 id="how-to-install_1">How to install</h3>
+<p>After activating your python environment, follow <a href="https://github.com/cloudhan/jax-windows-builder/blob/main/README.md">the README</a> to install <code>jax</code> for your python and (if needed) CUDA version.</p>
+<p>Then install <code>jwave</code> using</p>
+<pre><code class="language-powershell">pip install git+https://github.com/ucl-bug/jwave`
+</code></pre>
+<p><br/></p>
+<h2 id="building-jax-from-source">Building jax from source</h2>
+<p>The latest method is to build <code>jax</code> from source. This is not recommended for users that are not familiar with building large software packages from source.</p>
+<h3 id="how-to-install_2">How to install</h3>
+<p>Follow the <a href="https://jax.readthedocs.io/en/latest/developer.html#additional-notes-for-building-jaxlib-from-source-on-windows">guide on the jax docs</a> for building <code>jax</code> from source, up to the end of the <em>"Running the tests"</em> section</p>
+<p>Then install <code>jwave</code> using</p>
+<pre><code class="language-powershell">pip install git+https://github.com/ucl-bug/jwave
+</code></pre>
+</article>
+</div>
+</div>
+</main>
+<footer class="md-footer">
+<nav aria-label="Footer" class="md-footer__inner md-grid">
+<a aria-label="Previous: Linux" class="md-footer__link md-footer__link--prev" href="on_linux.html" rel="prev">
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path></svg>
+</div>
+<div class="md-footer__title">
+<div class="md-ellipsis">
+<span class="md-footer__direction">
+                Previous
+              </span>
+              Linux
+            </div>
+</div>
+</a>
+<a aria-label="Next: conversion" class="md-footer__link md-footer__link--next" href="../api_conversion.html" rel="next">
+<div class="md-footer__title">
+<div class="md-ellipsis">
+<span class="md-footer__direction">
+                Next
+              </span>
+              conversion
+            </div>
+</div>
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"></path></svg>
+</div>
+</a>
+</nav>
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.instant", "content.code.annotate"], "search": "../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+<script src="../assets/javascripts/bundle.0238f547.min.js"></script>
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</body>
+</html>
