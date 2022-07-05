@@ -34,7 +34,7 @@ def db2neper(
 
   Args:
       alpha(jnp.ndarray): Absorption coefficient in decibels.
-      y(jnp.ndarray): Distance in meters.
+      y(jnp.ndarray): Exponent of the absorption coefficient.
 
   Returns:
       jnp.ndarray: Absorption coefficient in nepers.
