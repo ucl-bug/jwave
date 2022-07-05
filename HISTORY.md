@@ -3,6 +3,15 @@
 
 ## (latest)
 
+### Features
+
+* Angular spectrum method for single frequency sources. [Antonio Stanziola]
+
+* Differentiable rayleigh integral (from a plane) [Antonio Stanziola]
+
+
+## 0.0.2 (2022-06-23)
+
 ### Bug Fix
 
 * Helmholtz notebook parameters bug. [Antonio Stanziola]

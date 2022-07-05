@@ -64,8 +64,6 @@ release:          ## Create a new tag for release.
 	@gitchangelog > HISTORY.md
 	@git add jwave/VERSION HISTORY.md
 	@git commit -m "release: version $${TAG} 🚀"
-	@git add jwave/VERSION HISTORY.md
-	@git commit -m "release: version $${TAG} 🚀"
 	@echo "creating git tag : $${TAG}"
 	@git tag $${TAG}
 #	@git push --tags
