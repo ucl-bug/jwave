@@ -12,6 +12,8 @@ from jwave.acoustics.time_harmonic import angular_spectrum
 from jwave.geometry import Domain, Medium
 from jwave.utils import plot_comparison
 
+from .utils import log_accuracy
+
 
 def _test_setter(
   N = (256,256),
@@ -19,10 +21,9 @@ def _test_setter(
   f0 = 1e6,
   source = "disk",
   c0 = 1480,
-  alpha = 0.0,
   z_pos = 20e-3,
   angular_restriction = True,
-  padding = 128,
+  padding = 512,
 ):
   return {
     "N" : N,
@@ -30,7 +31,6 @@ def _test_setter(
     "f0" : f0,
     "source" : source,
     "c0" : c0,
-    "alpha" : alpha,
     "z_pos" : z_pos,
     "angular_restriction" : angular_restriction,
     "padding" : padding,
@@ -49,13 +49,16 @@ def set_source(source_kind, domain):
 
 TEST_SETTINGS = {
   "angularspectrum_cw_base": _test_setter(),
+  "angularspectrum_cw_no_restriction": _test_setter(angular_restriction=False),
+  "angularspectrum_cw_close": _test_setter(z_pos=0.1e-3),
+  "angularspectrum_cw_far": _test_setter(z_pos=200e-3),
 }
 
 @pytest.mark.parametrize("test_name", TEST_SETTINGS.keys())
 def test_angular_spectrum_cw(
   test_name,
-  use_plots = True,
-  reset_mat_file = True
+  use_plots = False,
+  reset_mat_file = False
 ):
   # Initialize field
   settings = TEST_SETTINGS[test_name]
@@ -70,7 +73,6 @@ def test_angular_spectrum_cw(
   medium = Medium(
     domain,
     sound_speed=settings["c0"],
-    attenuation=settings["alpha"],
   )
   z_pos = settings["z_pos"]
   angular_restriction = settings["angular_restriction"]
@@ -101,8 +103,6 @@ def test_angular_spectrum_cw(
       "z_pos": z_pos,
       "f0": f0,
       "c0": medium.sound_speed,
-      "alpha": medium.attenuation,
-      "alpha_power": 2.0,
       "angular_restriction": angular_restriction,
       "padding": padding,
     }
@@ -116,19 +116,26 @@ def test_angular_spectrum_cw(
   # Load the matlab results
   out_filepath = dir_path + '/kwave_data/' + matfile
   kwave = loadmat(out_filepath)
-  kwave_solution_field = kwave["p_plane"]
-
-  print(f"jwave_solution_size: {solution_field.on_grid.shape}")
-  print(f"kwave_solution_size: {kwave_solution_field.shape}")
-  print(f"jwave_solution_max: {jnp.max(solution_field.on_grid)}")
+  kwave_solution_field = jnp.abs(kwave["p_plane"])
+  jwave_solution_field = jnp.abs(solution_field.on_grid[...,0])
+  err = abs(jwave_solution_field - kwave_solution_field)
 
   if use_plots:
     plot_comparison(
       jnp.abs(solution_field.on_grid[...,0]),
-      jnp.abs(solution_field.on_grid[...,0]),
+      jnp.abs(kwave_solution_field),
       test_name,
       ['j-Wave (abs)', 'k-Wave (abs)'],
       cmap="inferno",
       vmin=0,
     )
     plt.show()
+
+  # Check maximum error
+  maxErr = jnp.amax(err)/jnp.amax(kwave_solution_field)
+  print('Test name: ' + test_name)
+  print('  Maximum error = ', maxErr)
+  assert maxErr < 0.01
+
+  # Log error
+  log_accuracy(test_name, maxErr)

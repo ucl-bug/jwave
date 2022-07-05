@@ -10,7 +10,6 @@ from jaxdf.operators import functional
 
 from jwave.geometry import Medium
 
-from .conversion import db2neper
 from .operators import helmholtz
 
 
@@ -39,6 +38,9 @@ def angular_spectrum(
   See [[Zeng and McGhough, 2008](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3408224/)] for
   more details.
 
+  Note: The absorption coefficient is not considered in this function, so the medium is
+  assumed to be lossless.
+
 
   Args:
       pressure (FourierSeries): omplex pressure values over the input plane $`[Pa]`$
@@ -59,7 +61,7 @@ def angular_spectrum(
   k_t_sq = k**2
 
   # Pad the input field
-  p = pressure.on_grid
+  p = pressure.on_grid[...,0]
   p = jnp.pad(p, padding, mode='constant', constant_values=0)
 
   # Update the domain
@@ -71,6 +73,7 @@ def angular_spectrum(
 
   # Define cutoffs
   freq_grid = pressure_padded._freq_grid
+  freq_grid = freq_grid.at[0,0].set(0.)
   k_x_sq = jnp.sum(freq_grid ** 2, axis=-1)
   kz = jnp.sqrt(k_t_sq - k_x_sq +0j)
 
@@ -82,10 +85,6 @@ def angular_spectrum(
   kc = k * jnp.sqrt(0.5 * D**2 / (0.5 * D**2 + z_pos**2))
   H_restrict = jnp.where(k_x_sq <= kc**2, H, 0.j)
   H = jnp.where(angular_restriction, H_restrict, H)
-
-  # Add attenuation
-  alpha_np = db2neper(medium.attenuation, 2)
-  H = H = H * jnp.exp(-alpha_np * z_pos * k / kz)
 
   # Apply the spectral porpagator
   p_hat = jnp.fft.fftn(pressure_padded.on_grid[...,0])

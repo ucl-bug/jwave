@@ -22,14 +22,12 @@ function test_angular_spectrum_cw(in_filename, plot_tests)
     z_pos = single(jw.z_pos);
     f0 = single(jw.f0);
     c0 = single(jw.c0);
-    alpha = single(jw.alpha);
-    alpha_power = single(jw.alpha_power);
     angular_restiction = logical(jw.angular_restriction);
     padding = int32(jw.padding);
 
     medium.sound_speed = c0;
-    medium.alpha_power = alpha_power;
-    medium.alpha_coeff = alpha;
+
+    fft_length = size(input_plane, 1);
 
     % Run solver
     p_plane = angularSpectrumCW(...
