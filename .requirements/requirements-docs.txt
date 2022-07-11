@@ -10,7 +10,7 @@ markdown-katex==202112.1034
 matplotlib==3.5.2
 mkdocs-jupyter==0.21.0
 mkdocs-macros-plugin==0.7.0
-mkdocs-material==8.3.8
+mkdocs-material==8.3.9
 mkdocs-mermaid2-plugin==0.6.0
 mkdocstrings==0.19.0
 mkdocstrings-python==0.7.1
