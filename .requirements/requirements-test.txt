@@ -1,6 +1,6 @@
 coverage==6.4.2
 flake8==4.0.1
-mypy==0.961
+mypy==0.971
 pytest==7.1.2
 matplotlib==3.5.2
 pre-commit==2.20.0
