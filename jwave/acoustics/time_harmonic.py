@@ -17,11 +17,11 @@ from .operators import helmholtz
 def angular_spectrum(
   pressure: FourierSeries,
   *,
-  z_pos: float,
-  f0: float,
-  medium: Medium,
-  padding: int = 0,
-  angular_restriction: bool = True,
+  z_pos,
+  f0,
+  medium,
+  padding = 0,
+  angular_restriction = True,
   params = None
 ) -> FourierSeries:
   """Similar to `angularSpectrumCW` from the k-Wave toolbox.
@@ -101,9 +101,10 @@ def angular_spectrum(
 @operator
 def rayleigh_integral(
   pressure: FourierSeries,
-  r: jnp.ndarray,
-  f0: float,
-  sound_speed: float = 1500.0,
+  *,
+  r,
+  f0,
+  sound_speed = 1500.0,
   params=None,
 ):
   """
