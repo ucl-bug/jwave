@@ -22,6 +22,7 @@ def angular_spectrum(
   medium,
   padding = 0,
   angular_restriction = True,
+  unpad_output = True,
   params = None
 ) -> FourierSeries:
   """Similar to `angularSpectrumCW` from the k-Wave toolbox.
@@ -92,10 +93,13 @@ def angular_spectrum(
   p_plane = jnp.fft.ifftn(p_hat_plane)
 
   # Unpad
-  if padding > 0:
+  if padding > 0 and unpad_output:
     p_plane = p_plane[padding:-padding, padding:-padding]
+    p_plane = FourierSeries(p_plane, pressure.domain)
+  else:
+    p_plane = FourierSeries(p_plane, domain)
 
-  return FourierSeries(p_plane, domain)
+  return p_plane
 
 
 @operator
@@ -145,6 +149,7 @@ def rayleigh_integral(
     """Derivative of the exponential term in the Rayleigh integral,
     along the z-axis (second kind). This is basically the Green's function
     of a dipole oriented along the z-axis.
+  p = pressure.on_grid[...,0]
     """
     _, direc_derivative = jax.jvp(exp_term, (x,y,z), (0., 0., 1.))
     return direc_derivative

@@ -139,3 +139,34 @@ def test_angular_spectrum_cw(
 
   # Log error
   log_accuracy(test_name, maxErr)
+
+def test_output_domain_size():
+  domain = Domain((64,64), (1,1))
+  f0 = 1
+  field = FourierSeries(jnp.ones((64,64)) + 0j, domain)
+  medium = Medium(
+    domain,
+    sound_speed=1.,
+  )
+  out_field = angular_spectrum(
+    field,
+    z_pos=10,
+    f0=f0,
+    medium=medium,
+    padding=64,
+    angular_restriction=True
+  )
+  assert out_field.domain.N == (64,64)
+  assert out_field.domain.N == out_field.on_grid.shape[:-1]
+
+  out_field = angular_spectrum(
+    field,
+    z_pos=10,
+    f0=f0,
+    medium=medium,
+    padding=64,
+    angular_restriction=True,
+    unpad_output=False
+  )
+  assert out_field.domain.N == out_field.on_grid.shape[:-1]
+  assert out_field.domain.N == (192,192)
