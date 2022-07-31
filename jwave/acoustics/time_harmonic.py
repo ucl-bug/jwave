@@ -52,6 +52,7 @@ def angular_spectrum(
         evaluating the angular spectrum. Defaults to 0.
       angular_restriction (bool, optional): If true, uses the angular restriction method
         specified in [[Zeng and McGhough, 2008](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3408224/)]. Defaults to True.
+      unpad_output (bool, optional): If true, the output is padded to the same size as the input. Defaults to True.
 
   Returns:
       FourierSeries: _description_
