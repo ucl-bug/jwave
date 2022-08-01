@@ -1,5 +1,5 @@
 coverage==6.4.2
-flake8==4.0.1
+flake8==5.0.1
 gitchangelog==3.0.4
 griffe==0.22.0
 isort==5.10.1
