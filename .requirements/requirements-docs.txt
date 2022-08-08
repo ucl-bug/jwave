@@ -1,4 +1,4 @@
-coverage==6.4.2
+coverage==6.4.3
 flake8==4.0.1
 gitchangelog==3.0.4
 griffe==0.22.0
