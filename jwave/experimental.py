@@ -192,29 +192,30 @@ if __name__ == '__main__':
 
   domain = Domain((128,128),(1,1))
   sos = jnp.ones(domain.N)
-  sos = sos.at[10:48,10:64].set(2.0)
+  #sos = sos.at[10:48,10:64].set(2.0)
   src = jnp.zeros_like(sos) + 0j
-  src = src.at[96,32:96].set(jnp.exp(-1j*jnp.linspace(0,4,96-32)**2))
+  src = src.at[96,96].set(1.0 + 0j)
 
   src = FourierSeries(jnp.expand_dims(src, -1), domain)
   sos = FourierSeries(jnp.expand_dims(sos, -1), domain)
+  pml_size = 32
 
   solution, k_sq = born_solver(
     sos,
     src,
     omega=1.0,
     k0=1.0,
-    pml_size=128,
+    pml_size=pml_size,
     max_iter=1000,
     tol=1e-6,
-    alpha=1.0
+    alpha=2.0
   )
 
   # Plot and save solution
   outfield = solution#k_sq[...,0]#
-  outfield = outfield[128:-128,128:-128]
+  outfield = outfield[pml_size:-pml_size,pml_size:-pml_size]
   maxval = jnp.max(jnp.abs(outfield))
-  #plt.imshow(jnp.real(outfield), vmax=maxval, vmin=-maxval, cmap="seismic")
-  plt.imshow(jnp.abs(outfield), vmax=maxval, cmap="inferno")
+  plt.imshow(jnp.real(outfield), vmax=maxval, vmin=-maxval, cmap="seismic")
+  #plt.imshow(jnp.abs(outfield), vmax=maxval, cmap="inferno")
   plt.colorbar()
   plt.savefig('born_solution_test.png')

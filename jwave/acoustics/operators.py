@@ -1,3 +1,4 @@
+from jax import numpy as jnp
 from jaxdf import Field, operator
 from jaxdf.discretization import (
     Continuous,
@@ -8,6 +9,7 @@ from jaxdf.discretization import (
 from jaxdf.operators import (
     compose,
     diag_jacobian,
+    functional,
     gradient,
     shift_operator,
     sum_over_dims,
@@ -283,3 +285,13 @@ def helmholtz(
   # Add the wavenumber term
   k = wavevector(u, medium, omega)
   return L + k, params
+
+
+def scale_source_helmholtz(source, medium):
+  if isinstance(medium.sound_speed, Field):
+    min_sos = functional(medium.sound_speed)(jnp.amin)
+  else:
+    min_sos = jnp.amin(medium.sound_speed)
+
+  source = source  * 2 / (source.domain.dx[0] * min_sos)
+  return source
