@@ -54,7 +54,6 @@ def laplacian_with_pml(
   u: OnGrid,
   medium: Medium,
   omega = 1.0,
-  *,
   params = None
 ) -> OnGrid:
   r"""Laplacian operator with PML for `OnGrid` complex fields.
@@ -140,7 +139,6 @@ def laplacian_with_pml(
 
   return nabla_u - rho_u, params
 
-
 @operator
 def laplacian_with_pml(
   u: FourierSeries,
@@ -174,9 +172,18 @@ def laplacian_with_pml(
   pml = params['pml_on_grid']
 
   # Making laplacian
-  grad_u = gradient(u, stagger=[0.5], params=params['fft_u'])
+  grad_u = gradient(
+    u,
+    stagger=[0.5],
+    correct_nyquist=False,
+    params=params['fft_u'])
   mod_grad_u = grad_u*pml[0]
-  mod_diag_jacobian = diag_jacobian(mod_grad_u, stagger=[-0.5], params=params['fft_u']) * pml[1]
+  mod_diag_jacobian = diag_jacobian(
+    mod_grad_u,
+    stagger=[-0.5],
+    correct_nyquist=False,
+    params=params['fft_u']
+  ) * pml[1]
   nabla_u = sum_over_dims(mod_diag_jacobian)
 
   # Density term
