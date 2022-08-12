@@ -30,7 +30,6 @@ jobs:
           make testenv
           source .venv/bin/activate
           isort jwave/
-          flake8
       - name: Downloading test data
         run: |
           make get_test_data
