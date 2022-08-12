@@ -29,20 +29,7 @@ def _get_heterog_sound_speed(domain):
   return sound_speed
 
 def _get_homog_sound_speed(domain):
-  return 1.0#1500.0
-
-# Setting density
-def _get_heterog_density(domain):
-  density = np.ones(domain.N) * 1000.0
-  density[20:40, 65:100] = 2000.0
-  density = FourierSeries(np.expand_dims(density, -1), domain)
-  return density
-
-def _get_density_interface(domain):
-  density = np.ones(domain.N) * 1000.0
-  density[64:] = 2000.0
-  density = FourierSeries(np.expand_dims(density, -1), domain)
-  return density
+  return 1500.0
 
 def _get_homog_density(domain):
   return 1000.0
@@ -63,15 +50,16 @@ def heterog_attenuation_constructor(value = 0.1):
 
 def _test_setter(
   N: Tuple[int] = (128,128),
-  dx = 1., #1e-3,
-  PMLSize: int = 256,
-  omega: float = .5, #1.5e6,
+  dx = 1e-3,
+  PMLSize: int = 128,
+  omega: float = 1.5e6,
   magnitude: float = 1.0,
   src_location: list = (32,32),
   c0_constructor = _get_homog_sound_speed,
   rho0_constructor = _get_homog_density,
   alpha_constructor = _homog_attenuation_constructor(0.0),
   rel_err = 1e-2,
+  k_ref = 1e3
 ):
   dx = tuple([dx]*len(N))
   assert len(N) == len(src_location), "src_location must have same length as N"
@@ -86,18 +74,28 @@ def _test_setter(
     "c0_constructor" : c0_constructor,
     "rho0_constructor" : rho0_constructor,
     "rel_err" : rel_err,
+    "k_ref": k_ref
   }
 
 TEST_SETTINGS = {
   "cbs_homog": _test_setter(),
+  "cbs_homog_k0_smaller": _test_setter(k_ref=0.5e3),
+  "cbs_homog_k0_larger": _test_setter(k_ref=1.5e3),
+  "cbs_center": _test_setter(src_location = (64,64)),
+  "cbs_high_freq": _test_setter(omega=1.7e6),
+  "cbs_low_freq": _test_setter(omega=1.3e6),
+  "cbs_odd": _test_setter(N=(129,129)),
+  "cbs_uneven": _test_setter(N=(129,128)),
+  "cbs_heterog_c0": _test_setter(
+    c0_constructor = _get_heterog_sound_speed
+  ),
 }
-
 
 @pytest.mark.parametrize("test_name", TEST_SETTINGS.keys())
 def test_cbs(
   test_name,
-  use_plots = True,
-  reset_mat_file = True
+  use_plots = False,
+  reset_mat_file = False
 ):
   settings = TEST_SETTINGS[test_name]
   matfile = test_name + ".mat"
@@ -135,15 +133,16 @@ def test_cbs(
   # Run simulation
   @partial(jit, backend='cpu')
   def run_simulation(src_field):
-    k0 = (omega / jnp.amin(sound_speed))**2
+    k0 = settings["k_ref"]
     return born_series(
       medium,
       src_field,
       omega = omega,
       k0 = k0,
-      tol=0.0,
-      alpha = 1.0,
-      max_iter=10000
+      tol=1e-5,
+      alpha = 0.5,
+      max_iter=3000,
+      print_info = True
     )
 
   # Extract last field
@@ -193,15 +192,18 @@ def test_cbs(
       test_name,
       ['j-Wave (abs)', 'k-Wave (abs)'],
       cmap="inferno",
-      vmin=0,
+      vmin= 0.0,
+      vmax= 0.2
     )
     plt.show()
+    # Save figure
+    plt.savefig(dir_path + '/kwave_data/' + test_name + ".png")
     plt.close()
 
-    plt.plot(jnp.abs(solution_field)[32], label="j-wave")
-    plt.plot(jnp.abs(kwave_solution_field)[32], label="k-wave")
+    plt.plot(jnp.abs(solution_field)[32+128], label="j-wave")
+    plt.plot(jnp.abs(kwave_solution_field)[32+128], label="k-wave")
     plt.legend()
-    plt.show()
+    plt.savefig(dir_path + '/kwave_data/' + test_name + "_compare.png")
     plt.close()
 
   # Check maximum error

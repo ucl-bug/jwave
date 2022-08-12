@@ -14,7 +14,6 @@ from jaxdf.operators.differential import laplacian
 from jwave.geometry import Medium
 
 from .operators import helmholtz, scale_source_helmholtz
-from .pml import _base_pml
 
 
 @operator
@@ -116,47 +115,88 @@ def _cbs_pml(
   medium = Medium(domain = field.domain, pml_size=pml_size)
   N = 4
 
+  def pml_edge(x):
+    return x / 2 - pml_size
+
   def num(x):
-    return (alpha**2)*(N - alpha*x + 2j*k0*x)*((alpha*x)**(N-1))
+      return (alpha**2)*(N - alpha*x + 2j*k0*x)*((alpha*x)**(N-1))
 
   def den(x):
-    return sum([((alpha*x)**i)/float(factorial(i)) for i in range(N)])*factorial(N)
+    return sum([((alpha*x)**i)/float(factorial(i)) for i in range(N+1)])*factorial(N)
 
   def transform_fun(x):
     return num(x)/den(x)
 
-  k_k0 = _base_pml(transform_fun, medium, exponent=1.0, alpha_max=2.)
-  k_k0 = jnp.expand_dims(jnp.sum(k_k0, -1), -1)
+  delta_pml = jnp.asarray(list(map(pml_edge, medium.domain.N)))
+  coord_grid = Domain(N=medium.domain.N, dx=tuple([1.0] * len(medium.domain.N))).grid
+  coord_grid = coord_grid
+
+  diff = (jnp.abs(coord_grid) - delta_pml)
+  diff = jnp.where(diff > 0, diff, 0) / 4
+
+  dist = jnp.sqrt(jnp.sum(diff**2, -1))
+  k_k0 = transform_fun(dist)
+  k_k0 = jnp.expand_dims(k_k0, -1)
   return k_k0 + k0**2
 
+def _cbs_norm_units(medium, omega, k0, src):
+  r"""Converts problem for the Convergent Born Series
+  to work in natural units"""
+  # Store conversion variables
+  domain = medium.domain
+  _conversion = {
+    "dx": jnp.mean(jnp.asarray(domain.dx)),
+    "omega": omega,
+  }
 
-def _cbs_normalize(src, medium, k0):
-  # Normalizes the inputs such that dx = 1
-  dx = medium.domain.dx
-  k0 = k0 * (min(dx)**2)
+  # Set discretization to 1
+  dx = tuple(map(
+    lambda x: x / _conversion["dx"], domain.dx))
+  domain = Domain(domain.N, dx)
 
-  new_domain = Domain(N=medium.domain.N, dx=tuple([1.0] * len(medium.domain.N)))
-  if type(medium.sound_speed) == Field:
-    medium.sound_speed.domain = new_domain
-  src.domain = new_domain
-  return src, medium, k0, dx
+  # set omega to 1
+  omega = 1.0
 
-def _cbs_unnormalize(field, norm_state):
-  dx = norm_state
-  new_domain = Domain(N=field.domain.N, dx=dx)
-  return FourierSeries(field.on_grid, new_domain)
+  # Update sound speed
+  if issubclass(type(medium.sound_speed), FourierSeries):
+    c = medium.sound_speed.params
+  else:
+    c = medium.sound_speed
+  c = c / (_conversion["dx"] * _conversion["omega"])
+
+  # Update fields
+  src = FourierSeries(src.on_grid, domain)
+  if issubclass(type(medium.sound_speed), FourierSeries):
+    medium.sound_speed = FourierSeries(c, domain)
+  else:
+    medium.sound_speed = c
+
+  # Update k0
+  k0 = k0 * _conversion["dx"]
+
+  return medium, omega, k0, src, _conversion
+
+def _cbs_unnorm_units(field, conversion):
+  domain = field.domain
+  dx = tuple(map(
+    lambda x: x * conversion["dx"], domain.dx))
+  domain = Domain(domain.N, dx)
+
+  return FourierSeries(field.params, domain)
 
 @operator
 def born_series(
   medium: Medium,
   src: FourierSeries,
   *,
-  guess: Union[FourierSeries, None] = None,
   omega = 1.0,
   k0 = 1.0,
   max_iter = 1000,
-  tol = 1e-6,
-  alpha = 1.0
+  tol = 1e-8,
+  alpha = 1.0,
+  remove_pml = True,
+  print_info = False,
+  params=None
 ) -> FourierSeries:
   r"""Solves the Helmholtz equation using the
   Convergente Born Series (CBS) method described in
@@ -177,6 +217,8 @@ def born_series(
     max_iter (object): The maximum number of iterations.
     tol (object): The relative tolerance for the convergence.
     alpha (object): The amplitude parameter of the PML. See Appendix of [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034)
+    remove_pml (bool): If true, the PML is removed from the solution. Defaults to True.
+    print_info (bool): If true, prints information about the convergence. Defaults to False.
 
   Returns:
     FourierSeries: The complex solution field.
@@ -189,8 +231,9 @@ def born_series(
     return Domain(new_N, domain.dx)
 
   def pad_fun(u):
-    pad_size = [(pml_size,pml_size) for _ in range(len(u.domain.N))] + [(0,0)]
-    pad_size = tuple(pad_size)
+    pad_size = tuple(
+      [(pml_size,pml_size) for _ in range(len(u.domain.N))] + [(0,0)]
+    )
     return FourierSeries(
       jnp.pad(u.on_grid, pad_size),
       enlarge_doimain(u.domain, pml_size)
@@ -199,8 +242,10 @@ def born_series(
   def cbs_helmholtz(field, k_sq):
     return laplacian(field) + k_sq*field
 
-  # Normalize fields
-  src, medium, k0, norm_state = _cbs_normalize(src, medium, k0)
+  # Work in normalized units
+  medium, omega, k0, src, _conversion = _cbs_norm_units(
+    medium, omega, k0, src
+  )
 
   # Constants
   pml_size = medium.pml_size
@@ -213,7 +258,8 @@ def born_series(
 
   # Constructing heterogeneous k^2
   _sos = sound_speed.on_grid if type(sound_speed) is FourierSeries else sound_speed
-  k_sq = _cbs_pml(src, k0, pml_size, alpha)
+  k_biggest = jnp.amax((omega / _sos))
+  k_sq = _cbs_pml(src, k_biggest, pml_size, alpha)
   k_sq = k_sq.at[pml_size:-pml_size,pml_size:-pml_size].set(
     ((omega/_sos)**2) + 0j
   )
@@ -222,12 +268,8 @@ def born_series(
   # Finding stable epsilon
   epsilon = jnp.amax(jnp.abs((k_sq.on_grid - k0**2)))
 
-  # Setting or padding guess
-  if guess is None:
-    guess = jnp.zeros(src.domain.N) + 0j
-    guess = FourierSeries(guess, src.domain)
-  else:
-    guess = pad_fun(guess)
+  # Setting guess
+  guess = FourierSeries.empty(src.domain) + 0j
 
   # Setting up loop
   carry = (0, guess)
@@ -251,27 +293,33 @@ def born_series(
       epsilon = epsilon)
     return numiter + 1, field
 
-  _, out_field = while_loop(cond_fun, body_fun, carry)
+  numiters, out_field = while_loop(cond_fun, body_fun, carry)
+
+  if print_info:
+    v = jnp.linalg.norm(resid_fun(out_field).on_grid) / norm_initial
+    jax.debug.print("Converged in {c} iterations. Relative error: {v}", c=numiters, v=v)
 
   # Remove padding
   # TODO: Remove this switch-like statement to support all dimensions
   num_dims = len(out_field.domain.N)
-  if num_dims == 1:
-    _out_field = out_field.on_grid[pml_size:-pml_size]
-  elif num_dims == 2:
-    _out_field = out_field.on_grid[pml_size:-pml_size, pml_size:-pml_size]
-  elif num_dims == 3:
-    _out_field = out_field.on_grid[pml_size:-pml_size, pml_size:-pml_size, pml_size:-pml_size]
+  if remove_pml:
+    if num_dims == 1:
+      _out_field = out_field.on_grid[pml_size:-pml_size]
+    elif num_dims == 2:
+      _out_field = out_field.on_grid[pml_size:-pml_size, pml_size:-pml_size]
+    elif num_dims == 3:
+      _out_field = out_field.on_grid[pml_size:-pml_size, pml_size:-pml_size, pml_size:-pml_size]
+    else:
+      raise ValueError("Only 1, 2, or 3 dimensions are supported.")
   else:
-    raise ValueError("Only 1, 2, or 3 dimensions are supported.")
+    _out_field = out_field.on_grid
 
   # Rescale field according to omega
   out_field = -1j*omega*FourierSeries(_out_field, medium.domain)
 
-  # Fix domain discretization
-  out_field = _cbs_unnormalize(out_field, norm_state)
+  out_field = _cbs_unnorm_units(out_field, _conversion)
 
-  return out_field
+  return out_field, None
 
 @operator
 def born_iteration(
