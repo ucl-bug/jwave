@@ -366,8 +366,8 @@ def scattering_potential(
   field: Field,
   k_sq: Field,
   *,
-  k0: object = 1.0,
-  epsilon: object = 0.1,
+  k0 = 1.0,
+  epsilon = 0.1,
   params = None
 ) -> Field:
   r'''Implements the scattering potential of the CBS method.
@@ -390,8 +390,8 @@ def scattering_potential(
 def homogeneous_helmholtz_green(
   field: FourierSeries,
   *,
-  k0: object = 1.0,
-  epsilon: object = 0.1,
+  k0 = 1.0,
+  epsilon = 0.1,
   params = None
 ):
   r'''Implements the Green's operator for the homogeneous Helmholtz equation.
