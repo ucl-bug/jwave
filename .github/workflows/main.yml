@@ -30,9 +30,6 @@ jobs:
           make testenv
           source .venv/bin/activate
           isort jwave/
-          flake8 jwave/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 jwave/ --count --ignore=E111 --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-          mypy --allow-redefinition --config-file=pyproject.toml jwave/*.py
       - name: Downloading test data
         run: |
           make get_test_data

@@ -1,16 +1,19 @@
+from math import factorial
 from typing import Union
 
 import jax
 from jax import numpy as jnp
+from jax.lax import while_loop
 from jax.scipy.sparse.linalg import bicgstab, gmres
 from jaxdf import operator
 from jaxdf.discretization import Field, FourierSeries, OnGrid
 from jaxdf.geometry import Domain
 from jaxdf.operators import functional
+from jaxdf.operators.differential import laplacian
 
 from jwave.geometry import Medium
 
-from .operators import helmholtz
+from .operators import helmholtz, scale_source_helmholtz
 
 
 @operator
@@ -102,6 +105,316 @@ def angular_spectrum(
 
   return p_plane
 
+# Building base PML
+def _cbs_pml(
+  field: OnGrid,
+  k0: object = 1.0,
+  pml_size: object = 32,
+  alpha: object = 1.0
+):
+  medium = Medium(domain = field.domain, pml_size=pml_size)
+  N = 4
+
+  def pml_edge(x):
+    return x / 2 - pml_size
+
+  def num(x):
+      return (alpha**2)*(N - alpha*x + 2j*k0*x)*((alpha*x)**(N-1))
+
+  def den(x):
+    return sum([((alpha*x)**i)/float(factorial(i)) for i in range(N+1)])*factorial(N)
+
+  def transform_fun(x):
+    return num(x)/den(x)
+
+  delta_pml = jnp.asarray(list(map(pml_edge, medium.domain.N)))
+  coord_grid = Domain(N=medium.domain.N, dx=tuple([1.0] * len(medium.domain.N))).grid
+  coord_grid = coord_grid
+
+  diff = (jnp.abs(coord_grid) - delta_pml)
+  diff = jnp.where(diff > 0, diff, 0) / 4
+
+  dist = jnp.sqrt(jnp.sum(diff**2, -1))
+  k_k0 = transform_fun(dist)
+  k_k0 = jnp.expand_dims(k_k0, -1)
+  return k_k0 + k0**2
+
+def _cbs_norm_units(medium, omega, k0, src):
+  r"""Converts problem for the Convergent Born Series
+  to work in natural units"""
+  # Store conversion variables
+  domain = medium.domain
+  _conversion = {
+    "dx": jnp.mean(jnp.asarray(domain.dx)),
+    "omega": omega,
+  }
+
+  # Set discretization to 1
+  dx = tuple(map(
+    lambda x: x / _conversion["dx"], domain.dx))
+  domain = Domain(domain.N, dx)
+
+  # set omega to 1
+  omega = 1.0
+
+  # Update sound speed
+  if issubclass(type(medium.sound_speed), FourierSeries):
+    c = medium.sound_speed.params
+  else:
+    c = medium.sound_speed
+  c = c / (_conversion["dx"] * _conversion["omega"])
+
+  # Update fields
+  src = FourierSeries(src.on_grid, domain)
+  if issubclass(type(medium.sound_speed), FourierSeries):
+    medium.sound_speed = FourierSeries(c, domain)
+  else:
+    medium.sound_speed = c
+
+  # Update k0
+  k0 = k0 * _conversion["dx"]
+
+  return medium, omega, k0, src, _conversion
+
+def _cbs_unnorm_units(field, conversion):
+  domain = field.domain
+  dx = tuple(map(
+    lambda x: x * conversion["dx"], domain.dx))
+  domain = Domain(domain.N, dx)
+
+  return FourierSeries(field.params, domain)
+
+@operator
+def born_series(
+  medium: Medium,
+  src: FourierSeries,
+  *,
+  omega = 1.0,
+  k0 = 1.0,
+  max_iter = 1000,
+  tol = 1e-8,
+  alpha = 1.0,
+  remove_pml = True,
+  print_info = False,
+  params=None
+) -> FourierSeries:
+  r"""Solves the Helmholtz equation using the
+  Convergente Born Series (CBS) method described in
+  [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034).
+
+  Note that, differently from the implementation of the Helmholtz operator, here the
+  PML layer is added __outside__ of the domain, therefore the solution will be valid
+  on the entire input domain. This is because the requires a much larger (but weaker)
+  PML to converge in a small number of iterations.
+
+  Args:
+    medium (Medium): The acoustic medium. Note that any `density` term is ignored, as
+      the original paper does not include a density term. The medium is also assumed to
+      be lossless (`atteuation` is ignored), as this is not implemented yet.
+    src (FourierSeries): The complex source field.
+    omega (object): The angular frequency.
+    k0 (object): The wavenumber.
+    max_iter (object): The maximum number of iterations.
+    tol (object): The relative tolerance for the convergence.
+    alpha (object): The amplitude parameter of the PML. See Appendix of [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034)
+    remove_pml (bool): If true, the PML is removed from the solution. Defaults to True.
+    print_info (bool): If true, prints information about the convergence. Defaults to False.
+
+  Returns:
+    FourierSeries: The complex solution field.
+  """
+  # TODO: Implement absorption term
+
+  # Support functions
+  def enlarge_doimain(domain, pml_size):
+    new_N = tuple([x+2*pml_size for x in domain.N])
+    return Domain(new_N, domain.dx)
+
+  def pad_fun(u):
+    pad_size = tuple(
+      [(pml_size,pml_size) for _ in range(len(u.domain.N))] + [(0,0)]
+    )
+    return FourierSeries(
+      jnp.pad(u.on_grid, pad_size),
+      enlarge_doimain(u.domain, pml_size)
+    )
+
+  def cbs_helmholtz(field, k_sq):
+    return laplacian(field) + k_sq*field
+
+  # Work in normalized units
+  medium, omega, k0, src, _conversion = _cbs_norm_units(
+    medium, omega, k0, src
+  )
+
+  # Constants
+  pml_size = medium.pml_size
+  sound_speed = medium.sound_speed
+
+  # Padding the field
+  src = scale_source_helmholtz(src, medium)
+  src = pad_fun(src)
+  norm_initial = jnp.linalg.norm(src.on_grid)
+
+  # Constructing heterogeneous k^2
+  _sos = sound_speed.on_grid if type(sound_speed) is FourierSeries else sound_speed
+  k_biggest = jnp.amax((omega / _sos))
+  k_sq = _cbs_pml(src, k_biggest, pml_size, alpha)
+  k_sq = k_sq.at[pml_size:-pml_size,pml_size:-pml_size].set(
+    ((omega/_sos)**2) + 0j
+  )
+  k_sq = FourierSeries(k_sq, src.domain)
+
+  # Finding stable epsilon
+  epsilon = jnp.amax(jnp.abs((k_sq.on_grid - k0**2)))
+
+  # Setting guess
+  guess = FourierSeries.empty(src.domain) + 0j
+
+  # Setting up loop
+  carry = (0, guess)
+
+  def resid_fun(field):
+    return cbs_helmholtz(field, k_sq) + src
+
+  def cond_fun(carry):
+    numiter, field = carry
+    cond_1 = numiter < max_iter
+    cond_2 = jnp.linalg.norm(resid_fun(field).on_grid) / norm_initial > tol
+    return cond_1*cond_2
+
+  def body_fun(carry):
+    numiter, field = carry
+    field = born_iteration(
+      field,
+      k_sq,
+      src,
+      k0 = k0,
+      epsilon = epsilon)
+    return numiter + 1, field
+
+  numiters, out_field = while_loop(cond_fun, body_fun, carry)
+
+  if print_info:
+    v = jnp.linalg.norm(resid_fun(out_field).on_grid) / norm_initial
+    jax.debug.print("Converged in {c} iterations. Relative error: {v}", c=numiters, v=v)
+
+  # Remove padding
+  # TODO: Remove this switch-like statement to support all dimensions
+  num_dims = len(out_field.domain.N)
+  if remove_pml:
+    if num_dims == 1:
+      _out_field = out_field.on_grid[pml_size:-pml_size]
+    elif num_dims == 2:
+      _out_field = out_field.on_grid[pml_size:-pml_size, pml_size:-pml_size]
+    elif num_dims == 3:
+      _out_field = out_field.on_grid[pml_size:-pml_size, pml_size:-pml_size, pml_size:-pml_size]
+    else:
+      raise ValueError("Only 1, 2, or 3 dimensions are supported.")
+  else:
+    _out_field = out_field.on_grid
+
+  # Rescale field according to omega
+  out_field = -1j*omega*FourierSeries(_out_field, medium.domain)
+
+  out_field = _cbs_unnorm_units(out_field, _conversion)
+
+  return out_field, None
+
+@operator
+def born_iteration(
+  field: Field,
+  k_sq: Field,
+  src: Field,
+  *,
+  k0,
+  epsilon,
+  params = None
+) -> FourierSeries:
+  r'''Implements one step of the Convergente Born Series (CBS) method.
+
+  ```math
+  u_{k+1} = u_k - \gamma\left[u_k - G(Vu_k + s)\right]
+  ```
+
+  where $\gamma = -(i/\varepsilon)V$. Here $V$ and $G$ are implemented by the
+  `scattering_potential` and `homogeneous_helmholtz_green` operators.
+
+  Args:
+    field (FourierSeries): The current field $u_k$.
+    k_sq (FourierSeries): The heterogeneous wavenumber squared.
+    src (FourierSeries): The complex source field $s$.
+    k0 (object): The wavenumber.
+    epsilon (object): The absorption of the preconditioner.
+
+  Returns:
+    FourierSeries: The updated field $u_{k+1}$.
+
+  '''
+  V1 = scattering_potential(field, k_sq, k0 = k0, epsilon = epsilon)
+  G = homogeneous_helmholtz_green(
+    V1 + src,
+    k0 = k0, epsilon = epsilon)
+  V2 = scattering_potential(
+    field - G,
+    k_sq, k0 = k0, epsilon = epsilon)
+
+  return field - (1j/epsilon)*V2, params
+
+@operator
+def scattering_potential(
+  field: Field,
+  k_sq: Field,
+  *,
+  k0 = 1.0,
+  epsilon = 0.1,
+  params = None
+) -> Field:
+  r'''Implements the scattering potential of the CBS method.
+
+  Args:
+    field (FourierSeries): The current field $u$.
+    k_sq (FourierSeries): The heterogeneous wavenumber squared.
+    k0 (object): The wavenumber.
+    epsilon (object): The absorption parameter.
+
+  Returns:
+    FourierSeries: The scattering potential.
+  '''
+
+  k = (k_sq -  k0**2 - 1j*epsilon)
+  out = field * k
+  return out, params
+
+@operator
+def homogeneous_helmholtz_green(
+  field: FourierSeries,
+  *,
+  k0 = 1.0,
+  epsilon = 0.1,
+  params = None
+):
+  r'''Implements the Green's operator for the homogeneous Helmholtz equation.
+
+  Note that being the field a `FourierSeries`, the Green's function is periodic.
+
+  Args:
+    field (FourierSeries): The input field $u$.
+    k0 (object): The wavenumber.
+    epsilon (object): The absorption parameter.
+
+  Returns:
+    FourierSeries: The result of the Green's operator on $u$.
+  '''
+  freq_grid = field._freq_grid
+  p_sq = jnp.sum(freq_grid**2, -1)
+
+  g_fourier = 1.0 / (p_sq - (k0**2) - 1j*epsilon)
+  u = field.on_grid[...,0]
+  u_fft = jnp.fft.fftn(u)
+  Gu_fft = g_fourier * u_fft
+  Gu = jnp.fft.ifftn(Gu_fft)
+  return field.replace_params(Gu), params
 
 @operator
 def rayleigh_integral(
@@ -183,7 +496,7 @@ def helmholtz_solver(
   params = None,
   **kwargs
 ):
-  """_summary_
+  """
 
   Args:
       medium (Medium): _description_
@@ -197,12 +510,7 @@ def helmholtz_solver(
   Returns:
       _type_: _description_
   """
-  if isinstance(medium.sound_speed, Field):
-    min_sos = functional(medium.sound_speed)(jnp.amin)
-  else:
-    min_sos = jnp.amin(medium.sound_speed)
-
-  source = source  * 2 / (source.domain.dx[0] * min_sos)
+  source = scale_source_helmholtz(source, medium)
 
   if params is None:
     params = helmholtz.default_params(source, medium, omega)

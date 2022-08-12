@@ -40,6 +40,10 @@ class Medium:
   attenuation: Union[Number, Field] = 0.0
   pml_size: Number = 20.0
 
+  @property
+  def int_pml_size(self) -> int:
+    return int(self.pml_size)
+
   def __init__(
     self, domain, sound_speed = 1.0, density=1.0, attenuation=0.0, pml_size=20
   ):

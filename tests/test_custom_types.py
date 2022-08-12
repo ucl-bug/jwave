@@ -73,7 +73,7 @@ def test_jit_simulate_wave_propagation(
     )
 
   # Extract last field
-  p_final = run_simulation(
+  _ = run_simulation(
     p0, medium, time_axis
   )[-1].on_grid[:,:,0]
 

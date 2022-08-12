@@ -4,6 +4,7 @@ all = true
 [tool.mypy]
 ignore_missing_imports = true
 exclude = ['jaxdf/acoustics/operators.py']
+allow_redefinition = true
 
 [tool.isort]
 multi_line_output = 3

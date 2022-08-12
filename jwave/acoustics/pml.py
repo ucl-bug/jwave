@@ -68,33 +68,33 @@ def td_pml_on_grid(
   pml = jnp.ones(pml_shape)
 
   if medium.domain.ndim >= 1:
-    pml = pml.at[...,:medium.pml_size,-1].set(alpha_left)
-    pml = pml.at[...,-medium.pml_size:,-1].set(alpha_right)
+    pml = pml.at[...,:medium.int_pml_size,-1].set(alpha_left)
+    pml = pml.at[...,-medium.int_pml_size:,-1].set(alpha_right)
 
   if medium.domain.ndim >= 2:
     alpha_left = jnp.expand_dims(alpha_left, -1)
     alpha_right = jnp.expand_dims(alpha_right, -1)
-    pml = pml.at[...,:medium.pml_size,:,-2].set(alpha_left)
-    pml = pml.at[...,-medium.pml_size:,:,-2].set(alpha_right)
+    pml = pml.at[...,:medium.int_pml_size,:,-2].set(alpha_left)
+    pml = pml.at[...,-medium.int_pml_size:,:,-2].set(alpha_right)
 
   if medium.domain.ndim == 3:
     alpha_left = jnp.expand_dims(alpha_left, -1)
     alpha_right = jnp.expand_dims(alpha_right, -1)
-    pml = pml.at[:medium.pml_size,  :, :, -3].set(alpha_left)
-    pml = pml.at[-medium.pml_size:, :, :, -3].set(alpha_right)
+    pml = pml.at[:medium.int_pml_size,  :, :, -3].set(alpha_left)
+    pml = pml.at[-medium.int_pml_size:, :, :, -3].set(alpha_right)
 
   return pml
 
 
 def _sigma(x):
-    alpha = 2.
-    sigma_star = 10.
-    delta_pml = 54.
-    L_half = 64.
+  alpha = 2.
+  sigma_star = 10.
+  delta_pml = 54.
+  L_half = 64.
 
-    abs_x = jnp.abs(x)
-    in_pml_amplitude = (jnp.abs(abs_x-delta_pml)/(L_half - delta_pml))**alpha
-    return jnp.where(abs_x > delta_pml, sigma_star*in_pml_amplitude, 0.)
+  abs_x = jnp.abs(x)
+  in_pml_amplitude = (jnp.abs(abs_x-delta_pml)/(L_half - delta_pml))**alpha
+  return jnp.where(abs_x > delta_pml, sigma_star*in_pml_amplitude, 0.)
 
 @operator
 def complex_pml(
