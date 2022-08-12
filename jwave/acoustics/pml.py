@@ -68,20 +68,20 @@ def td_pml_on_grid(
   pml = jnp.ones(pml_shape)
 
   if medium.domain.ndim >= 1:
-    pml = pml.at[...,:medium.pml_size,-1].set(alpha_left)
-    pml = pml.at[...,-medium.pml_size:,-1].set(alpha_right)
+    pml = pml.at[...,:medium.int_pml_size,-1].set(alpha_left)
+    pml = pml.at[...,-medium.int_pml_size:,-1].set(alpha_right)
 
   if medium.domain.ndim >= 2:
     alpha_left = jnp.expand_dims(alpha_left, -1)
     alpha_right = jnp.expand_dims(alpha_right, -1)
-    pml = pml.at[...,:medium.pml_size,:,-2].set(alpha_left)
-    pml = pml.at[...,-medium.pml_size:,:,-2].set(alpha_right)
+    pml = pml.at[...,:medium.int_pml_size,:,-2].set(alpha_left)
+    pml = pml.at[...,-medium.int_pml_size:,:,-2].set(alpha_right)
 
   if medium.domain.ndim == 3:
     alpha_left = jnp.expand_dims(alpha_left, -1)
     alpha_right = jnp.expand_dims(alpha_right, -1)
-    pml = pml.at[:medium.pml_size,  :, :, -3].set(alpha_left)
-    pml = pml.at[-medium.pml_size:, :, :, -3].set(alpha_right)
+    pml = pml.at[:medium.int_pml_size,  :, :, -3].set(alpha_left)
+    pml = pml.at[-medium.int_pml_size:, :, :, -3].set(alpha_right)
 
   return pml
 

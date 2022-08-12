@@ -42,9 +42,7 @@ def test_changing_params_wave_prop():
   def run_simulation(params, p0):
     return simulate_wave_propagation(medium, time_axis, p0=p0, params=params)
 
-  new_fields = run_simulation(wave_params, p0)
-
-  return "mama"
+  _ = run_simulation(wave_params, p0)
 
 def test_differentiating_params():
   domain = Domain(
@@ -101,7 +99,7 @@ def test_extract_params_in_jit():
     wave_params["pml_u"] = wave_params["pml_u"] + to_add
     return simulate_wave_propagation(medium, time_axis, p0=p0, params=wave_params)
 
-  new_fields = run_simulation(2., p0)
+  _ = run_simulation(2., p0)
 
 if __name__ == "__main__":
   test_extract_params_in_jit()
