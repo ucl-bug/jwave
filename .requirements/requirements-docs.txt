@@ -7,7 +7,7 @@ jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
 jupytext==1.14.1
 mako==1.2.1
 markdown-katex==202112.1034
-matplotlib==3.5.2
+matplotlib==3.5.3
 mkdocs-jupyter==0.21.0
 mkdocs-macros-plugin==0.7.0
 mkdocs-material==8.3.9
