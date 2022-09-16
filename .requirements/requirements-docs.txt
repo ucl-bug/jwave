@@ -5,7 +5,7 @@ griffe==0.22.0
 isort==5.10.1
 jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf=
 jupytext==1.14.1
-mako==1.2.1
+mako==1.2.2
 markdown-katex==202112.1034
 matplotlib==3.5.2
 mkdocs-jupyter==0.21.0
