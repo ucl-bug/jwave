@@ -8,7 +8,7 @@ jupytext==1.14.1
 mako==1.2.2
 markdown-katex==202112.1034
 matplotlib==3.6.1
-mkdocs-jupyter==0.21.0
+mkdocs-jupyter==0.22.0
 mkdocs-macros-plugin==0.7.0
 mkdocs-material==8.5.6
 mkdocs-mermaid2-plugin==0.6.0
