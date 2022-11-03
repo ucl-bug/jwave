@@ -1,17 +1,17 @@
 # This file is part of j-Wave.
 #
-# j-Wave is free software: you can redistribute it and/or 
-# modify it under the terms of the GNU Lesser General Public 
+# j-Wave is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, either
 # version 3 of the License, or (at your option) any later version.
 #
-# j-Wave is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranty of 
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+# j-Wave is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # Lesser General Public License for more details.
-# 
-# You should have received a copy of the GNU Lesser General Public 
-# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>. 
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Union
 
@@ -27,26 +27,12 @@ from jaxdf.operators import (
     sum_over_dims,
 )
 
+from jwave.acoustics.spectral import kspace_op
 from jwave.geometry import Medium, MediumObject, TimeAxis
 from jwave.signal_processing import smooth
 
 from .pml import td_pml_on_grid
 
-
-def _get_kspace_op(domain, c_ref, dt):
-  # Get the frequency axis manually, since we
-  # are nor using the rFFT
-  # TODO: Implement operators with rFFT
-  def f(N, dx):
-    return jnp.fft.fftfreq(N, dx) * 2 * jnp.pi
-  k_vec = [f(n, delta) for n, delta in zip(domain.N, domain.dx)]
-
-  # Building k-space operator
-  K = jnp.stack(jnp.meshgrid(*k_vec, indexing='ij'))
-  k_magnitude = jnp.sqrt(jnp.sum(K ** 2, 0))
-  k_space_op = jnp.sinc(c_ref * k_magnitude * dt / (2 * jnp.pi))
-  parameters = {"k_vec": k_vec, "k_space_op": k_space_op}
-  return parameters
 
 def _shift_rho(rho0, direction, dx):
   if isinstance(rho0, OnGrid):
@@ -112,7 +98,7 @@ def momentum_conservation_rhs(
     FourierSeries: The right hand side of the momentum conservation equation.
   """
   if params == None:
-    params = _get_kspace_op(p.domain, c_ref, dt)
+    params = kspace_op(p.domain, c_ref, dt)
 
   dx = np.asarray(u.domain.dx)
   direction = 1
@@ -209,7 +195,7 @@ def mass_conservation_rhs(
   """
 
   if params == None:
-    params = _get_kspace_op(p.domain, c_ref, dt)
+    params = kspace_op(p.domain, c_ref, dt)
 
   dx = np.asarray(p.domain.dx)
   direction = -1
@@ -435,7 +421,7 @@ def fourier_wave_prop_params(
   pml_u = make_pml(staggering=0.5)
 
   # Get k-space operator
-  fourier = _get_kspace_op(medium.domain, c_ref, dt)
+  fourier = kspace_op(medium.domain, c_ref, dt)
 
   return {
     'pml_rho': pml_rho,

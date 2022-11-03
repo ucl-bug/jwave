@@ -1,17 +1,17 @@
 # This file is part of j-Wave.
 #
-# j-Wave is free software: you can redistribute it and/or 
-# modify it under the terms of the GNU Lesser General Public 
+# j-Wave is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, either
 # version 3 of the License, or (at your option) any later version.
 #
-# j-Wave is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranty of 
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+# j-Wave is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # Lesser General Public License for more details.
-# 
-# You should have received a copy of the GNU Lesser General Public 
-# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>. 
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
 # Initial info.
 Write-Output "jwave Windows installer"
@@ -32,7 +32,7 @@ if ($continue -ne "Y") {
 if (Get-Command scoop -ErrorAction SilentlyContinue) {
     Write-Output "scoop is already installed, skipping."
 } else {
-    Write-Output "-- jwave installer: Installing scoop." 
+    Write-Output "-- jwave installer: Installing scoop."
     Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-WebRequest get.scoop.sh | Invoke-Expression
 }
@@ -47,7 +47,7 @@ Write-Output "-- jwave installer: Cloning jwave."
 git clone  git@github.com:ucl-bug/jwave.git $HOME/.jwave
 Set-Location $HOME/.jwave
 
-    
+
 # Installing Manjaro WSL
 Write-Output "-- jwave installer: Installing the Windows Subsystem for Linux (Manjaro)"
 wsl --set-default-version 2

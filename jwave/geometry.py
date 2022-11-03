@@ -1,17 +1,17 @@
 # This file is part of j-Wave.
 #
-# j-Wave is free software: you can redistribute it and/or 
-# modify it under the terms of the GNU Lesser General Public 
+# j-Wave is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, either
 # version 3 of the License, or (at your option) any later version.
 #
-# j-Wave is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranty of 
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+# j-Wave is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # Lesser General Public License for more details.
-# 
-# You should have received a copy of the GNU Lesser General Public 
-# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>. 
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
 import math
 from dataclasses import dataclass
@@ -55,10 +55,6 @@ class Medium:
   attenuation: Union[Number, Field] = 0.0
   pml_size: Number = 20.0
 
-  @property
-  def int_pml_size(self) -> int:
-    return int(self.pml_size)
-
   def __init__(
     self, domain, sound_speed = 1.0, density=1.0, attenuation=0.0, pml_size=20
   ):
@@ -73,6 +69,11 @@ class Medium:
     self.density = density
     self.attenuation = attenuation
     self.pml_size = pml_size
+
+  @property
+  def int_pml_size(self) -> int:
+    r'''Returns the size of the PML layer as an integer'''
+    return int(self.pml_size)
 
   def tree_flatten(self):
     children = (self.sound_speed, self.density, self.attenuation)
@@ -96,7 +97,6 @@ class Medium:
     all_params = sorted(['domain', 'sound_speed','density','attenuation', 'pml_size'])
     strings = list(map(lambda x: show_param(x), all_params))
     return 'Medium:\n - ' + '\n - '.join(strings)
-
 
 
 def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0, max_angle=2*np.pi):
