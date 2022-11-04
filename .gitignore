@@ -24,6 +24,7 @@ docs/test_reports/test_report.md
 
 # Data
 *.mat
+docs/notebooks/others/ct.jpg
 
 #k-wave outputs
 docs/benchmarks/kwave/*.png
