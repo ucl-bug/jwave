@@ -1,4 +1,19 @@
-from typing import Tuple
+# This file is part of j-Wave.
+#
+# j-Wave is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation, either
+# version 3 of the License, or (at your option) any later version.
+#
+# j-Wave is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
+
+from typing import Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
@@ -97,7 +112,11 @@ def is_numeric(x):
   return isinstance(x, (int, float, complex))
 
 
-def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
+def plot_complex_field(
+  field: Field,
+  figsize=(15, 8),
+  max_intensity=None
+):
   """
   Plots a complex field.
 
@@ -126,7 +145,27 @@ def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
   return fig, axes
 
 
-def show_field(x: Field, title="", figsize=(8,6), vmax=None, aspect="auto"):
+def show_field(
+  x: Field,
+  title: str ="",
+  figsize: Tuple[int, int] = (8,6),
+  vmax: Union[float, int, None] = None,
+  aspect: str="auto"
+):
+  r"""
+  Plots a real valued field. The colormap goes from `-vmax` to `vmax`.
+
+  Args:
+    x (Field): Field to plot.
+    title (str, optional): Title of the plot. Defaults to "".
+    figsize (tuple, optional): Figure size. Defaults to (8,6).
+    vmax (float, optional): Maximum value to display. Defaults to None.
+    aspect (str, optional): Aspect ratio of the plot. Defaults to "auto".
+
+  Returns:
+    matplotlib.pyplot.figure: Figure object.
+    matplotlib.pyplot.axes: Axes object.
+  """
   if isinstance(x, Field):
     x = x.on_grid
 
@@ -146,7 +185,14 @@ def show_field(x: Field, title="", figsize=(8,6), vmax=None, aspect="auto"):
   return None
 
 
-def show_positive_field(x: Field, title="", figsize=(8,6), vmax=None, vmin=None, aspect="auto"):
+def show_positive_field(
+  x: Field,
+  title: str ="",
+  figsize: Tuple[int, int] = (8,6),
+  vmax: Union[float, int, None] = None,
+  vmin: Union[float, int, None] = None,
+  aspect="auto"
+):
   if isinstance(x, Field):
     x = x.on_grid
   plt.figure(figsize=figsize)

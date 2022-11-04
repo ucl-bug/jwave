@@ -48,6 +48,7 @@ nav:
       - Automatic differentiation: notebooks/harmonic/helmholtz_solver_differentiable.ipynb
     - Others:
       - Save video: notebooks/others/save_video.ipynb
+      - Uncertainty propagation: notebooks/others/uncertainty_propagation.ipynb
   - Benchmarks:
     - Accuracy: test_reports/test_report.md
 plugins:

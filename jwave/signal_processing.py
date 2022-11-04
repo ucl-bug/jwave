@@ -1,3 +1,18 @@
+# This file is part of j-Wave.
+#
+# j-Wave is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation, either
+# version 3 of the License, or (at your option) any later version.
+#
+# j-Wave is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
+
 from typing import Callable
 
 from jax import eval_shape
@@ -154,7 +169,16 @@ def gaussian_window(
 
 
 def smoothing_filter(sample_input) -> Callable:
-    r"""Returns a smoothing filter based on the blackman window"""
+    r"""Returns a smoothing filter based on the blackman window, which
+    works on a signal similar to the one provided as input. The filter
+    is amenable to jax transformations.
+
+    Args:
+        sample_input (jnp.ndarray): Example signal
+
+    Returns:
+        Callable: Smoothing filter
+    """
     # Constructs the filter
     dimensions = sample_input.shape
     axis = [blackman(x) for x in dimensions]

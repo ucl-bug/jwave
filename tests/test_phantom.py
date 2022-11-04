@@ -15,26 +15,10 @@
 
 from jax import numpy as jnp
 
-from jwave.geometry import _circ_mask
+from jwave.phantoms import three_circles
 
 
-def three_circles(N: tuple) -> jnp.ndarray:
-    """
-    Generate a 3-circle phantom.
-
-    Args:
-        N (tuple): The size of the phantom. Must be of length 2.
-
-    Returns:
-        jnp.ndarray: The phantom.
-    """
-    assert len(N) == 2, 'N must be of length 2'
-
-    radius = sum(N) / float(len(N))
-    mask1 = _circ_mask(N, radius * 0.05, (int(N[0] / 2 + N[0] / 8), int(N[1] / 2)))
-    mask2 = _circ_mask(
-        N, radius * 0.1, (int(N[0] / 2 - N[0] / 8), int(N[1] / 2 + N[1] / 6))
-    )
-    mask3 = _circ_mask(N, radius * 0.15, (int(N[0] / 2), int(N[1] / 2)))
-    p0 = 5.0 * mask1 + 3.0 * mask2 + 4.0 * mask3
-    return jnp.expand_dims(p0, -1)
+def test_three_circles():
+  p0 = three_circles((16, 16))
+  print(jnp.sum(p0))
+  assert jnp.allclose(jnp.sum(p0), 116.0)
