@@ -3,6 +3,21 @@
 
 ## (latest)
 
+### Bug Fix
+
+* Correctly handles Nyquist frequency for Helmholtz operator, to improve agreement with k-Wave. [Antonio Stanziola]
+
+* Incorrect domain size for angular spectrum. [Antonio Stanziola]
+
+* Angular spectrum is only dispatched on 'pressure' type. [Antonio Stanziola]
+
+### Features
+
+* Convergent born series. [Antonio Stanziola]
+
+
+## 0.0.3 (2022-07-05)
+
 ### Features
 
 * Angular spectrum method for single frequency sources. [Antonio Stanziola]
