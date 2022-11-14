@@ -4,7 +4,7 @@ mypy==0.982
 pytest==7.2.0
 matplotlib==3.6.1
 pre-commit==2.20.0
-pycln==2.1.1
+pycln==2.1.2
 isort==5.10.1
 gitchangelog==3.0.4
 mako==1.2.3
