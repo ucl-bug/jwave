@@ -13,13 +13,13 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Union
+from typing import Union, Callable, Tuple, TypeVar, Dict
 
 import jax
 import numpy as np
 from jax import numpy as jnp
 from jaxdf import Field, operator
-from jaxdf.discretization import FourierSeries, OnGrid
+from jaxdf.discretization import FourierSeries, OnGrid, Linear
 from jaxdf.operators import (
     diag_jacobian,
     functional,
@@ -28,11 +28,12 @@ from jaxdf.operators import (
 )
 
 from jwave.acoustics.spectral import kspace_op
-from jwave.geometry import Medium, MediumObject, TimeAxis
+from jwave.geometry import Medium, MediumObject, TimeAxis, Sources, Sensors
 from jwave.signal_processing import smooth
 
 from .pml import td_pml_on_grid
 
+Any = TypeVar("Any")
 
 def _shift_rho(rho0, direction, dx):
   if isinstance(rho0, OnGrid):
@@ -282,6 +283,43 @@ def ongrid_wave_prop_params(
   }
 
 @operator
+def wave_propagation_symplectic_step(
+  p: Linear,
+  u: Linear,
+  rho: Linear,
+  medium: Medium,
+  sources: Union[None, Sources],
+  pmls: Dict,
+  *,
+  step: Union[int, object],
+  c_ref = Union[None, object],
+  dt = Union[None, object],
+  params = None
+) -> Tuple[Linear,Linear,Linear]:
+
+  # Evaluate mass source
+  if sources is None:
+    mass_src_field = 0.0
+  else:
+    mass_src_field = sources.on_grid(step)
+  
+  # Calculate momentum conservation equation
+  du = momentum_conservation_rhs(p, u, medium, c_ref, dt)
+  pml_u = pmls["pml_u"]
+  u = pml_u*(pml_u*u + dt * du)
+
+  # Calculate mass conservation equation
+  drho = mass_conservation_rhs(p, u, mass_src_field, medium, c_ref, dt)
+  pml_rho = pmls["pml_rho"]
+  rho = pml_rho*(pml_rho*rho + dt * drho)
+
+  # Update pressure
+  p = pressure_from_density(rho, medium)
+
+  # Return updated fields
+  return [p, u, rho]
+
+@operator
 def simulate_wave_propagation(
   medium: OnGridOrScalars,
   time_axis: TimeAxis,
@@ -290,7 +328,7 @@ def simulate_wave_propagation(
   sensors = None,
   u0 = None,
   p0 = None,
-  checkpoint: bool = False,
+  checkpoint = None,
   smooth_initial = True,
   params = None
 ):
@@ -367,18 +405,10 @@ def simulate_wave_propagation(
 
   def scan_fun(fields, n):
     p, u, rho = fields
-    if sources is None:
-      mass_src_field = 0.0
-    else:
-      mass_src_field = sources.on_grid(n)
-
-    du = momentum_conservation_rhs(p, u, medium, c_ref, dt)
-    u = pml_u*(pml_u*u + dt * du)
-
-    drho = mass_conservation_rhs(p, u, mass_src_field, medium, c_ref, dt)
-    rho = pml_rho*(pml_rho*rho + dt * drho)
-
-    p = pressure_from_density(rho, medium)
+    p, u, rho = wave_propagation_symplectic_step(
+      p=p, u=u, rho=rho, medium=medium, sources=sources,
+      pmls=params, step=n, c_ref=c_ref, dt=dt
+    )
     return [p, u, rho], sensors(p,u,rho)
 
   if checkpoint:
