@@ -229,7 +229,7 @@ def born_series(
     src (FourierSeries): The complex source field.
     omega (object): The angular frequency.
     k0 (Union[None, float]): The wavenumber. If None, it is calculated from the medium as
-      `k0 = 0.5*(max(k) - min(k))` [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034). Defaults to None.
+      `k0 = 0.5*(max(k**2) + min(k**2))` [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034). Defaults to None.
     max_iter (object): The maximum number of iterations.
     tol (object): The relative tolerance for the convergence.
     alpha (object): The amplitude parameter of the PML. See Appendix of [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034)
@@ -261,7 +261,7 @@ def born_series(
   # Define k0 if not given
   if k0 is None:
     k = omega / medium.sound_speed.on_grid
-    k0 = 0.5*(jnp.amax(k) - jnp.amin(k))
+    k0 = jnp.sqrt(0.5*(jnp.amax(k)**2 + jnp.amin(k)**2))
 
   # Work in normalized units
   medium, omega, k0, src, _conversion = _cbs_norm_units(
