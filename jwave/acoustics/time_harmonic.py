@@ -25,6 +25,7 @@ from jaxdf.discretization import Field, FourierSeries, OnGrid
 from jaxdf.geometry import Domain
 from jaxdf.operators import functional
 from jaxdf.operators.differential import laplacian
+from jaxdf.operators.functions import functional
 
 from jwave.geometry import Medium
 
@@ -260,8 +261,9 @@ def born_series(
 
   # Define k0 if not given
   if k0 is None:
-    k = omega / medium.sound_speed.on_grid
-    k0 = jnp.sqrt(0.5*(jnp.amax(k)**2 + jnp.amin(k)**2))
+    k_max = omega / functional(medium.sound_speed)(jnp.amax)
+    k_min = omega / functional(medium.sound_speed)(jnp.amin)
+    k0 = jnp.sqrt(0.5*(k_max**2 + k_min**2))
 
   # Work in normalized units
   medium, omega, k0, src, _conversion = _cbs_norm_units(
