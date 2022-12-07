@@ -25,6 +25,7 @@ from jaxdf.discretization import Field, FourierSeries, OnGrid
 from jaxdf.geometry import Domain
 from jaxdf.operators import functional
 from jaxdf.operators.differential import laplacian
+from jaxdf.operators.functions import functional
 
 from jwave.geometry import Medium
 
@@ -205,7 +206,7 @@ def born_series(
   src: FourierSeries,
   *,
   omega = 1.0,
-  k0 = 1.0,
+  k0: Union[None, float] = None,
   max_iter = 1000,
   tol = 1e-8,
   alpha = 1.0,
@@ -228,7 +229,8 @@ def born_series(
       be lossless (`atteuation` is ignored), as this is not implemented yet.
     src (FourierSeries): The complex source field.
     omega (object): The angular frequency.
-    k0 (object): The wavenumber.
+    k0 (Union[None, float]): The wavenumber. If None, it is calculated from the medium as
+      `k0 = 0.5*(max(k**2) + min(k**2))` [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034). Defaults to None.
     max_iter (object): The maximum number of iterations.
     tol (object): The relative tolerance for the convergence.
     alpha (object): The amplitude parameter of the PML. See Appendix of [Osnabrugge et al, 2016](https://doi.org/10.1016/j.jcp.2016.06.034)
@@ -256,6 +258,12 @@ def born_series(
 
   def cbs_helmholtz(field, k_sq):
     return laplacian(field) + k_sq*field
+
+  # Define k0 if not given
+  if k0 is None:
+    k_max = omega / functional(medium.sound_speed)(jnp.amax)
+    k_min = omega / functional(medium.sound_speed)(jnp.amin)
+    k0 = jnp.sqrt(0.5*(k_max**2 + k_min**2))
 
   # Work in normalized units
   medium, omega, k0, src, _conversion = _cbs_norm_units(
