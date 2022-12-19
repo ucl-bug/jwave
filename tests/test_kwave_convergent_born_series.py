@@ -94,6 +94,7 @@ def _test_setter(
 
 TEST_SETTINGS = {
   "cbs_homog": _test_setter(),
+  "cbs_homog": _test_setter(k_ref=None),
   "cbs_homog_k0_smaller": _test_setter(k_ref=0.5e3),
   "cbs_homog_k0_larger": _test_setter(k_ref=1.5e3),
   "cbs_center": _test_setter(src_location = (64,64)),
