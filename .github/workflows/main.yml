@@ -28,8 +28,6 @@ jobs:
       - name: Making virtual environment, linting
         run: |
           make testenv
-          source .venv/bin/activate
-          isort jwave/
       - name: Downloading test data
         run: |
           make get_test_data

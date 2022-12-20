@@ -60,15 +60,16 @@ lint:             ## Runs isort and mypy.
 release:          ## Create a new tag for release.
 	@echo "WARNING: This operation will create s version tag and push to github"
 	@read -p "Version? (provide the next x.y.z semver) : " TAG
-	@echo "$${TAG}" > jwave/VERSION
-	@gitchangelog > HISTORY.md
-	@git add jwave/VERSION HISTORY.md
+	@echo "VERSION='$${TAG}'" > jwave/__about__.py
+	@$(ENV_PREFIX)gitchangelog > HISTORY.md
+	@git add jwave/__about__.py HISTORY.md
 	@git commit -m "release: version $${TAG} 🚀"
-	@git add .
+	@git add jwave/__about__.py HISTORY.md
 	@git commit -m "release: version $${TAG} 🚀"
 	@echo "creating git tag : $${TAG}"
 	@git tag $${TAG}
-#	@git push --tags
+	@git push -u origin HEAD --tags
+	@echo "Github Actions will detect the new tag and release the new version."
 
 .PHONY: serve_docs
 serve_docs:       ## Serve the documentation and update it automatically.

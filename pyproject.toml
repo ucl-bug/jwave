@@ -1,9 +1,99 @@
+[build-system]
+requires = [
+    "hatchling",
+    "setuptools>=50",
+    "wheel",
+    "toml",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "jwave"
+authors = [
+  { name="Antonio Stanziola", email="a.stanziola@ucl.ac.uk" },
+  { name="Simon Arridge" },
+  { name="Ben T. Cox" },
+  { name="Bradley E. Treeby" },
+]
+description = "Fast, differentiable acoustic simulations in JAX."
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = [
+  "jax",
+  "acoustics",
+  "simulation",
+  "ultrasound",
+  "differentiable-programming"
+]
+license = { file = "LICENSE", name = "LGPL-3.0" }
+classifiers=[
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+dynamic = ["version"]
+dependencies = [
+  "jaxdf>=0.2, <=0.2.1",
+  "matplotlib>=3.0.0, <4.0.0"
+]
+
+
+[project.optional-dependencies]
+docs = [
+  "coverage==6.5.0",
+  "flake8==5.0.4",
+  "gitchangelog==3.0.4",
+  "griffe==0.23.0",
+  "isort==5.10.1",
+  "jupytext==1.14.1",
+  "mako==1.2.3",
+  "markdown-katex==202112.1034",
+  "matplotlib==3.6.1",
+  "mkdocs-jupyter==0.22.0",
+  "mkdocs-macros-plugin==0.7.0",
+  "mkdocs-material==8.5.8",
+  "mkdocs-mermaid2-plugin==0.6.0",
+  "mkdocstrings==0.19.0",
+  "mkdocstrings-python==0.7.1",
+  "mypy==0.982",
+  "pre-commit==2.20.0",
+  "pycln==2.1.1",
+  "pytest==7.2.0",
+  "pystache==0.6.0",
+]
+
+test = [
+  "coverage==6.5.0",
+  "flake8==5.0.4",
+  "mypy==0.982",
+  "pytest==7.2.0",
+  "matplotlib==3.6.1",
+  "pre-commit==2.20.0",
+  "pycln==2.1.1",
+  "isort==5.10.1",
+  "gitchangelog==3.0.4",
+  "mako==1.2.3",
+  "pystache==0.6.0",
+]
+
+[project.urls]
+"Homepage" = "https://ucl-bug.github.io/jwave/"
+"Bug Tracker" = "https://github.com/ucl-bug/jwave/issues"
+
+[tool.hatch.build]
+include = ["jwave*"]
+
+[tool.hatch.version]
+path = "jwave/__about__.py"
+
 [tool.pycln]
 all = true
 
 [tool.mypy]
 ignore_missing_imports = true
-exclude = ['jaxdf/acoustics/operators.py']
 allow_redefinition = true
 
 [tool.isort]
@@ -12,3 +102,6 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
+
+[tool.black]
+line-length = 88

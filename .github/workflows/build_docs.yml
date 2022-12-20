@@ -22,9 +22,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r .requirements/requirements.txt
-        pip install -r .requirements/requirements-docs.txt
-        pip install -e .
+        pip install -e .[docs]
     - name: Test and get accuracy file
       run: |
         echo "Testing and saving accuracy file..."
