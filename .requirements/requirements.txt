@@ -1,2 +1,0 @@
-jaxdf @ git+https://github.com/ucl-bug/jaxdf.git#egg=jaxdf
-matplotlib>=3.0.0

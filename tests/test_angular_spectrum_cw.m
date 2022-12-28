@@ -26,6 +26,9 @@ function test_angular_spectrum_cw(in_filename, plot_tests)
         in_filename
         plot_tests = false
     end
+    
+    % Add to path k-wave
+    addpath(getenv('KWAVE_CORE_PATH'));
 
     % Load file
     out_filename = strrep(in_filename, 'setup_', '');
