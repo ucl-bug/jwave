@@ -13,27 +13,29 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
-from jax.lax import scan
-from jax import jit
-from jwave.transformations import ScanCheckpoint, CheckpointType
-from pytest import mark
-from jax import random
 from jax import numpy as jnp
+from jax import random
+from jax.lax import scan
+from pytest import mark
+
+from jwave.transformations import CheckpointType, ScanCheckpoint
 
 KEY = random.PRNGKey(42)
 
 # Check they give the same results as jax.lax.scan
 # Check that the function is jittable
 
-@mark.parametrize(
-    "checkpoint", [
-        CheckpointType.NONE,
-    ])
-def test_scan_equivalente(checkpoint_type):
 
+@mark.parametrize(
+    "checkpoint_type",
+    [
+        CheckpointType.NONE,
+    ],
+)
+def test_scan_equivalent(checkpoint_type):
     def scan_fun(carry, x):
-        return carry + x, carry + 2*x
-    
+        return carry + x, carry + 2 * x
+
     init = 0
     xs = jnp.random.uniform(KEY, (20,))
     scan_checkpoint = ScanCheckpoint(checkpoint_type)
