@@ -27,6 +27,12 @@ function test_kwave_convergent_born_series(in_filename, plot_tests);
     plot_tests = false
   end
 
+  % Add to path k-wave
+  addpath(getenv('KWAVE_CORE_PATH'));
+
+  % Set CUDA_VISIBLE_DEVICES to 0
+  setenv('CUDA_VISIBLE_DEVICES', '0');
+
   out_filename = strrep(in_filename, 'setup_', '');
   jw = load(in_filename);
 
