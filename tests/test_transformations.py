@@ -30,6 +30,9 @@ KEY = random.PRNGKey(42)
     "checkpoint_type",
     [
         CheckpointType.NONE,
+        CheckpointType.STEP,
+        CheckpointType.TREEVERSE,
+        CheckpointType.DIVIDE_AND_CONQUER,
     ],
 )
 def test_scan_equivalent(checkpoint_type):
@@ -44,7 +47,7 @@ def test_scan_equivalent(checkpoint_type):
     out_carry, y = scan(scan_fun, init, xs)
 
     # Scan with jwave
-    j_out_carry, j_y = scan_checkpoint.scan(scan_fun, init, xs)
+    j_out_carry, j_y = scan_checkpoint(scan_fun, init, xs)
 
     assert jnp.allclose(out_carry, j_out_carry)
     assert jnp.allclose(y, j_y)

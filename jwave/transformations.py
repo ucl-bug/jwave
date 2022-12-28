@@ -159,7 +159,7 @@ class ScanCheckpoint(object):
 
         @jax.named_call
         def inner_scan_fun(carry, x):
-            return jax.lax.scan(f, carry, jnp.arange(x))
+            return jax.lax.scan(f, carry, x)
 
         # Split sequence
         x_splitted = [xs[i : i + max_length] for i in range(0, len(xs), max_length)]
@@ -204,9 +204,7 @@ class ScanCheckpoint(object):
         """
         func_map = {
             CheckpointType.NONE: self.no_checkpoint_scan,
-            CheckpointType.STEP: partial(
-                self.step_checkpoint_scan, max_length=self.max_length
-            ),
+            CheckpointType.STEP: partial(self.step_checkpoint_scan),
             CheckpointType.DIVIDE_AND_CONQUER: partial(
                 self.dvide_and_conquer_scan, max_length=self.max_length
             ),
