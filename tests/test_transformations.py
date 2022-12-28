@@ -37,7 +37,7 @@ def test_scan_equivalent(checkpoint_type):
         return carry + x, carry + 2 * x
 
     init = 0
-    xs = jnp.random.uniform(KEY, (20,))
+    xs = random.uniform(KEY, (20,))
     scan_checkpoint = ScanCheckpoint(checkpoint_type)
 
     # Scan with jax
