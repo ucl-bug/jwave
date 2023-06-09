@@ -4,6 +4,7 @@
 
 # j-Wave: Differentiable acoustic simulations in JAX
 
+[![Support](https://dcbadge.vercel.app/api/server/VtUb4fFznt?style=flat)](https://discord.gg/VtUb4fFznt)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
 [![Continous Integration](https://github.com/ucl-bug/jwave/actions/workflows/main.yml/badge.svg)](https://github.com/ucl-bug/jwave/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/ucl-bug/jwave/branch/main/graph/badge.svg?token=6J03OMVJS1)](https://codecov.io/gh/ucl-bug/jwave)
@@ -72,6 +73,12 @@ pressure = solver(medium, p0)
 
 ![Simulated pressure field](docs/assets/images/readme_example_reconimage.png)
 
+
+## Support
+
+[![Support](https://dcbadge.vercel.app/api/server/VtUb4fFznt?style=flat)](https://discord.gg/VtUb4fFznt)
+
+If you find some problems in the code or want to propose some new features, feel free to open an issue. If you generally would like to have some guidance, discuss something, or just say hi, feel free to write a message in the [Discord channel](https://discord.gg/VtUb4fFznt).
 
 <br/>
 
