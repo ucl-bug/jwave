@@ -28,7 +28,7 @@ def three_circles(N: tuple) -> jnp.ndarray:
     Returns:
         jnp.ndarray: The phantom.
     """
-    assert len(N) == 2, 'N must be of length 2'
+    assert len(N) == 2, "N must be of length 2"
 
     radius = sum(N) / float(len(N))
     mask1 = _circ_mask(N, radius * 0.05, (int(N[0] / 2 + N[0] / 8), int(N[1] / 2)))
