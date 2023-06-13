@@ -1,0 +1,102 @@
+# This is a workflow for Unit, Integration, and Regression Tests
+
+name: Tests
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  unit_and_integration_tests:
+    strategy:
+      matrix:
+        python-version: [3.11]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Making virtual environment, linting
+        run: |
+          make testenv
+      - name: Downloading test data
+        run: |
+          make get_test_data
+      - name: Running tests
+        run: |
+          source .venv/bin/activate
+          coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
+          coverage xml -o coverage.unit.xml
+          coverage html
+      - name: "Upload coverage report for unit and integration tests"
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-unit
+          path: ./coverage.unit.xml
+
+  regression_tests:
+    strategy:
+      matrix:
+        python-version: [3.11]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Making virtual environment, linting
+        run: |
+          make testenv
+      - name: Downloading test data
+        run: |
+          make get_test_data
+      - name: Running tests
+        run: |
+          source .venv/bin/activate
+          coverage run --source=jwave -m pytest -xvs ./tests/regression_tests
+          coverage xml -o coverage.regression.xml
+          coverage html
+      - name: "Upload coverage report for regression tests"
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-regression
+          path: ./coverage.regression.xml
+
+  combine_coverage:
+    needs: [unit_and_integration_tests, regression_tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Download coverage reports
+        uses: actions/download-artifact@v2
+        with:
+          name: coverage-unit
+      - name: Download coverage reports
+        uses: actions/download-artifact@v2
+        with:
+          name: coverage-regression
+      - name: Install coverage
+        run: pip install coverage
+      - name: Combine reports
+        run: |
+          coverage combine coverage.unit.xml coverage.regression.xml
+          coverage xml -o coverage.combined.xml
+      - name: "Upload combined coverage to Codecov"
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.combined.xml
+          name: codecov-umbrella
