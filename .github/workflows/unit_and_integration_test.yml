@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Continous Integration
+name: Unit and Integration Tests
 
 # Controls when the workflow will run
 on:
@@ -17,7 +17,7 @@ jobs:
   tests_linux:
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.11]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -34,7 +34,7 @@ jobs:
       - name: Running tests
         run: |
           source .venv/bin/activate
-          coverage run --source=jwave -m pytest -vs
+          coverage run --source=jwave -m pytest -vs --ignore=tests/regression_tests
           coverage xml
           coverage html
       - name: "Upload coverage to Codecov"
