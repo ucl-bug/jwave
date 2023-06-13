@@ -40,7 +40,7 @@ def analytic_signal(x, axis=-1):
     slices[axis] = positive_indices
     slices = tuple(slices)
     spectrum = spectrum.at[slices].set(0.0)
-    spectrum = spectrum*2.
+    spectrum = spectrum * 2.0
 
     # Get complex signal
     x = jnp.fft.ifft(spectrum, axis=axis)
@@ -70,7 +70,7 @@ def fourier_downsample(x, subsample=2, discard_last=True):
         Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
         cuts = [int((subsample - 1) * x / 2 / subsample) for x in Fx.shape]
         slices = tuple([slice(cut, -cut) for cut in cuts])
-        return jnp.fft.ifftn(jnp.fft.ifftshift(Fx[slices])) / (subsample ** x.ndim)
+        return jnp.fft.ifftn(jnp.fft.ifftshift(Fx[slices])) / (subsample**x.ndim)
 
     if discard_last:
         _single_downsample = vmap(_single_downsample, in_axes=(-1,), out_axes=-1)
@@ -101,7 +101,7 @@ def fourier_upsample(x, upsample=2, discard_last=True):
         cuts = [int((upsample - 1) * x / 2 / upsample) for x in new_size]
         slices = tuple([slice(cut, -cut) for cut in cuts])
         new_Fx = new_Fx.at[slices].set(Fx)
-        return jnp.fft.ifftn(jnp.fft.ifftshift(new_Fx)) * (upsample ** x.ndim)
+        return jnp.fft.ifftn(jnp.fft.ifftshift(new_Fx)) * (upsample**x.ndim)
 
     if discard_last:
         _single_upsample = vmap(_single_upsample, in_axes=(-1,), out_axes=-1)
@@ -165,7 +165,7 @@ def gaussian_window(
     Returns:
         jnp.ndarray: [description]
     """
-    return signal * jnp.exp(-((time - mu) ** 2) / sigma ** 2)
+    return signal * jnp.exp(-((time - mu) ** 2) / sigma**2)
 
 
 def smoothing_filter(sample_input) -> Callable:
@@ -212,8 +212,8 @@ def smoothing_filter(sample_input) -> Callable:
 
 
 def smooth(
-  x: jnp.ndarray,
-  exponent: float = 1.0,
+    x: jnp.ndarray,
+    exponent: float = 1.0,
 ) -> jnp.ndarray:
     """Smooths a  n-dimensioanl signal by multiplying its
     spectrum by a blackman window.

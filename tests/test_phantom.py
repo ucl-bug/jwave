@@ -19,6 +19,6 @@ from jwave.phantoms import three_circles
 
 
 def test_three_circles():
-  p0 = three_circles((16, 16))
-  print(jnp.sum(p0))
-  assert jnp.allclose(jnp.sum(p0), 116.0)
+    p0 = three_circles((16, 16))
+    print(jnp.sum(p0))
+    assert jnp.allclose(jnp.sum(p0), 116.0)

@@ -23,7 +23,7 @@ mkdir -p .test_data
 git clone https://github.com/ucl-bug/jwave-data.git .test_data
 
 # Moving test data to the right place
-mv .test_data/tests/kwave_data/* ./tests/kwave_data
+mv .test_data/tests/* ./tests
 
 # Removing the temporary directory
 rm -rf .test_data
