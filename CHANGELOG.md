@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `k0` is automatically calculated in the Convergent Born Series, if not given, using the fromula from Osnabrugge et al.
+
+### Fixed
+- updated for new `Array` type in `jax` 0.4.x
 
 ## [0.0.4] - 2022-11-04
 ### Added
@@ -38,7 +43,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Plotting functions of `jwave.utils` now work with both `Field`s and arrays.
 
 [Unreleased]: https://github.com/ucl-bug/jwave/compare/0.0.5...master
-[0.0.5]: https://github.com/ucl-bug/jwave/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/ucl-bug/jwave/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/ucl-bug/jwave/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/ucl-bug/jwave/compare/0.0.1...0.0.2
