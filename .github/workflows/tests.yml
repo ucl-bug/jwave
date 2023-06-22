@@ -1,6 +1,6 @@
 # This is a workflow for Unit, Integration, and Regression Tests
 
-name: Unit, Integration and Regression Tests
+name: CI
 
 on:
   push:
