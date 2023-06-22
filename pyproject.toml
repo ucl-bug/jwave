@@ -111,6 +111,7 @@ addopts = """\
     --cov tests \
     --cov-report term-missing \
     --no-cov-on-fail \
+    --doctest-modules \
 """
 
 [tool.coverage.report]

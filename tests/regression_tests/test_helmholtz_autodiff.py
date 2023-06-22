@@ -21,9 +21,8 @@ def _make_filename(N, dx, sound_speed, density, attenuation, omega):
         DIR_PATH,
         "..",
         "regression_data",
-        f"helmholtz_autodiff_{N}_{dx}_{sound_speed}_{density}_{attenuation}_{omega}.mat".replace(
-            " ", "_"
-        ),
+        f"helmholtz_autodiff_{N}_{dx}_{sound_speed}_{density}_{attenuation}_{omega}.mat"
+        .replace(" ", "_"),
     )
 
 
@@ -73,9 +72,13 @@ def _get_attenuation(kind, domain):
 @pytest.mark.parametrize("density", ["heterogeneous"])
 @pytest.mark.parametrize("attenuation", ["heterogeneous"])
 @pytest.mark.parametrize("omega", [1e6])
-def test_regression_helmholtz(
-    N, dx, sound_speed, density, attenuation, omega, reset_regression_data=False
-):
+def test_regression_helmholtz(N,
+                              dx,
+                              sound_speed,
+                              density,
+                              attenuation,
+                              omega,
+                              reset_regression_data=False):
     # Setting up simulation
     dx = tuple([dx] * len(N))
     domain = Domain(N, dx)
@@ -108,7 +111,11 @@ def test_regression_helmholtz(
         src: FourierSeries,
     ):
         # This tries to maximize the amplitude of the field at a given point
-        medium = Medium(src.domain, sound_speed, density, attenuation, pml_size=10)
+        medium = Medium(src.domain,
+                        sound_speed,
+                        density,
+                        attenuation,
+                        pml_size=10)
         solution_field = helmholtz_solver(medium, omega, src, tol=1e-5).on_grid
         max_point = [-11] * len(src.domain.N)
         max_point = tuple(max_point)
@@ -144,21 +151,17 @@ def test_regression_helmholtz(
 
     # Check each one of them
     err_fun = lambda x, y: jnp.amax(jnp.abs(x - y)) / jnp.amax(jnp.abs(y))
-    max_rel_error = max(
-        [
-            err_fun(sos_gradient, matfile["sos_gradient"]),
-            err_fun(density_gradient, matfile["density_gradient"]),
-            err_fun(attenuation_gradient, matfile["attenuation_gradient"]),
-            err_fun(omega_gradient, matfile["omega_gradient"]),
-            err_fun(src_gradient, matfile["src_gradient"]),
-        ]
-    )
+    max_rel_error = max([
+        err_fun(sos_gradient, matfile["sos_gradient"]),
+        err_fun(density_gradient, matfile["density_gradient"]),
+        err_fun(attenuation_gradient, matfile["attenuation_gradient"]),
+        err_fun(omega_gradient, matfile["omega_gradient"]),
+        err_fun(src_gradient, matfile["src_gradient"]),
+    ])
 
     # Make sure the solution is the same within a certain tolerance
     print("  Relative max error = ", 100 * max_rel_error, "%")
 
     assert max_rel_error < RELATIVE_TOLERANCE, (
-        "Test failed, error above maximum limit of "
-        + str(100 * RELATIVE_TOLERANCE)
-        + "%"
-    )
+        "Test failed, error above maximum limit of " +
+        str(100 * RELATIVE_TOLERANCE) + "%")

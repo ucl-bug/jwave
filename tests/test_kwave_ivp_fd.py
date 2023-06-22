@@ -49,13 +49,17 @@ def _get_p0(domain):
 def _get_heterog_sound_speed(domain):
     sound_speed = np.ones(domain.N) * 1500.0
     sound_speed[50:90, 32:100] = 2300.0
-    sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1), domain, accuracy=8)
+    sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1),
+                                    domain,
+                                    accuracy=8)
     return sound_speed
 
 
 def _get_homog_sound_speed(domain):
     sound_speed = np.ones(domain.N) * 1500.0
-    sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1), domain, accuracy=8)
+    sound_speed = FiniteDifferences(np.expand_dims(sound_speed, -1),
+                                    domain,
+                                    accuracy=8)
     return sound_speed
 
 
@@ -63,7 +67,9 @@ def _get_homog_sound_speed(domain):
 def _get_heterog_density(domain):
     density = np.ones(domain.N) * 1000.0
     density[20:40, 65:100] = 2000.0
-    density = FiniteDifferences(np.expand_dims(density, -1), domain, accuracy=8)
+    density = FiniteDifferences(np.expand_dims(density, -1),
+                                domain,
+                                accuracy=8)
     return density
 
 
@@ -95,20 +101,26 @@ def _test_setter(
 
 
 TEST_SETTINGS = {
-    "ivp_fd_no_pml": _test_setter(),
-    "ivp_fd_pml": _test_setter(
+    "ivp_fd_no_pml":
+    _test_setter(),
+    "ivp_fd_pml":
+    _test_setter(
         PMLSize=16,
         max_err=0.2,
     ),
-    "ivp_fd_heterog_c0": _test_setter(
-        PMLSize=16, c0_constructor=_get_heterog_sound_speed, max_err=0.2
-    ),
-    "ivp_fd_heterog_rho0": _test_setter(
-        PMLSize=16, rho0_constructor=_get_heterog_density, max_err=0.31
-    ),
-    "ivp_fd_wide_heterog_rho0": _test_setter(
-        N=(128, 192), PMLSize=16, rho0_constructor=_get_heterog_density, max_err=0.31
-    ),
+    "ivp_fd_heterog_c0":
+    _test_setter(PMLSize=16,
+                 c0_constructor=_get_heterog_sound_speed,
+                 max_err=0.2),
+    "ivp_fd_heterog_rho0":
+    _test_setter(PMLSize=16,
+                 rho0_constructor=_get_heterog_density,
+                 max_err=0.31),
+    "ivp_fd_wide_heterog_rho0":
+    _test_setter(N=(128, 192),
+                 PMLSize=16,
+                 rho0_constructor=_get_heterog_density,
+                 max_err=0.31),
 }
 
 
@@ -143,8 +155,10 @@ def test_ivp(test_name, use_plots=False):
     @partial(jit, backend="cpu")
     def run_simulation(p0):
         return simulate_wave_propagation(
-            medium, time_axis, p0=p0, smooth_initial=settings["smooth_initial"]
-        )
+            medium,
+            time_axis,
+            p0=p0,
+            smooth_initial=settings["smooth_initial"])
 
     # Extract last field
     p_final = run_simulation(p0)[-1].on_grid[:, :, 0]
@@ -188,7 +202,8 @@ def test_ivp(test_name, use_plots=False):
     err = abs(p_final - kwave_p_final) / jnp.amax(abs(p_final))
 
     if use_plots:
-        plot_comparison(p_final, kwave_p_final, test_name, ["j-Wave", "k-Wave"])
+        plot_comparison(p_final, kwave_p_final, test_name,
+                        ["j-Wave", "k-Wave"])
         plt.show()
 
     # Check maximum error
@@ -197,7 +212,7 @@ def test_ivp(test_name, use_plots=False):
     print("  Maximum error = ", 100 * maxErr, "%")
     assert (
         maxErr < settings["max_err"]
-    )  # , "Test failed, error above maximum limit of " + str(settings["max_err"])
+    )    # , "Test failed, error above maximum limit of " + str(settings["max_err"])
 
     # Log error
     log_accuracy(test_name, maxErr)

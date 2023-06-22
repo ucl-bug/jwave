@@ -24,6 +24,7 @@ def kspace_op(
     Returns:
       jnp.ndarray: The k-space operator.
     """
+
     # Get the frequency axis manually, since we
     # are nor using the rFFT
     # TODO: Implement operators with rFFT

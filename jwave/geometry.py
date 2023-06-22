@@ -56,9 +56,12 @@ class Medium:
     attenuation: Union[Number, Field] = 0.0
     pml_size: Number = 20.0
 
-    def __init__(
-        self, domain, sound_speed=1.0, density=1.0, attenuation=0.0, pml_size=20
-    ):
+    def __init__(self,
+                 domain,
+                 sound_speed=1.0,
+                 density=1.0,
+                 attenuation=0.0,
+                 pml_size=20):
         # Check that all domains are the same
         for field in [sound_speed, density, attenuation]:
             if isinstance(field, Field):
@@ -92,18 +95,23 @@ class Medium:
         return self.__repr__()
 
     def __repr__(self) -> str:
+
         def show_param(pname):
             attr = getattr(self, pname)
             return f"{pname}: " + str(attr)
 
         all_params = sorted(
-            ["domain", "sound_speed", "density", "attenuation", "pml_size"]
-        )
+            ["domain", "sound_speed", "density", "attenuation", "pml_size"])
         strings = list(map(lambda x: show_param(x), all_params))
         return "Medium:\n - " + "\n - ".join(strings)
 
 
-def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0, max_angle=2 * np.pi):
+def _points_on_circle(n,
+                      radius,
+                      centre,
+                      cast_int=True,
+                      angle=0.0,
+                      max_angle=2 * np.pi):
     angles = np.linspace(0, max_angle, n, endpoint=False)
     x = (radius * np.cos(angles + angle) + centre[0]).tolist()
     y = (radius * np.sin(angles + angle) + centre[1]).tolist()
@@ -120,7 +128,9 @@ class MediumType(Medium):
 
 @type_of.dispatch
 def type_of(m: Medium):
-    return MediumType[type(m.sound_speed), type(m.density), type(m.attenuation)]
+    return MediumType[type(m.sound_speed),
+                      type(m.density),
+                      type(m.attenuation)]
 
 
 MediumAllScalars = MediumType[object, object, object]
@@ -144,11 +154,11 @@ MediumOnGrid = Union[
 def _unit_fibonacci_sphere(samples=128):
     # From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
     points = []
-    phi = math.pi * (3.0 - math.sqrt(5.0))  # golden angle in radians
+    phi = math.pi * (3.0 - math.sqrt(5.0))    # golden angle in radians
     for i in range(samples):
-        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
-        radius = math.sqrt(1 - y * y)  # radius at y
-        theta = phi * i  # golden angle increment
+        y = 1 - (i / float(samples - 1)) * 2    # y goes from 1 to -1
+        radius = math.sqrt(1 - y * y)    # radius at y
+        theta = phi * i    # golden angle increment
         x = math.cos(theta) * radius
         z = math.sin(theta) * radius
         points.append((x, y, z))
@@ -165,17 +175,16 @@ def _fibonacci_sphere(n, radius, centre, cast_int=True):
 
 
 def _circ_mask(N, radius, centre):
-    x, y = np.mgrid[0 : N[0], 0 : N[1]]
-    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
+    x, y = np.mgrid[0:N[0], 0:N[1]]
+    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
 
 def _sphere_mask(N, radius, centre):
-    x, y, z = np.mgrid[0 : N[0], 0 : N[1], 0 : N[2]]
-    dist_from_centre = np.sqrt(
-        (x - centre[0]) ** 2 + (y - centre[1]) ** 2 + (z - centre[2]) ** 2
-    )
+    x, y, z = np.mgrid[0:N[0], 0:N[1], 0:N[2]]
+    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2 +
+                               (z - centre[2])**2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
@@ -263,7 +272,7 @@ class DistributedTransducer:
 
     def tree_flatten(self):
         children = (self.mask, self.signal, self.dt)
-        aux = (self.domain,)
+        aux = (self.domain, )
         return (children, aux)
 
     @classmethod
@@ -296,7 +305,10 @@ class DistributedTransducer:
         return signal * self.mask
 
 
-def get_line_transducer(domain, position, width, angle=0) -> DistributedTransducer:
+def get_line_transducer(domain,
+                        position,
+                        width,
+                        angle=0) -> DistributedTransducer:
     r"""
     Construct a line transducer (2D)
     """
@@ -361,7 +373,7 @@ class Sensors:
 
     def tree_flatten(self):
         children = None
-        aux = (self.positions,)
+        aux = (self.positions, )
         return (children, aux)
 
     @classmethod
@@ -391,15 +403,15 @@ class Sensors:
         if len(self.positions) == 1:
             return p.on_grid[self.positions[0]]
         elif len(self.positions) == 2:
-            return p.on_grid[self.positions[0], self.positions[1]]  # type: ignore
+            return p.on_grid[self.positions[0],
+                             self.positions[1]]    # type: ignore
         elif len(self.positions) == 3:
-            return p.on_grid[self.positions[0], self.positions[1], self.positions[2]]  # type: ignore
+            return p.on_grid[self.positions[0], self.positions[1],
+                             self.positions[2]]    # type: ignore
         else:
             raise ValueError(
-                "Sensors positions must be 1, 2 or 3 dimensional. Not {}".format(
-                    len(self.positions)
-                )
-            )
+                "Sensors positions must be 1, 2 or 3 dimensional. Not {}".
+                format(len(self.positions)))
 
 
 @register_pytree_node_class
@@ -419,7 +431,7 @@ class TimeAxis:
         self.t_end = t_end
 
     def tree_flatten(self):
-        children = (None,)
+        children = (None, )
         aux = (self.dt, self.t_end)
         return (children, aux)
 
@@ -449,9 +461,11 @@ class TimeAxis:
               it is automatically calculated as the time required to travel
               from one corner of the domain to the opposite one.
         """
-        dt = cfl * min(medium.domain.dx) / functional(medium.sound_speed)(np.max)
+        dt = cfl * min(medium.domain.dx) / functional(medium.sound_speed)(
+            np.max)
         if t_end is None:
             t_end = np.sqrt(
-                sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
-            ) / functional(medium.sound_speed)(np.min)
+                sum((x[-1] - x[0])**2
+                    for x in medium.domain.spatial_axis)) / functional(
+                        medium.sound_speed)(np.min)
         return TimeAxis(dt=float(dt), t_end=float(t_end))

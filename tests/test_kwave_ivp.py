@@ -93,86 +93,98 @@ def _test_setter(
 
 
 TEST_SETTINGS = {
-    "ivp_no_pml_no_smooth_homog": _test_setter(),
-    "ivp_pml_no_smooth_homog": _test_setter(
-        PMLSize=10,
-    ),
-    "ivp_no_pml_smooth_homog": _test_setter(
+    "ivp_no_pml_no_smooth_homog":
+    _test_setter(),
+    "ivp_pml_no_smooth_homog":
+    _test_setter(PMLSize=10, ),
+    "ivp_no_pml_smooth_homog":
+    _test_setter(
         smooth_initial=True,
         max_err=1e-2,
     ),
-    "ivp_pml_smooth_homog": _test_setter(
+    "ivp_pml_smooth_homog":
+    _test_setter(
         PMLSize=10,
         smooth_initial=True,
         max_err=1e-2,
     ),
-    "ivp_no_pml_no_smooth_heterog_c0": _test_setter(
+    "ivp_no_pml_no_smooth_heterog_c0":
+    _test_setter(c0_constructor=_get_heterog_sound_speed, ),
+    "ivp_no_pml_no_smooth_heterog_rho0":
+    _test_setter(rho0_constructor=_get_heterog_density, ),
+    "ivp_no_pml_no_smooth_heterog_c0_rho0":
+    _test_setter(
         c0_constructor=_get_heterog_sound_speed,
-    ),
-    "ivp_no_pml_no_smooth_heterog_rho0": _test_setter(
         rho0_constructor=_get_heterog_density,
     ),
-    "ivp_no_pml_no_smooth_heterog_c0_rho0": _test_setter(
-        c0_constructor=_get_heterog_sound_speed,
-        rho0_constructor=_get_heterog_density,
-    ),
-    "ivp_no_pml_no_smooth_homog_odd": _test_setter(
-        N=(125, 125),
-    ),
-    "ivp_no_pml_no_smooth_homog_tall": _test_setter(
+    "ivp_no_pml_no_smooth_homog_odd":
+    _test_setter(N=(125, 125), ),
+    "ivp_no_pml_no_smooth_homog_tall":
+    _test_setter(
         N=(192, 128),
         max_err=2e-5,
     ),
-    "ivp_no_pml_no_smooth_homog_wide": _test_setter(
+    "ivp_no_pml_no_smooth_homog_wide":
+    _test_setter(
         N=(128, 192),
         max_err=2e-5,
     ),
-    "ivp_no_pml_no_smooth_homog_rect": _test_setter(
+    "ivp_no_pml_no_smooth_homog_rect":
+    _test_setter(
         N=(127, 145),
         max_err=2e-5,
     ),
-    "ivp_no_pml_no_smooth_homog_tall_heterog": _test_setter(
+    "ivp_no_pml_no_smooth_homog_tall_heterog":
+    _test_setter(
         N=(192, 128),
         max_err=2e-5,
         rho0_constructor=_get_heterog_density,
         c0_constructor=_get_heterog_sound_speed,
     ),
-    "ivp_no_pml_no_smooth_homog_wide_heterog": _test_setter(
+    "ivp_no_pml_no_smooth_homog_wide_heterog":
+    _test_setter(
         N=(128, 192),
         max_err=2e-5,
         rho0_constructor=_get_heterog_density,
         c0_constructor=_get_heterog_sound_speed,
     ),
-    "ivp_no_pml_no_smooth_homog_rect_heterog": _test_setter(
+    "ivp_no_pml_no_smooth_homog_rect_heterog":
+    _test_setter(
         N=(127, 145),
         max_err=2e-5,
         rho0_constructor=_get_heterog_density,
         c0_constructor=_get_heterog_sound_speed,
     ),
-    "ivp_pml_no_smooth_homog_odd": _test_setter(
+    "ivp_pml_no_smooth_homog_odd":
+    _test_setter(
         N=(125, 125),
         PMLSize=10,
     ),
-    "ivp_no_pml_smooth_homog_odd": _test_setter(
+    "ivp_no_pml_smooth_homog_odd":
+    _test_setter(
         N=(125, 125),
         smooth_initial=True,
         max_err=1e-2,
     ),
-    "ivp_pml_smooth_homog_odd": _test_setter(
+    "ivp_pml_smooth_homog_odd":
+    _test_setter(
         N=(125, 125),
         smooth_initial=True,
         PMLSize=10,
         max_err=1e-2,
     ),
-    "ivp_no_pml_no_smooth_heterog_c0_odd": _test_setter(
+    "ivp_no_pml_no_smooth_heterog_c0_odd":
+    _test_setter(
         N=(125, 125),
         c0_constructor=_get_heterog_sound_speed,
     ),
-    "ivp_no_pml_no_smooth_heterog_rho0_odd": _test_setter(
+    "ivp_no_pml_no_smooth_heterog_rho0_odd":
+    _test_setter(
         N=(125, 125),
         rho0_constructor=_get_heterog_density,
     ),
-    "ivp_no_pml_no_smooth_heterog_c0_rho0_odd": _test_setter(
+    "ivp_no_pml_no_smooth_heterog_c0_rho0_odd":
+    _test_setter(
         N=(125, 125),
         rho0_constructor=_get_heterog_density,
         c0_constructor=_get_heterog_sound_speed,
@@ -211,8 +223,10 @@ def test_ivp(test_name, use_plots=False):
     @partial(jit, backend="cpu")
     def run_simulation(p0):
         return simulate_wave_propagation(
-            medium, time_axis, p0=p0, smooth_initial=settings["smooth_initial"]
-        )
+            medium,
+            time_axis,
+            p0=p0,
+            smooth_initial=settings["smooth_initial"])
 
     # Extract last field
     p_final = run_simulation(p0)[-1].on_grid[:, :, 0]
@@ -256,7 +270,8 @@ def test_ivp(test_name, use_plots=False):
     err = abs(p_final - kwave_p_final)
 
     if use_plots:
-        plot_comparison(p_final, kwave_p_final, test_name, ["j-Wave", "k-Wave"])
+        plot_comparison(p_final, kwave_p_final, test_name,
+                        ["j-Wave", "k-Wave"])
         plt.show()
 
     # Check maximum error
@@ -265,7 +280,7 @@ def test_ivp(test_name, use_plots=False):
     print("  Maximum error = ", maxErr)
     assert (
         maxErr < settings["max_err"]
-    )  # , "Test failed, error above maximum limit of " + str(settings["max_err"])
+    )    # , "Test failed, error above maximum limit of " + str(settings["max_err"])
 
     # Log error
     log_accuracy(test_name, maxErr)

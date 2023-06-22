@@ -29,7 +29,7 @@ function test_kwave_ivp(in_filename, plot_tests)
 
   % Add to path k-wave
   addpath(getenv('KWAVE_CORE_PATH'));
-  
+
   out_filename = strrep(in_filename, 'setup_', '');
 
   jw = load(in_filename);

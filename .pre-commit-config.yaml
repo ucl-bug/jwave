@@ -6,10 +6,11 @@ repos:
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: check-case-conflict
-      - id: check-docstring-first
       - id: check-yaml
+      - id: check-toml
       - id: debug-statements
       - id: end-of-file-fixer
+      - id: no-commit-to-branch
       - id: trailing-whitespace
       - id: mixed-line-ending
 -   repo: https://github.com/hadialqattan/pycln

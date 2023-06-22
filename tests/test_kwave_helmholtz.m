@@ -29,7 +29,7 @@ function test_kwave_helmholtz(in_filename, plot_tests);
 
   % Add to path k-wave
   addpath(getenv('KWAVE_CORE_PATH'));
-  
+
   % Set CUDA_VISIBLE_DEVICES to 0
   setenv('CUDA_VISIBLE_DEVICES', '0');
 

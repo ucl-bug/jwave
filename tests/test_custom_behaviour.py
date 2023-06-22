@@ -43,13 +43,15 @@ def test_changing_params_wave_prop():
 
     # Update the pml
     wave_params["pml_u"] = wave_params["pml_u"].replace_params(
-        jnp.ones_like(wave_params["pml_u"].on_grid)
-    )
+        jnp.ones_like(wave_params["pml_u"].on_grid))
 
     # Run simulation
     @jit
     def run_simulation(params, p0):
-        return simulate_wave_propagation(medium, time_axis, p0=p0, params=params)
+        return simulate_wave_propagation(medium,
+                                         time_axis,
+                                         p0=p0,
+                                         params=params)
 
     _ = run_simulation(wave_params, p0)
 
@@ -65,17 +67,18 @@ def test_differentiating_params():
     time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=5e-6)
     wave_params = simulate_wave_propagation.default_params(medium, time_axis)
     wave_params["pml_u"] = wave_params["pml_u"].replace_params(
-        jnp.ones_like(wave_params["pml_u"].on_grid)
-    )
+        jnp.ones_like(wave_params["pml_u"].on_grid))
     true_fields = simulate_wave_propagation(medium, time_axis, p0=p0)
 
     @jit
     @value_and_grad
     def loss(new_params):
-        pred_fields = simulate_wave_propagation(
-            medium, time_axis, p0=p0, params=new_params
-        )
-        error = jnp.mean(jnp.abs(pred_fields[-1].on_grid - true_fields[-1].on_grid))
+        pred_fields = simulate_wave_propagation(medium,
+                                                time_axis,
+                                                p0=p0,
+                                                params=new_params)
+        error = jnp.mean(
+            jnp.abs(pred_fields[-1].on_grid - true_fields[-1].on_grid))
         return error
 
     error, params_gradients = loss(wave_params)
@@ -94,11 +97,15 @@ def test_extract_params_in_jit():
 
     # Run simulation
     @jit
-    def run_simulation(to_add, p0):  # Get default parameters
-        wave_params = simulate_wave_propagation.default_params(medium, time_axis)
+    def run_simulation(to_add, p0):    # Get default parameters
+        wave_params = simulate_wave_propagation.default_params(
+            medium, time_axis)
         # Update the pml
         wave_params["pml_u"] = wave_params["pml_u"] + to_add
-        return simulate_wave_propagation(medium, time_axis, p0=p0, params=wave_params)
+        return simulate_wave_propagation(medium,
+                                         time_axis,
+                                         p0=p0,
+                                         params=wave_params)
 
     _ = run_simulation(2.0, p0)
 

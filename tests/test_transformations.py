@@ -36,11 +36,12 @@ KEY = random.PRNGKey(42)
     ],
 )
 def test_scan_equivalent(checkpoint_type):
+
     def scan_fun(carry, x):
         return carry + x, carry + 2 * x
 
     init = 0
-    xs = random.uniform(KEY, (20,))
+    xs = random.uniform(KEY, (20, ))
     scan_checkpoint = ScanCheckpoint(checkpoint_type)
 
     # Scan with jax

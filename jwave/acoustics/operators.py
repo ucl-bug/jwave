@@ -15,20 +15,10 @@
 
 from jax import numpy as jnp
 from jaxdf import Field, operator
-from jaxdf.discretization import (
-    Continuous,
-    FiniteDifferences,
-    FourierSeries,
-    OnGrid,
-)
-from jaxdf.operators import (
-    compose,
-    diag_jacobian,
-    functional,
-    gradient,
-    shift_operator,
-    sum_over_dims,
-)
+from jaxdf.discretization import (Continuous, FiniteDifferences, FourierSeries,
+                                  OnGrid)
+from jaxdf.operators import (compose, diag_jacobian, functional, gradient,
+                             shift_operator, sum_over_dims)
 
 from jwave.geometry import Medium
 
@@ -37,9 +27,11 @@ from .pml import complex_pml, complex_pml_on_grid
 
 
 @operator
-def laplacian_with_pml(
-    u: Continuous, medium: Medium, *, omega=1.0, params=None
-) -> Continuous:
+def laplacian_with_pml(u: Continuous,
+                       medium: Medium,
+                       *,
+                       omega=1.0,
+                       params=None) -> Continuous:
     r"""Laplacian operator with PML for `Continuous` complex fields.
 
     Args:
@@ -65,7 +57,11 @@ def laplacian_with_pml(
 
 
 @operator
-def laplacian_with_pml(u: OnGrid, medium: Medium, *, omega=1.0, params=None) -> OnGrid:
+def laplacian_with_pml(u: OnGrid,
+                       medium: Medium,
+                       *,
+                       omega=1.0,
+                       params=None) -> OnGrid:
     r"""Laplacian operator with PML for `OnGrid` complex fields.
 
     Args:
@@ -100,9 +96,11 @@ def laplacian_with_pml(u: OnGrid, medium: Medium, *, omega=1.0, params=None) -> 
 
 
 @operator
-def laplacian_with_pml(
-    u: FiniteDifferences, medium: Medium, *, omega=1.0, params=None
-) -> FiniteDifferences:
+def laplacian_with_pml(u: FiniteDifferences,
+                       medium: Medium,
+                       *,
+                       omega=1.0,
+                       params=None) -> FiniteDifferences:
     r"""Laplacian operator with PML for `FiniteDifferences` complex fields.
 
     Args:
@@ -119,16 +117,19 @@ def laplacian_with_pml(
         params = {
             "pml_on_grid": [
                 u.replace_params(
-                    complex_pml_on_grid(medium, omega, shift=u.domain.dx[0] / 2)
-                ),
+                    complex_pml_on_grid(medium,
+                                        omega,
+                                        shift=u.domain.dx[0] / 2)),
                 u.replace_params(
-                    complex_pml_on_grid(medium, omega, shift=-u.domain.dx[0] / 2)
-                ),
+                    complex_pml_on_grid(medium,
+                                        omega,
+                                        shift=-u.domain.dx[0] / 2)),
             ],
             "stencils": {
                 "gradient": gradient.default_params(u, stagger=[0.5]),
                 "gradient_unstaggered": gradient.default_params(u),
-                "diag_jacobian": diag_jacobian.default_params(u, stagger=[-0.5]),
+                "diag_jacobian": diag_jacobian.default_params(u,
+                                                              stagger=[-0.5]),
             },
         }
 
@@ -138,9 +139,9 @@ def laplacian_with_pml(
     # Making laplacian
     grad_u = gradient(u, stagger=[0.5], params=stencils["gradient"])
     mod_grad_u = grad_u * pml[0]
-    mod_diag_jacobian = diag_jacobian(
-        mod_grad_u, stagger=[-0.5], params=stencils["diag_jacobian"]
-    )
+    mod_diag_jacobian = diag_jacobian(mod_grad_u,
+                                      stagger=[-0.5],
+                                      params=stencils["diag_jacobian"])
     nabla_u = sum_over_dims(mod_diag_jacobian * pml[1])
 
     if not (issubclass(type(rho0), Field)):
@@ -148,16 +149,20 @@ def laplacian_with_pml(
         rho_u = 0.0
     else:
         grad_u = gradient(u, params=stencils["gradient_unstaggered"])
-        grad_rho0 = gradient(rho0, stagger=[0], params=stencils["gradient_unstaggered"])
+        grad_rho0 = gradient(rho0,
+                             stagger=[0],
+                             params=stencils["gradient_unstaggered"])
         rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
 
     return nabla_u - rho_u, params
 
 
 @operator
-def laplacian_with_pml(
-    u: FourierSeries, medium: Medium, *, omega=1.0, params=None
-) -> FourierSeries:
+def laplacian_with_pml(u: FourierSeries,
+                       medium: Medium,
+                       *,
+                       omega=1.0,
+                       params=None) -> FourierSeries:
     r"""Laplacian operator with PML for `FourierSeries` complex fields.
 
     Args:
@@ -176,26 +181,30 @@ def laplacian_with_pml(
         params = {
             "pml_on_grid": [
                 u.replace_params(
-                    complex_pml_on_grid(medium, omega, shift=u.domain.dx[0] / 2)
-                ),
+                    complex_pml_on_grid(medium,
+                                        omega,
+                                        shift=u.domain.dx[0] / 2)),
                 u.replace_params(
-                    complex_pml_on_grid(medium, omega, shift=-u.domain.dx[0] / 2)
-                ),
+                    complex_pml_on_grid(medium,
+                                        omega,
+                                        shift=-u.domain.dx[0] / 2)),
             ],
-            "fft_u": gradient.default_params(u),
+            "fft_u":
+            gradient.default_params(u),
         }
 
     pml = params["pml_on_grid"]
 
     # Making laplacian
-    grad_u = gradient(u, stagger=[0.5], correct_nyquist=False, params=params["fft_u"])
+    grad_u = gradient(u,
+                      stagger=[0.5],
+                      correct_nyquist=False,
+                      params=params["fft_u"])
     mod_grad_u = grad_u * pml[0]
-    mod_diag_jacobian = (
-        diag_jacobian(
-            mod_grad_u, stagger=[-0.5], correct_nyquist=False, params=params["fft_u"]
-        )
-        * pml[1]
-    )
+    mod_diag_jacobian = (diag_jacobian(mod_grad_u,
+                                       stagger=[-0.5],
+                                       correct_nyquist=False,
+                                       params=params["fft_u"]) * pml[1])
     nabla_u = sum_over_dims(mod_diag_jacobian)
 
     # Density term
@@ -236,7 +245,7 @@ def wavevector(u: Field, medium: Medium, *, omega=1.0, params=None) -> Field:
     alpha = medium.attenuation
     trans_fun = lambda x: db2neper(x, 2.0)
     alpha = compose(alpha)(trans_fun)
-    k_mod = (omega / c) ** 2 + 2j * (omega**3) * alpha / c
+    k_mod = (omega / c)**2 + 2j * (omega**3) * alpha / c
     return u * k_mod, None
 
 
@@ -286,7 +295,7 @@ def helmholtz(u: OnGrid, medium: Medium, *, omega=1.0, params=None) -> OnGrid:
     return L + k, params
 
 
-def scale_source_helmholtz(source, medium):
+def scale_source_helmholtz(source: Field, medium: Medium) -> Field:
     if isinstance(medium.sound_speed, Field):
         min_sos = functional(medium.sound_speed)(jnp.amin)
     else:

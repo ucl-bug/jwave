@@ -133,7 +133,10 @@ def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
     if max_intensity is None:
         max_intensity = jnp.amax(jnp.abs(field))
 
-    axes[0].imshow(field.real, vmin=-max_intensity, vmax=max_intensity, cmap="seismic")
+    axes[0].imshow(field.real,
+                   vmin=-max_intensity,
+                   vmax=max_intensity,
+                   cmap="seismic")
     axes[0].set_title("Real wavefield")
     axes[1].imshow(jnp.abs(field), vmin=0, vmax=max_intensity, cmap="magma")
     axes[1].set_title("Wavefield magnitude")

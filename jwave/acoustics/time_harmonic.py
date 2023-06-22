@@ -87,8 +87,8 @@ def angular_spectrum(
 
     # Update the domain
     domain = Domain(
-        (p.shape[0], p.shape[1]),  # (Nx, Ny)
-        pressure.domain.dx,  # Grid spacing doesn't change
+        (p.shape[0], p.shape[1]),    # (Nx, Ny)
+        pressure.domain.dx,    # Grid spacing doesn't change
     )
     pressure_padded = FourierSeries(p, domain)
 
@@ -123,9 +123,10 @@ def angular_spectrum(
 
 
 # Building base PML
-def _cbs_pml(
-    field: OnGrid, k0: object = 1.0, pml_size: object = 32, alpha: object = 1.0
-):
+def _cbs_pml(field: OnGrid,
+             k0: object = 1.0,
+             pml_size: object = 32,
+             alpha: object = 1.0):
     medium = Medium(domain=field.domain, pml_size=pml_size)
     N = 4
 
@@ -133,18 +134,19 @@ def _cbs_pml(
         return x / 2 - pml_size
 
     def num(x):
-        return (alpha**2) * (N - alpha * x + 2j * k0 * x) * ((alpha * x) ** (N - 1))
+        return (alpha**2) * (N - alpha * x + 2j * k0 * x) * (
+            (alpha * x)**(N - 1))
 
     def den(x):
-        return sum(
-            [((alpha * x) ** i) / float(factorial(i)) for i in range(N + 1)]
-        ) * factorial(N)
+        return sum([((alpha * x)**i) / float(factorial(i))
+                    for i in range(N + 1)]) * factorial(N)
 
     def transform_fun(x):
         return num(x) / den(x)
 
     delta_pml = jnp.asarray(list(map(pml_edge, medium.domain.N)))
-    coord_grid = Domain(N=medium.domain.N, dx=tuple([1.0] * len(medium.domain.N))).grid
+    coord_grid = Domain(N=medium.domain.N,
+                        dx=tuple([1.0] * len(medium.domain.N))).grid
     coord_grid = coord_grid
 
     diff = jnp.abs(coord_grid) - delta_pml
@@ -241,6 +243,7 @@ def born_series(
     Returns:
       FourierSeries: The complex solution field.
     """
+
     # TODO: Implement absorption term
 
     # Support functions
@@ -249,12 +252,10 @@ def born_series(
         return Domain(new_N, domain.dx)
 
     def pad_fun(u):
-        pad_size = tuple(
-            [(pml_size, pml_size) for _ in range(len(u.domain.N))] + [(0, 0)]
-        )
-        return FourierSeries(
-            jnp.pad(u.on_grid, pad_size), enlarge_doimain(u.domain, pml_size)
-        )
+        pad_size = tuple([(pml_size, pml_size)
+                          for _ in range(len(u.domain.N))] + [(0, 0)])
+        return FourierSeries(jnp.pad(u.on_grid, pad_size),
+                             enlarge_doimain(u.domain, pml_size))
 
     def cbs_helmholtz(field, k_sq):
         return laplacian(field) + k_sq * field
@@ -266,7 +267,8 @@ def born_series(
         k0 = jnp.sqrt(0.5 * (k_max**2 + k_min**2))
 
     # Work in normalized units
-    medium, omega, k0, src, _conversion = _cbs_norm_units(medium, omega, k0, src)
+    medium, omega, k0, src, _conversion = _cbs_norm_units(
+        medium, omega, k0, src)
 
     # Constants
     pml_size = medium.pml_size
@@ -278,12 +280,12 @@ def born_series(
     norm_initial = jnp.linalg.norm(src.on_grid)
 
     # Constructing heterogeneous k^2
-    _sos = sound_speed.on_grid if type(sound_speed) is FourierSeries else sound_speed
+    _sos = sound_speed.on_grid if type(
+        sound_speed) is FourierSeries else sound_speed
     k_biggest = jnp.amax((omega / _sos))
     k_sq = _cbs_pml(src, k_biggest, pml_size, alpha)
-    k_sq = k_sq.at[pml_size:-pml_size, pml_size:-pml_size].set(
-        ((omega / _sos) ** 2) + 0j
-    )
+    k_sq = k_sq.at[pml_size:-pml_size,
+                   pml_size:-pml_size].set(((omega / _sos)**2) + 0j)
     k_sq = FourierSeries(k_sq, src.domain)
 
     # Finding stable epsilon
@@ -313,9 +315,9 @@ def born_series(
 
     if print_info:
         v = jnp.linalg.norm(resid_fun(out_field).on_grid) / norm_initial
-        jax.debug.print(
-            "Converged in {c} iterations. Relative error: {v}", c=numiters, v=v
-        )
+        jax.debug.print("Converged in {c} iterations. Relative error: {v}",
+                        c=numiters,
+                        v=v)
 
     # Remove padding
     # TODO: Remove this switch-like statement to support all dimensions
@@ -324,11 +326,12 @@ def born_series(
         if num_dims == 1:
             _out_field = out_field.on_grid[pml_size:-pml_size]
         elif num_dims == 2:
-            _out_field = out_field.on_grid[pml_size:-pml_size, pml_size:-pml_size]
+            _out_field = out_field.on_grid[pml_size:-pml_size,
+                                           pml_size:-pml_size]
         elif num_dims == 3:
-            _out_field = out_field.on_grid[
-                pml_size:-pml_size, pml_size:-pml_size, pml_size:-pml_size
-            ]
+            _out_field = out_field.on_grid[pml_size:-pml_size,
+                                           pml_size:-pml_size,
+                                           pml_size:-pml_size]
         else:
             raise ValueError("Only 1, 2, or 3 dimensions are supported.")
     else:
@@ -343,9 +346,13 @@ def born_series(
 
 
 @operator
-def born_iteration(
-    field: Field, k_sq: Field, src: Field, *, k0, epsilon, params=None
-) -> FourierSeries:
+def born_iteration(field: Field,
+                   k_sq: Field,
+                   src: Field,
+                   *,
+                   k0,
+                   epsilon,
+                   params=None) -> FourierSeries:
     r"""Implements one step of the Convergente Born Series (CBS) method.
 
     ```math
@@ -374,9 +381,12 @@ def born_iteration(
 
 
 @operator
-def scattering_potential(
-    field: Field, k_sq: Field, *, k0=1.0, epsilon=0.1, params=None
-) -> Field:
+def scattering_potential(field: Field,
+                         k_sq: Field,
+                         *,
+                         k0=1.0,
+                         epsilon=0.1,
+                         params=None) -> Field:
     r"""Implements the scattering potential of the CBS method.
 
     Args:
@@ -395,9 +405,11 @@ def scattering_potential(
 
 
 @operator
-def homogeneous_helmholtz_green(
-    field: FourierSeries, *, k0=1.0, epsilon=0.1, params=None
-):
+def homogeneous_helmholtz_green(field: FourierSeries,
+                                *,
+                                k0=1.0,
+                                epsilon=0.1,
+                                params=None):
     r"""Implements the Green's operator for the homogeneous Helmholtz equation.
 
     Note that being the field a `FourierSeries`, the Green's function is periodic.
@@ -452,7 +464,7 @@ def rayleigh_integral(
     if pressure.ndim != 2:
         raise ValueError("Only 2D domains are supported.")
 
-    assert r.shape == (3,), "The target position must be a 3D vector."
+    assert r.shape == (3, ), "The target position must be a 3D vector."
 
     # Terms in the Rayleigh integral
     # See eq. A2 and A3 in https://asa.scitation.org/doi/10.1121/1.4928396
@@ -479,16 +491,15 @@ def rayleigh_integral(
     plane_grid = pressure.domain.grid
 
     # Append z dimension of zeros to the last dimension
-    z_dim = jnp.zeros(plane_grid.shape[:-1] + (1,))
+    z_dim = jnp.zeros(plane_grid.shape[:-1] + (1, ))
     plane_grid = jnp.concatenate((plane_grid, z_dim), axis=-1)
 
     # Distance from r to the plane
     R = jnp.abs(r - plane_grid)
 
     # Weights of the Rayleigh integral
-    weights = jax.vmap(jax.vmap(direc_exp_term, in_axes=(0, 0, 0)), in_axes=(0, 0, 0))(
-        R[..., 0], R[..., 1], R[..., 2]
-    )
+    weights = jax.vmap(jax.vmap(direc_exp_term, in_axes=(0, 0, 0)),
+                       in_axes=(0, 0, 0))(R[..., 0], R[..., 1], R[..., 2])
     return jnp.sum(weights * pressure.on_grid) * area, None
 
 
@@ -535,7 +546,8 @@ def helmholtz_solver(
     tol = kwargs["tol"] if "tol" in kwargs else 1e-3
     restart = kwargs["restart"] if "restart" in kwargs else 10
     maxiter = kwargs["maxiter"] if "maxiter" in kwargs else 1000
-    solve_method = kwargs["solve_method"] if "solve_method" in kwargs else "batched"
+    solve_method = kwargs[
+        "solve_method"] if "solve_method" in kwargs else "batched"
     if method == "gmres":
         out = gmres(
             helm_func,
@@ -564,7 +576,8 @@ def helmholtz_solver_verbose(
     source = source / src_magn
 
     tol = kwargs["tol"] if "tol" in kwargs else 1e-3
-    residual_magnitude = jnp.linalg.norm(helmholtz(source, medium, omega).params)
+    residual_magnitude = jnp.linalg.norm(
+        helmholtz(source, medium, omega).params)
     maxiter = kwargs["maxiter"] if "maxiter" in kwargs else 1000
 
     if params is None:
@@ -584,9 +597,13 @@ def helmholtz_solver_verbose(
 
     @jax.jit
     def solver(medium, guess, source):
-        guess = helmholtz_solver(
-            medium, omega, source, guess, "gmres", **kwargs, params=params
-        )
+        guess = helmholtz_solver(medium,
+                                 omega,
+                                 source,
+                                 guess,
+                                 "gmres",
+                                 **kwargs,
+                                 params=params)
         residual = helmholtz(guess, medium, omega, params=params) - source
         residual_magnitude = jnp.linalg.norm(residual.params)
         return guess, residual_magnitude

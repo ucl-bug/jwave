@@ -34,6 +34,7 @@ class CheckpointType(Enum):
 
 
 class ScanCheckpoint(object):
+
     def __init__(
         self,
         kind: CheckpointType = CheckpointType.NONE,
@@ -121,15 +122,16 @@ class ScanCheckpoint(object):
                 return jax.lax.scan(f, carry, x)
             else:
                 # Split the x
-                x_1 = x[: length // 2]
-                x_2 = x[length // 2 :]
+                x_1 = x[:length // 2]
+                x_2 = x[length // 2:]
 
                 # Run each in sequence, with appropriate carry
                 carry, y_1 = jax.checkpoint(dec_operation)(carry, x_1)
                 carry, y_2 = jax.checkpoint(dec_operation)(carry, x_2)
 
                 # Concatenate results
-                y = jax.tree_map(lambda x, y: jnp.concatenate([x, y]), y_1, y_2)
+                y = jax.tree_map(lambda x, y: jnp.concatenate([x, y]), y_1,
+                                 y_2)
                 return carry, y
 
         return dec_operation(init, xs)
@@ -162,22 +164,25 @@ class ScanCheckpoint(object):
             return jax.lax.scan(f, carry, x)
 
         # Split sequence
-        x_splitted = [xs[i : i + max_length] for i in range(0, len(xs), max_length)]
+        x_splitted = [
+            xs[i:i + max_length] for i in range(0, len(xs), max_length)
+        ]
 
         @jax.jit
         def scanned_fun(init):
             y = None
             carry = init
             for this_x in x_splitted:
-                carry, y_extra = jax.checkpoint(inner_scan_fun, static_argnums=(1,))(
-                    carry, this_x
-                )
+                carry, y_extra = jax.checkpoint(inner_scan_fun,
+                                                static_argnums=(1, ))(carry,
+                                                                      this_x)
 
                 # Append the
                 if y is None:
                     y = y_extra
                 else:
-                    y = jax.tree_map(lambda x, y: jnp.concatenate([x, y]), y, y_extra)
+                    y = jax.tree_map(lambda x, y: jnp.concatenate([x, y]), y,
+                                     y_extra)
             return carry, y
 
         return scanned_fun(init)
@@ -203,13 +208,13 @@ class ScanCheckpoint(object):
           A pair (final_carry, ys) where `ys[i] = f(...f(f(init, xs[0]), xs[1])..., xs[i])`.
         """
         func_map = {
-            CheckpointType.NONE: self.no_checkpoint_scan,
-            CheckpointType.STEP: partial(self.step_checkpoint_scan),
-            CheckpointType.DIVIDE_AND_CONQUER: partial(
-                self.dvide_and_conquer_scan, max_length=self.max_length
-            ),
-            CheckpointType.TREEVERSE: partial(
-                self.treeverse_scan, max_length=self.max_length
-            ),
+            CheckpointType.NONE:
+            self.no_checkpoint_scan,
+            CheckpointType.STEP:
+            partial(self.step_checkpoint_scan),
+            CheckpointType.DIVIDE_AND_CONQUER:
+            partial(self.dvide_and_conquer_scan, max_length=self.max_length),
+            CheckpointType.TREEVERSE:
+            partial(self.treeverse_scan, max_length=self.max_length),
         }
         return func_map[self.kind](f, init, xs)

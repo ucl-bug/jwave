@@ -216,7 +216,8 @@ def test_tvsp(test_name, use_plots=False):
     log_accuracy(test_name, maxErr)
 
     if use_plots:
-        plot_comparison(p_final, kwave_p_final, test_name, ["j-Wave", "k-Wave"])
+        plot_comparison(p_final, kwave_p_final, test_name,
+                        ["j-Wave", "k-Wave"])
         plt.show()
 
 
