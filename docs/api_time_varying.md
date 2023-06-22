@@ -12,7 +12,6 @@ where $u_\varepsilon$ is the velocity field for the $\varepsilon$ coordinate, $\
 
 {{ implementations('jwave.acoustics.time_varying', 'mass_conservation_rhs') }}
 
----
 
 ## `momentum_conservation_rhs`
 

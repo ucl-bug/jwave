@@ -32,6 +32,7 @@ Number = Union[float, int]
 class Medium:
     r"""
     Medium structure
+
     Attributes:
       domain (Domain): domain of the medium
       sound_speed (jnp.darray): speed of sound map, can be a scalar
@@ -40,6 +41,7 @@ class Medium:
       pml_size (int): size of the PML layer in grid-points
 
     !!! example
+
       ```python
       N = (128,356)
       medium = Medium(
@@ -49,6 +51,7 @@ class Medium:
         pml_size = 15
       )
       ```
+
     """
     domain: Domain
     sound_speed: Union[Number, Field] = 1.0
@@ -192,10 +195,13 @@ def _sphere_mask(N, radius, centre):
 @register_pytree_node_class
 class Sources:
     r"""Sources structure
+
     Attributes:
       positions (Tuple[List[int]): source positions
       signals (List[jnp.ndarray]): source signals
+
     !!! example
+
       ```python
       x_pos = [10,20,30,40]
       y_pos = [30,30,30,30]
@@ -355,10 +361,12 @@ class TimeHarmonicSource:
 @register_pytree_node_class
 class Sensors:
     r"""Sensors structure
+
     Attributes:
       positions (Tuple[List[int]]): sensors positions
 
     !!! example
+
       ```python
       x_pos = [10,20,30,40]
       y_pos = [30,30,30,30]
