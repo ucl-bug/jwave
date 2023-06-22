@@ -1,63 +1,75 @@
-# How to develop on this project
+# Contributing
 
-`jwave` welcomes contributions from the community.
+Contributions (pull requests) are very welcome! Here's how to get started.
 
-## Setting up your own fork of this repo.
+<br/>
 
-- On github interface click on `Fork` button.
-- Clone your fork of this repo. `git clone git@github.com:YOUR_GIT_USERNAME/jwave.git`
-- Enter the directory `cd jwave`
-- Add upstream repo `git remote add upstream https://github.com/ucl-bug/jwave`
+## Getting started
 
-## Install the project in develop mode
+First fork the library on GitHub. On github interface click on `Fork` button.
 
-Run `make install` to install the project in develop mode.
+Then clone and install the library in development mode:
 
-## Run the tests to ensure everything is working
+```bash
+git clone git@github.com:YOUR_GIT_USERNAME/jwave.git
+cd jwave
+pip install poetry
+poetry install
+```
 
-Run `make test` to run the tests.
+Then install the pre-commit hooks:
 
-## Create a new branch to work on your contribution
+```bash
+pip install pre-commit
+pre-commit install
+```
 
-Run `git checkout -b my_contribution`
+<br/>
 
-## Make your changes
+## If you're making changes to the code
 
-Edit the files using your preferred editor. (we recommend VIM or VSCode)
+Run `git checkout -b my_contribution` and make your changes. Make sure to include additional tests if necessary. It is great if you can increase the coverage in the coverage report 😃.
 
-## Run the linter
+Next verify the tests all pass.
 
-Run `make lint` to run the linter.
+```bash
+coverage run --source=jwave -m pytest -xvs
+```
 
-## Test your changes
+Since regression tests can take a long time to run, it is possible to initially only run unit and integration tests, using
 
-Run `make test` to run the tests.
+```bash
+coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
+```
 
-Add tests! It is great if you can increase the coverage in the coverage report 😃.
+Once you are happy with your changes, you can add an entry in the changelog using `kacl-cli`, for example
 
-## Build the docs locally
+```bash
+kacl-cli add fixed "Fixed the unfixable issue 🎉" --modify
+```
 
-Run `make docs` to build the docs.
+For more informations on the kind of changes that can be added to the changelog, see [this page](https://keepachangelog.com/en/1.0.0/).
 
-Ensure your new changes are documented.
+Then commit and push your changes back to your fork of the repository:
 
-## Commit your changes
+```bash
+git push
+```
 
-This project uses [conventional git commit messages](https://www.conventionalcommits.org/en/v1.0.0/).
-
-Example: `fix(package): update setup.py arguments 🎉` (emojis are fine too)
-
-## Push your changes to your fork
-
-Run `git push origin my_contribution`
-
-## Submit a pull request
-
-On github interface, click on `Pull Request` button.
+Finally, open a pull request on GitHub! On github interface, click on `Pull Request` button.
 
 Wait CI to run and one of the developers will review your PR.
-## Makefile utilities
 
-This project comes with a `Makefile` that contains a number of useful utility.
+<br/>
 
-Type `make help` to see the list of available commands.stanziola.antonio@gmail.com
+## If you're making changes to the documentation
+
+Make your changes. You can then build the documentation by doing
+
+```bash
+mkdocs serve
+```
+
+Note that this is going to take some time due to the way `operator`s are documented, please be patient.
+
+You can then see your local copy of the documentation by navigating to `localhost:8000` in a web browser.
