@@ -120,17 +120,17 @@ def apply_ramp(signal: Array,
                dt: float,
                center_freq: float,
                warmup_cycles: float = 3) -> Array:
-    r"""Processes the signal $`s(t)`$ as
+    r"""Processes the signal $s(t)$ as
 
-    ```math
+    $$
     s(t)\cdot \text{min}(1, f_0t/\sigma)
-    ```
+    $$
 
     Args:
         signal (jnp.ndarray): [description]
         dt (float): [description]
-        center_freq (float): $`f_0`$
-        warmup_cycles (float, optional): $`\sigma`$. Defaults to 3.
+        center_freq (float): $f_0$
+        warmup_cycles (float, optional): $\sigma$. Defaults to 3.
 
     Returns:
         jnp.ndarray: [description]
@@ -160,15 +160,15 @@ def gaussian_window(signal: Array, time: Array, mu: float,
                     sigma: float) -> Array:
     r"""Returns the gaussian window
 
-    ```math
+    $$
     s(t)\cdot \exp \left( - \frac{(t-\mu)^2}{\sigma^2} \right)
-    ```
+    $$
 
     Args:
-        signal (jnp.ndarray): $`s(t)`$
-        time (jnp.ndarray): $`t`$
-        mu (float): $`\mu`$
-        sigma (float): $`\sigma`$
+        signal (jnp.ndarray): $s(t)$
+        time (jnp.ndarray): $t$
+        mu (float): $\mu$
+        sigma (float): $\sigma$
 
     Returns:
         jnp.ndarray: [description]

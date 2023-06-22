@@ -63,7 +63,7 @@ def angular_spectrum(
 
 
     Args:
-        pressure (FourierSeries): omplex pressure values over the input plane $`[Pa]`$
+        pressure (FourierSeries): omplex pressure values over the input plane $[Pa]$
         z_pos (float): Specifies the relative z-position of the plane of projection.
         f0 (float): The frequency of the input plane.
         medium (Medium): Specifies the speed of sound, density and absorption in the medium.
@@ -355,9 +355,9 @@ def born_iteration(field: Field,
                    params=None) -> FourierSeries:
     r"""Implements one step of the Convergente Born Series (CBS) method.
 
-    ```math
+    $$
     u_{k+1} = u_k - \gamma\left[u_k - G(Vu_k + s)\right]
-    ```
+    $$
 
     where $\gamma = -(i/\varepsilon)V$. Here $V$ and $G$ are implemented by the
     `scattering_potential` and `homogeneous_helmholtz_green` operators.
@@ -446,7 +446,7 @@ def rayleigh_integral(
     Rayleigh integral for a `FourierSeries` field.
 
     Args:
-      pressure (FourierSeries): pressure field, corresponding to $`u`$ on the plane.
+      pressure (FourierSeries): pressure field, corresponding to $u$ on the plane.
       r (jnp.ndarray): distance from the origin of the pressure plane.
         Must be a 3D array.
       f0 (float): frequency of the source.

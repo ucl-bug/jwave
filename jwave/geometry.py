@@ -341,7 +341,7 @@ class TimeHarmonicSource:
 
     def on_grid(self, t=0.0):
         r"""Returns the complex field corresponding to the
-        sources distribution at time $`t`$.
+        sources distribution at time $t$.
         """
         return self.amplitude * jnp.exp(1j * self.omega * t)
 

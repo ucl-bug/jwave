@@ -251,7 +251,7 @@ def wavevector(u: Field, medium: Medium, *, omega=1.0, params=None) -> Field:
 
 @operator
 def helmholtz(u: Field, medium: Medium, *, omega=1.0, params=None) -> Field:
-    r"""Evaluates the Helmholtz operator on a field $`u`$ with a PML.
+    r"""Evaluates the Helmholtz operator on a field $u$ with a PML.
 
     Args:
       u (Field): Complex field.
@@ -272,7 +272,7 @@ def helmholtz(u: Field, medium: Medium, *, omega=1.0, params=None) -> Field:
 
 @operator
 def helmholtz(u: OnGrid, medium: Medium, *, omega=1.0, params=None) -> OnGrid:
-    r"""Evaluates the Helmholtz operator on a field $`u`$ with a PML. This
+    r"""Evaluates the Helmholtz operator on a field $u$ with a PML. This
     implementation exposes the laplacian parameters to the user.
 
     Args:

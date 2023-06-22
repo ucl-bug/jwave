@@ -70,9 +70,6 @@ plugins:
 markdown_extensions:
   - toc:
       toc_depth: 5
-  - markdown_katex:
-      no_inline_svg: True
-      insert_fonts_css: True
   - pymdownx.highlight
   - pymdownx.snippets
   - admonition
@@ -81,9 +78,13 @@ markdown_extensions:
 
 extra_css:
   - stylesheets/extra.css
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css
 
 extra_javascript:
-    - https://unpkg.com/mermaid/dist/mermaid.min.js
+  - javascripts/katex.js
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js
+  - https://unpkg.com/mermaid/dist/mermaid.min.js
 
 use_directory_urls: false
 
