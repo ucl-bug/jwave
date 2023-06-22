@@ -32,7 +32,7 @@ Follow the instructions to install [Jax with CUDA support](https://github.com/go
 Then, simply install `jwave` using pip
 
 ```bash
-pip install git+https://github.com/ucl-bug/jwave.git
+pip install jwave
 ```
 
 For more details, see the [Linux install guide](docs/install/on_linux.md).
