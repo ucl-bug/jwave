@@ -19,7 +19,7 @@ jobs:
         run: |
           make get_test_data
       - name: Running tests
-        run: coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
+        run: poetry run coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
       - name: "Upload coverage data for unit and integration tests"
         uses: actions/upload-artifact@v2
         with:
@@ -35,7 +35,7 @@ jobs:
         run: |
           make get_test_data
       - name: Running tests
-        run: coverage run --source=jwave -m pytest -xvs ./tests/regression_tests
+        run: poetry run coverage run --source=jwave -m pytest -xvs ./tests/regression_tests
       - name: "Upload coverage data for regression tests"
         uses: actions/upload-artifact@v2
         with:
