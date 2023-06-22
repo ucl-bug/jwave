@@ -10,58 +10,32 @@ on:
   workflow_dispatch:
 
 jobs:
-  unit_and_integration_tests:
+  test:
     strategy:
       matrix:
-        python-version: [3.11]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+        test-type: [
+          {
+            "name": "unit",
+            "args": "-xvs --ignore=tests/regression_tests"
+          },
+          {
+            "name": "regression",
+            "args": "-xvs ./tests/regression_tests"
+          }
+        ]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Making virtual environment, linting
-        run: |
-          make testenv
+      - uses: ./.github/actions/python-poetry-env
       - name: Downloading test data
         run: |
           make get_test_data
       - name: Running tests
-        run: |
-          source .venv/bin/activate
-          coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
-      - name: "Upload coverage data for unit and integration tests"
+        run: coverage run --source=jwave -m pytest ${{ matrix.test-type.args }}
+      - name: Upload coverage data
         uses: actions/upload-artifact@v2
         with:
-          name: coverage-unit
-          path: ./.coverage
-
-  regression_tests:
-    strategy:
-      matrix:
-        python-version: [3.11]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Making virtual environment, linting
-        run: |
-          make testenv
-      - name: Downloading test data
-        run: |
-          make get_test_data
-      - name: Running tests
-        run: |
-          source .venv/bin/activate
-          coverage run --source=jwave -m pytest -xvs ./tests/regression_tests
-      - name: "Upload coverage data for regression tests"
-        uses: actions/upload-artifact@v2
-        with:
-          name: coverage-regression
+          name: coverage-${{ matrix.test-type.name }}
           path: ./.coverage
 
   combine_coverage:
