@@ -16,7 +16,9 @@
 from typing import Dict, Tuple, TypeVar, Union
 
 import numpy as np
+from jax import checkpoint as jax_checkpoint
 from jax import numpy as jnp
+from jax.lax import scan
 from jaxdf import Field, operator
 from jaxdf.discretization import FourierSeries, Linear, OnGrid
 from jaxdf.operators import (diag_jacobian, functional, shift_operator,
@@ -26,7 +28,7 @@ from jwave.acoustics.spectral import kspace_op
 from jwave.geometry import (Medium, MediumAllScalars, MediumOnGrid, Sources,
                             TimeAxis)
 from jwave.signal_processing import smooth
-from jwave.transformations import CheckpointType, ScanCheckpoint
+from jwave.transformations import CheckpointType
 
 from .pml import td_pml_on_grid
 
@@ -429,8 +431,8 @@ def simulate_wave_propagation(
         p = pressure_from_density(rho, medium)
         return [p, u, rho], sensors(p, u, rho)
 
-    # Define the scanning function according to the checkpoint type
-    scan = ScanCheckpoint(checkpoint, max_unroll_checkpoint)
+    if checkpoint == CheckpointType.STEP:
+        scan_fun = jax_checkpoint(scan_fun)
 
     _, ys = scan(scan_fun, fields, output_steps)
 
@@ -587,7 +589,8 @@ def simulate_wave_propagation(
         return [p, u, rho], sensors(p, u, rho)
 
     # Define the scanning function according to the checkpoint type
-    scan = ScanCheckpoint(checkpoint, max_unroll_checkpoint)
+    if checkpoint == CheckpointType.STEP:
+        scan_fun = jax_checkpoint(scan_fun)
 
     _, ys = scan(scan_fun, fields, output_steps)
 

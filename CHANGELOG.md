@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 - updated for new `Array` type in `jax` 0.4.x
 
+### Changed
+- reverted checkpoint to only step checkpoints for time varying simulations. Soon jwave will use diffrax for advanced checkpointing
+
 ## [0.0.4] - 2022-11-04
 ### Added
 - Convergent Born series.
