@@ -51,6 +51,8 @@ nav:
       - Uncertainty propagation: notebooks/others/uncertainty_propagation.ipynb
   - Benchmarks:
     - Accuracy: test_reports/test_report.md
+  - Changelog: changelog.md
+
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:
@@ -60,8 +62,6 @@ plugins:
           rendering:
             show_source: false
       custom_templates: templates
-      watch:
-        - jwave
   - search
   - mermaid2
   - macros:
@@ -74,7 +74,7 @@ markdown_extensions:
       no_inline_svg: True
       insert_fonts_css: True
   - pymdownx.highlight
-
+  - pymdownx.snippets
   - admonition
   - attr_list
   - footnotes
@@ -86,3 +86,7 @@ extra_javascript:
     - https://unpkg.com/mermaid/dist/mermaid.min.js
 
 use_directory_urls: false
+
+# For mkdocstrings
+watch:
+  - jwave
