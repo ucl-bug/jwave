@@ -15,10 +15,15 @@
 
 import os
 
-import imageio
+try:
+    import imageio
+    from tqdm import trange
+except ImportError:
+    raise ImportError(
+        "Please install imageio and tqdm to use use the extras module.")
+
 import matplotlib.pyplot as plt
 from jaxdf import Field
-from tqdm import trange
 
 
 def save_video(

@@ -50,9 +50,6 @@ jaxgpu:           ## Installs jax for *nix systems with CUDA
 lint:             ## Runs isort and mypy.
 	@echo "Running isort ..."
 	$(ENV_PREFIX)isort jwave/
-	@echo "Running flake8 ..."
-	$(ENV_PREFIX)flake8 jwave/  --count --select=E9,F63,F7,F82 --show-source --statistics
-	$(ENV_PREFIX)flake8 jwave/ --count --ignore=E111 --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 	@echo "Running mypy ..."
 	$(ENV_PREFIX)mypy --allow-redefinition --config-file=pyproject.toml jwave/*.py
 

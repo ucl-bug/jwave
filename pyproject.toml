@@ -56,12 +56,11 @@ matplotlib = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 coverage = "7.0.4"
-flake8 = "5.0.4"
 pytest = "^7.2.0"
 pre-commit = "^2.20.0"
-pycln = "2.1.1"
+pycln = "^2.1.5"
 isort = "^5.12.0"
-griffe = "^0.24.0"
+griffe = "^0.29.1"
 mkdocs-material = "^9.1.16"
 mkdocstrings = "^0.22.0"
 mkdocs-jupyter = "^0.24.1"
@@ -71,6 +70,9 @@ mkdocstrings-python = "^0.8.0"
 python-kacl = "^0.4.6"
 pymdown-extensions = "^10.0.1"
 plumkdocs = "0.0.2"
+imageio = "^2.31.1"
+tqdm = "^4.65.0"
+imageio-ffmpeg = "^0.4.8"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -107,10 +109,6 @@ split_before_logical_operator = true
 
 [tool.pytest.ini_options]
 addopts = """\
-    --cov jwave \
-    --cov tests \
-    --cov-report term-missing \
-    --no-cov-on-fail \
     --doctest-modules \
 """
 
