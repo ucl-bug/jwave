@@ -17,6 +17,6 @@ jobs:
     - uses: ./.github/actions/python-poetry-env
     - name: Building docs
       run: |
-        mkdocs build
+        poetry run mkdocs build
     - name: Build documentation
-      run: mkdocs gh-deploy --force
+      run: poetry run mkdocs gh-deploy --force
