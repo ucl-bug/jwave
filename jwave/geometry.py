@@ -15,7 +15,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
@@ -103,18 +103,34 @@ class Medium:
             attr = getattr(self, pname)
             return f"{pname}: " + str(attr)
 
-        all_params = sorted(
-            ["domain", "sound_speed", "density", "attenuation", "pml_size"])
+        all_params = [
+            "domain", "sound_speed", "density", "attenuation", "pml_size"
+        ]
         strings = list(map(lambda x: show_param(x), all_params))
         return "Medium:\n - " + "\n - ".join(strings)
 
 
-def _points_on_circle(n,
-                      radius,
-                      centre,
-                      cast_int=True,
-                      angle=0.0,
-                      max_angle=2 * np.pi):
+def _points_on_circle(n: int,
+                      radius: float,
+                      centre: Tuple[float, float],
+                      cast_int: bool = True,
+                      angle: float = 0.0,
+                      max_angle: float = 2 * np.pi):
+    """
+    Generate points on a circle.
+
+    Args:
+    n (int): Number of points.
+    radius (float): Radius of the circle.
+    centre (tuple): Centre coordinates of the circle (x, y).
+    cast_int (bool, optional): If True, points will be rounded and converted to integers. Default is True.
+    angle (float, optional): Starting angle in radians. Default is 0.
+    max_angle (float, optional): Maximum angle to reach in radians. Default is 2*pi (full circle).
+
+    Returns:
+    x, y (tuple): Lists of x and y coordinates of the points.
+    """
+
     angles = np.linspace(0, max_angle, n, endpoint=False)
     x = (radius * np.cos(angles + angle) + centre[0]).tolist()
     y = (radius * np.sin(angles + angle) + centre[1]).tolist()
@@ -154,8 +170,22 @@ MediumOnGrid = Union[
 """A type for Medium objects that have at least one OnGrid component"""
 
 
-def _unit_fibonacci_sphere(samples=128):
-    # From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+def _unit_fibonacci_sphere(
+        samples: int = 128) -> List[Tuple[float, float, float]]:
+    """
+    Generate evenly distributed points on the surface
+    of a unit sphere using the Fibonacci Sphere method.
+
+    From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+
+    Args:
+    samples (int, optional): The number of points to generate.
+        Default is 128.
+
+    Returns:
+    points (list): A list of tuples representing the (x, y, z)
+        coordinates of the points on the sphere.
+    """
     points = []
     phi = math.pi * (3.0 - math.sqrt(5.0))    # golden angle in radians
     for i in range(samples):
@@ -168,7 +198,26 @@ def _unit_fibonacci_sphere(samples=128):
     return points
 
 
-def _fibonacci_sphere(n, radius, centre, cast_int=True):
+def _fibonacci_sphere(
+        n: int,
+        radius: float,
+        centre: Union[Tuple[float, float, float], np.ndarray],
+        cast_int: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Generate evenly distributed points on the surface of
+    a sphere using the Fibonacci Sphere method.
+
+    Args:
+    n (int): The number of points to generate.
+    radius (float): The radius of the sphere.
+    centre (tuple or np.ndarray): The (x, y, z) coordinates of
+        the center of the sphere.
+    cast_int (bool, optional): If True, points will be rounded
+        and converted to integers. Default is True.
+
+    Returns:
+    x, y, z (tuple): The x, y, and z coordinates of the points on the sphere.
+    """
     points = _unit_fibonacci_sphere(n)
     points = np.array(points)
     points = points * radius + centre
