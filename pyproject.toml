@@ -106,10 +106,6 @@ split_before_logical_operator = true
 
 [tool.pytest.ini_options]
 addopts = """\
-    --cov jwave \
-    --cov tests \
-    --cov-report term-missing \
-    --no-cov-on-fail \
     --doctest-modules \
 """
 
