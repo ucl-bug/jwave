@@ -10,19 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        test-type: [
-          {
-            "name": "unit",
-            "args": "-xvs --ignore=tests/regression_tests"
-          },
-          {
-            "name": "regression",
-            "args": "-xvs ./tests/regression_tests"
-          }
-        ]
+  unit_and_integration_tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,11 +19,27 @@ jobs:
         run: |
           make get_test_data
       - name: Running tests
-        run: coverage run --source=jwave -m pytest ${{ matrix.test-type.args }}
-      - name: Upload coverage data
+        run: coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
+      - name: "Upload coverage data for unit and integration tests"
         uses: actions/upload-artifact@v2
         with:
-          name: coverage-${{ matrix.test-type.name }}
+          name: coverage-unit
+          path: ./.coverage
+
+  regression_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/python-poetry-env
+      - name: Downloading test data
+        run: |
+          make get_test_data
+      - name: Running tests
+        run: coverage run --source=jwave -m pytest -xvs ./tests/regression_tests
+      - name: "Upload coverage data for regression tests"
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-regression
           path: ./.coverage
 
   combine_coverage:
