@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jwave"
-version = "0.1.0"
+version = "0.0.4"
 description = "Fast and differentiable acoustic simulations in JAX."
 authors = [
   "Antonio Stanziola <a.stanziola@ucl.ac.uk>",
@@ -29,7 +29,8 @@ classifiers=[
   "Environment :: GPU :: NVIDIA CUDA :: 11.6",
   "Environment :: GPU :: NVIDIA CUDA :: 11.7",
   "Environment :: GPU :: NVIDIA CUDA :: 11.8",
-  "Environment :: GPU :: NVIDIA CUDA :: 12.0",
+  "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.0",
+  "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.1",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Physics",
