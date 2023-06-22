@@ -53,6 +53,7 @@ def _get_homog_density(domain):
 
 
 def _homog_attenuation_constructor(value=0.1):
+
     def _att_setter(domain):
         return value
 
@@ -60,6 +61,7 @@ def _homog_attenuation_constructor(value=0.1):
 
 
 def heterog_attenuation_constructor(value=0.1):
+
     def _att_setter(domain):
         att = np.zeros(domain.N)
         att[30:90, 64:100] = value
@@ -83,7 +85,8 @@ def _test_setter(
     k_ref=1e3,
 ):
     dx = tuple([dx] * len(N))
-    assert len(N) == len(src_location), "src_location must have same length as N"
+    assert len(N) == len(
+        src_location), "src_location must have same length as N"
     return {
         "N": N,
         "dx": dx,
@@ -167,7 +170,8 @@ def test_cbs(test_name, use_plots=False, reset_mat_file=False):
     solution_field = run_simulation(src_field).on_grid[:, :, 0]
 
     # Generate the matlab results if they don't exist
-    if not os.path.isfile(dir_path + "/kwave_data/" + matfile) or reset_mat_file:
+    if not os.path.isfile(dir_path + "/kwave_data/" +
+                          matfile) or reset_mat_file:
         print("Generating matlab results")
 
         if isinstance(sound_speed, FourierSeries):
@@ -229,9 +233,7 @@ def test_cbs(test_name, use_plots=False, reset_mat_file=False):
     print("Test name: " + test_name)
     print("  Relative max error = ", 100 * relErr, "%")
     assert relErr < settings["rel_err"], (
-        "Test failed, error above maximum limit of "
-        + str(100 * settings["rel_err"])
-        + "%"
-    )
+        "Test failed, error above maximum limit of " +
+        str(100 * settings["rel_err"]) + "%")
 
     log_accuracy(test_name, relErr)

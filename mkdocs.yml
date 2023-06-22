@@ -5,14 +5,51 @@ site_description: >-
   Fast and differentiable acoustic simulations in JAX
 site_url: https://ucl-bug.github.io/jwave/
 
+# Github info
+repo_name: ucl-bug/jwave
+repo_url: https://github.com/ucl-bug/jwave
+
 theme:
   name: "material"
+
   features:
-    - navigation.tabs
-    - navigation.instant
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
     - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+
   palette:
-    primary: blue gray
+    - scheme: default
+      primary: red
+      accent: red
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: red
+      accent: red
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  font:
+    text: Roboto
+    code: Roboto Mono
+
   logo: assets/images/jwave_logo.png
 
 nav:
@@ -51,6 +88,20 @@ nav:
       - Uncertainty propagation: notebooks/others/uncertainty_propagation.ipynb
   - Benchmarks:
     - Accuracy: test_reports/test_report.md
+  - Changelog: changelog.md
+
+# Customization
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ucl-bug/jwave
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/jwave/
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/UCL_Ultrasound
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/VtUb4fFznt
+
 plugins:
   - mkdocs-jupyter
   - mkdocstrings:
@@ -60,8 +111,6 @@ plugins:
           rendering:
             show_source: false
       custom_templates: templates
-      watch:
-        - jwave
   - search
   - mermaid2
   - macros:
@@ -70,19 +119,26 @@ plugins:
 markdown_extensions:
   - toc:
       toc_depth: 5
-  - markdown_katex:
-      no_inline_svg: True
-      insert_fonts_css: True
   - pymdownx.highlight
-
+  - pymdownx.snippets
   - admonition
   - attr_list
   - footnotes
+  - pymdownx.details      # For collapsible admonitions
+  - pymdownx.superfences
 
 extra_css:
   - stylesheets/extra.css
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css
 
 extra_javascript:
-    - https://unpkg.com/mermaid/dist/mermaid.min.js
+  - javascripts/katex.js
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js
+  - https://unpkg.com/mermaid/dist/mermaid.min.js
 
 use_directory_urls: false
+
+# For mkdocstrings
+watch:
+  - jwave

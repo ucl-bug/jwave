@@ -15,7 +15,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
@@ -32,6 +32,7 @@ Number = Union[float, int]
 class Medium:
     r"""
     Medium structure
+
     Attributes:
       domain (Domain): domain of the medium
       sound_speed (jnp.darray): speed of sound map, can be a scalar
@@ -40,6 +41,7 @@ class Medium:
       pml_size (int): size of the PML layer in grid-points
 
     !!! example
+
       ```python
       N = (128,356)
       medium = Medium(
@@ -49,6 +51,7 @@ class Medium:
         pml_size = 15
       )
       ```
+
     """
     domain: Domain
     sound_speed: Union[Number, Field] = 1.0
@@ -56,9 +59,12 @@ class Medium:
     attenuation: Union[Number, Field] = 0.0
     pml_size: Number = 20.0
 
-    def __init__(
-        self, domain, sound_speed=1.0, density=1.0, attenuation=0.0, pml_size=20
-    ):
+    def __init__(self,
+                 domain,
+                 sound_speed=1.0,
+                 density=1.0,
+                 attenuation=0.0,
+                 pml_size=20):
         # Check that all domains are the same
         for field in [sound_speed, density, attenuation]:
             if isinstance(field, Field):
@@ -92,18 +98,39 @@ class Medium:
         return self.__repr__()
 
     def __repr__(self) -> str:
+
         def show_param(pname):
             attr = getattr(self, pname)
             return f"{pname}: " + str(attr)
 
-        all_params = sorted(
-            ["domain", "sound_speed", "density", "attenuation", "pml_size"]
-        )
+        all_params = [
+            "domain", "sound_speed", "density", "attenuation", "pml_size"
+        ]
         strings = list(map(lambda x: show_param(x), all_params))
         return "Medium:\n - " + "\n - ".join(strings)
 
 
-def _points_on_circle(n, radius, centre, cast_int=True, angle=0.0, max_angle=2 * np.pi):
+def _points_on_circle(n: int,
+                      radius: float,
+                      centre: Tuple[float, float],
+                      cast_int: bool = True,
+                      angle: float = 0.0,
+                      max_angle: float = 2 * np.pi):
+    """
+    Generate points on a circle.
+
+    Args:
+    n (int): Number of points.
+    radius (float): Radius of the circle.
+    centre (tuple): Centre coordinates of the circle (x, y).
+    cast_int (bool, optional): If True, points will be rounded and converted to integers. Default is True.
+    angle (float, optional): Starting angle in radians. Default is 0.
+    max_angle (float, optional): Maximum angle to reach in radians. Default is 2*pi (full circle).
+
+    Returns:
+    x, y (tuple): Lists of x and y coordinates of the points.
+    """
+
     angles = np.linspace(0, max_angle, n, endpoint=False)
     x = (radius * np.cos(angles + angle) + centre[0]).tolist()
     y = (radius * np.sin(angles + angle) + centre[1]).tolist()
@@ -120,7 +147,9 @@ class MediumType(Medium):
 
 @type_of.dispatch
 def type_of(m: Medium):
-    return MediumType[type(m.sound_speed), type(m.density), type(m.attenuation)]
+    return MediumType[type(m.sound_speed),
+                      type(m.density),
+                      type(m.attenuation)]
 
 
 MediumAllScalars = MediumType[object, object, object]
@@ -141,21 +170,54 @@ MediumOnGrid = Union[
 """A type for Medium objects that have at least one OnGrid component"""
 
 
-def _unit_fibonacci_sphere(samples=128):
-    # From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+def _unit_fibonacci_sphere(
+        samples: int = 128) -> List[Tuple[float, float, float]]:
+    """
+    Generate evenly distributed points on the surface
+    of a unit sphere using the Fibonacci Sphere method.
+
+    From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+
+    Args:
+    samples (int, optional): The number of points to generate.
+        Default is 128.
+
+    Returns:
+    points (list): A list of tuples representing the (x, y, z)
+        coordinates of the points on the sphere.
+    """
     points = []
-    phi = math.pi * (3.0 - math.sqrt(5.0))  # golden angle in radians
+    phi = math.pi * (3.0 - math.sqrt(5.0))    # golden angle in radians
     for i in range(samples):
-        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
-        radius = math.sqrt(1 - y * y)  # radius at y
-        theta = phi * i  # golden angle increment
+        y = 1 - (i / float(samples - 1)) * 2    # y goes from 1 to -1
+        radius = math.sqrt(1 - y * y)    # radius at y
+        theta = phi * i    # golden angle increment
         x = math.cos(theta) * radius
         z = math.sin(theta) * radius
         points.append((x, y, z))
     return points
 
 
-def _fibonacci_sphere(n, radius, centre, cast_int=True):
+def _fibonacci_sphere(
+        n: int,
+        radius: float,
+        centre: Union[Tuple[float, float, float], np.ndarray],
+        cast_int: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Generate evenly distributed points on the surface of
+    a sphere using the Fibonacci Sphere method.
+
+    Args:
+    n (int): The number of points to generate.
+    radius (float): The radius of the sphere.
+    centre (tuple or np.ndarray): The (x, y, z) coordinates of
+        the center of the sphere.
+    cast_int (bool, optional): If True, points will be rounded
+        and converted to integers. Default is True.
+
+    Returns:
+    x, y, z (tuple): The x, y, and z coordinates of the points on the sphere.
+    """
     points = _unit_fibonacci_sphere(n)
     points = np.array(points)
     points = points * radius + centre
@@ -165,17 +227,16 @@ def _fibonacci_sphere(n, radius, centre, cast_int=True):
 
 
 def _circ_mask(N, radius, centre):
-    x, y = np.mgrid[0 : N[0], 0 : N[1]]
-    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
+    x, y = np.mgrid[0:N[0], 0:N[1]]
+    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
 
 def _sphere_mask(N, radius, centre):
-    x, y, z = np.mgrid[0 : N[0], 0 : N[1], 0 : N[2]]
-    dist_from_centre = np.sqrt(
-        (x - centre[0]) ** 2 + (y - centre[1]) ** 2 + (z - centre[2]) ** 2
-    )
+    x, y, z = np.mgrid[0:N[0], 0:N[1], 0:N[2]]
+    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2 +
+                               (z - centre[2])**2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
@@ -183,10 +244,13 @@ def _sphere_mask(N, radius, centre):
 @register_pytree_node_class
 class Sources:
     r"""Sources structure
+
     Attributes:
       positions (Tuple[List[int]): source positions
       signals (List[jnp.ndarray]): source signals
+
     !!! example
+
       ```python
       x_pos = [10,20,30,40]
       y_pos = [30,30,30,30]
@@ -263,7 +327,7 @@ class DistributedTransducer:
 
     def tree_flatten(self):
         children = (self.mask, self.signal, self.dt)
-        aux = (self.domain,)
+        aux = (self.domain, )
         return (children, aux)
 
     @classmethod
@@ -296,7 +360,10 @@ class DistributedTransducer:
         return signal * self.mask
 
 
-def get_line_transducer(domain, position, width, angle=0) -> DistributedTransducer:
+def get_line_transducer(domain,
+                        position,
+                        width,
+                        angle=0) -> DistributedTransducer:
     r"""
     Construct a line transducer (2D)
     """
@@ -329,7 +396,7 @@ class TimeHarmonicSource:
 
     def on_grid(self, t=0.0):
         r"""Returns the complex field corresponding to the
-        sources distribution at time $`t`$.
+        sources distribution at time $t$.
         """
         return self.amplitude * jnp.exp(1j * self.omega * t)
 
@@ -343,10 +410,12 @@ class TimeHarmonicSource:
 @register_pytree_node_class
 class Sensors:
     r"""Sensors structure
+
     Attributes:
       positions (Tuple[List[int]]): sensors positions
 
     !!! example
+
       ```python
       x_pos = [10,20,30,40]
       y_pos = [30,30,30,30]
@@ -361,7 +430,7 @@ class Sensors:
 
     def tree_flatten(self):
         children = None
-        aux = (self.positions,)
+        aux = (self.positions, )
         return (children, aux)
 
     @classmethod
@@ -391,15 +460,15 @@ class Sensors:
         if len(self.positions) == 1:
             return p.on_grid[self.positions[0]]
         elif len(self.positions) == 2:
-            return p.on_grid[self.positions[0], self.positions[1]]  # type: ignore
+            return p.on_grid[self.positions[0],
+                             self.positions[1]]    # type: ignore
         elif len(self.positions) == 3:
-            return p.on_grid[self.positions[0], self.positions[1], self.positions[2]]  # type: ignore
+            return p.on_grid[self.positions[0], self.positions[1],
+                             self.positions[2]]    # type: ignore
         else:
             raise ValueError(
-                "Sensors positions must be 1, 2 or 3 dimensional. Not {}".format(
-                    len(self.positions)
-                )
-            )
+                "Sensors positions must be 1, 2 or 3 dimensional. Not {}".
+                format(len(self.positions)))
 
 
 @register_pytree_node_class
@@ -419,7 +488,7 @@ class TimeAxis:
         self.t_end = t_end
 
     def tree_flatten(self):
-        children = (None,)
+        children = (None, )
         aux = (self.dt, self.t_end)
         return (children, aux)
 
@@ -449,9 +518,11 @@ class TimeAxis:
               it is automatically calculated as the time required to travel
               from one corner of the domain to the opposite one.
         """
-        dt = cfl * min(medium.domain.dx) / functional(medium.sound_speed)(np.max)
+        dt = cfl * min(medium.domain.dx) / functional(medium.sound_speed)(
+            np.max)
         if t_end is None:
             t_end = np.sqrt(
-                sum((x[-1] - x[0]) ** 2 for x in medium.domain.spatial_axis)
-            ) / functional(medium.sound_speed)(np.min)
+                sum((x[-1] - x[0])**2
+                    for x in medium.domain.spatial_axis)) / functional(
+                        medium.sound_speed)(np.min)
         return TimeAxis(dt=float(dt), t_end=float(t_end))

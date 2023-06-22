@@ -24,6 +24,7 @@ THIS_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_REPORT_DATA = THIS_PATH + "/../docs/test_reports/test_data.txt"
 TEST_REPORT_FILE = THIS_PATH + "/../docs/test_reports/test_report.md"
 
+
 # each test runs on cwd to its temp dir
 @pytest.fixture(autouse=True)
 def go_to_tmpdir(request):
@@ -60,10 +61,10 @@ def pytest_sessionfinish(session, exitstatus):
     open(TEST_REPORT_FILE, "w").close()
 
     if len(test_data) > 0:
-        results = [
-            {"test name": x.split("\t")[0], "Accuracy": float(x.split("\t")[1])}
-            for x in test_data
-        ]
+        results = [{
+            "test name": x.split("\t")[0],
+            "Accuracy": float(x.split("\t")[1])
+        } for x in test_data]
 
         # Sort results by accuracy
         results = sorted(results, key=lambda x: x["Accuracy"], reverse=True)

@@ -11,10 +11,11 @@ def kspace_op(
     r"""Returns the k-space operator for the given domain and reference
     speed of sound. The operator is defined as
 
-    ```math
+    $$
     \kappa = \text{sinc}(c_{ref}k\Delta t/2)
-    ```
-    where $`k`$ is the wavenumber and $`\Delta t`$ is the time step.
+    $$
+
+    where $k$ is the wavenumber and $\Delta t$ is the time step.
 
     Args:
       domain (Domain): The domain to get the k-space operator for.
@@ -24,6 +25,7 @@ def kspace_op(
     Returns:
       jnp.ndarray: The k-space operator.
     """
+
     # Get the frequency axis manually, since we
     # are nor using the rFFT
     # TODO: Implement operators with rFFT

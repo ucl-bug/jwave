@@ -25,6 +25,7 @@ from jwave.geometry import Domain, Medium, TimeAxis
 
 
 def _uniform_field(value):
+
     def _initialize_uniform(domain):
         u = jnp.ones(domain.N) * value
         u = jnp.expand_dims(u, -1)
@@ -35,6 +36,7 @@ def _uniform_field(value):
 
 
 def _get_value(value):
+
     def _initialize_value(domain):
         return value
 
@@ -65,9 +67,10 @@ def test_jit_simulate_wave_propagation(N, c0, rho0):
     p0 = device_put(p0, device=cpu)
 
     # Initialize simulation parameters
-    medium = Medium(
-        domain=domain, sound_speed=sound_speed, density=density, pml_size=10
-    )
+    medium = Medium(domain=domain,
+                    sound_speed=sound_speed,
+                    density=density,
+                    pml_size=10)
     time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=2e-6)
 
     # Run simulation

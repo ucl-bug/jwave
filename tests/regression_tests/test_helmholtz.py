@@ -20,9 +20,8 @@ def _make_filename(N, dx, sound_speed, density, attenuation, omega):
         DIR_PATH,
         "..",
         "regression_data",
-        f"helmholtz_{N}_{dx}_{sound_speed}_{density}_{attenuation}_{omega}.mat".replace(
-            " ", "_"
-        ),
+        f"helmholtz_{N}_{dx}_{sound_speed}_{density}_{attenuation}_{omega}.mat"
+        .replace(" ", "_"),
     )
 
 
@@ -72,9 +71,13 @@ def _get_attenuation(kind, domain):
 @pytest.mark.parametrize("density", ["scalar", "heterogeneous"])
 @pytest.mark.parametrize("attenuation", ["scalar", "heterogeneous"])
 @pytest.mark.parametrize("omega", [1.5e6])
-def test_regression_helmholtz(
-    N, dx, sound_speed, density, attenuation, omega, reset_regression_data=False
-):
+def test_regression_helmholtz(N,
+                              dx,
+                              sound_speed,
+                              density,
+                              attenuation,
+                              omega,
+                              reset_regression_data=False):
     # Setting up simulation
     dx = tuple([dx] * len(N))
     domain = Domain(N, dx)
@@ -122,7 +125,5 @@ def test_regression_helmholtz(
     print("  Relative max error = ", 100 * relErr, "%")
 
     assert relErr < RELATIVE_TOLERANCE, (
-        "Test failed, error above maximum limit of "
-        + str(100 * RELATIVE_TOLERANCE)
-        + "%"
-    )
+        "Test failed, error above maximum limit of " +
+        str(100 * RELATIVE_TOLERANCE) + "%")

@@ -30,6 +30,7 @@ time_axis = TimeAxis.from_medium(medium, cfl=0.3, t_end=0.8e-05)
 p0 = load_image_to_numpy("docs/assets/images/jwave.png", image_size=N) / 255.0
 p0 = FourierSeries(p0, domain)
 
+
 # Compile and run the simulation
 @jit
 def solver(medium, p0):

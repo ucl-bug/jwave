@@ -16,26 +16,19 @@
 from typing import Dict, Tuple, TypeVar, Union
 
 import numpy as np
+from jax import checkpoint as jax_checkpoint
 from jax import numpy as jnp
+from jax.lax import scan
 from jaxdf import Field, operator
 from jaxdf.discretization import FourierSeries, Linear, OnGrid
-from jaxdf.operators import (
-    diag_jacobian,
-    functional,
-    shift_operator,
-    sum_over_dims,
-)
+from jaxdf.operators import (diag_jacobian, functional, shift_operator,
+                             sum_over_dims)
 
 from jwave.acoustics.spectral import kspace_op
-from jwave.geometry import (
-    Medium,
-    MediumAllScalars,
-    MediumOnGrid,
-    Sources,
-    TimeAxis,
-)
+from jwave.geometry import (Medium, MediumAllScalars, MediumOnGrid, Sources,
+                            TimeAxis)
 from jwave.signal_processing import smooth
-from jwave.transformations import CheckpointType, ScanCheckpoint
+from jwave.transformations import CheckpointType
 
 from .pml import td_pml_on_grid
 
@@ -50,8 +43,7 @@ def _shift_rho(rho0, direction, dx):
             return 0.5 * (jnp.roll(u, -direction, axis) + u)
 
         rho0 = jnp.stack(
-            [linear_interp(rho0_params, n) for n in range(rho0.ndim)], axis=-1
-        )
+            [linear_interp(rho0_params, n) for n in range(rho0.ndim)], axis=-1)
     elif isinstance(rho0, Field):
         rho0 = shift_operator(rho0, direction * dx)
     else:
@@ -60,9 +52,13 @@ def _shift_rho(rho0, direction, dx):
 
 
 @operator
-def momentum_conservation_rhs(
-    p: OnGrid, u: OnGrid, medium: Medium, *, c_ref=1.0, dt=1.0, params=None
-) -> OnGrid:
+def momentum_conservation_rhs(p: OnGrid,
+                              u: OnGrid,
+                              medium: Medium,
+                              *,
+                              c_ref=1.0,
+                              dt=1.0,
+                              params=None) -> OnGrid:
     r"""Staggered implementation of the momentum conservation equation.
 
     Args:
@@ -120,7 +116,8 @@ def momentum_conservation_rhs(
     k_space_op = params["k_space_op"]
 
     shift_and_k_op = [
-        1j * k * jnp.exp(1j * k * direction * delta / 2) for k, delta in zip(k_vec, dx)
+        1j * k * jnp.exp(1j * k * direction * delta / 2)
+        for k, delta in zip(k_vec, dx)
     ]
 
     p_params = p.params[..., 0]
@@ -139,9 +136,14 @@ def momentum_conservation_rhs(
 
 
 @operator
-def mass_conservation_rhs(
-    p: OnGrid, u: OnGrid, mass_source: object, medium: Medium, *, c_ref, dt, params=None
-) -> OnGrid:
+def mass_conservation_rhs(p: OnGrid,
+                          u: OnGrid,
+                          mass_source: object,
+                          medium: Medium,
+                          *,
+                          c_ref,
+                          dt,
+                          params=None) -> OnGrid:
     r"""Implementation of the mass conservation equation. The pressure field
     is assumed to be staggered forward for each component, and will be staggered
     backward before being multiplied by the ambient density.
@@ -210,7 +212,8 @@ def mass_conservation_rhs(
 
     # Add shift to k vector
     shift_and_k_op = [
-        1j * k * jnp.exp(1j * k * direction * delta / 2) for k, delta in zip(k_vec, dx)
+        1j * k * jnp.exp(1j * k * direction * delta / 2)
+        for k, delta in zip(k_vec, dx)
     ]
 
     def single_grad(axis, u):
@@ -220,8 +223,10 @@ def mass_conservation_rhs(
         iku = jnp.moveaxis(Fx * shift_and_k_op[axis] * k_op, -1, axis)
         return jnp.fft.ifftn(iku).real
 
-    du = jnp.stack([single_grad(i, u.params[..., i]) for i in range(p.ndim)], axis=-1)
-    update = -p.replace_params(du) * rho0 + 2 * mass_source / (c0 * p.ndim * dx)
+    du = jnp.stack([single_grad(i, u.params[..., i]) for i in range(p.ndim)],
+                   axis=-1)
+    update = -p.replace_params(du) * rho0 + 2 * mass_source / (c0 * p.ndim *
+                                                               dx)
 
     return update, params
 
@@ -251,8 +256,7 @@ def ongrid_wave_prop_params(
 ):
     # Check which elements of medium are a field
     x = [
-        x
-        for x in [medium.sound_speed, medium.density, medium.attenuation]
+        x for x in [medium.sound_speed, medium.density, medium.attenuation]
         if isinstance(x, Field)
     ][0]
 
@@ -261,9 +265,11 @@ def ongrid_wave_prop_params(
 
     # Making PML on grid for rho and u
     def make_pml(staggering=0.0):
-        pml_grid = td_pml_on_grid(
-            medium, dt, c0=c_ref, dx=medium.domain.dx[0], coord_shift=staggering
-        )
+        pml_grid = td_pml_on_grid(medium,
+                                  dt,
+                                  c0=c_ref,
+                                  dx=medium.domain.dx[0],
+                                  coord_shift=staggering)
         pml = x.replace_params(pml_grid)
         return pml
 
@@ -373,18 +379,12 @@ def simulate_wave_propagation(
     pml_u = params["pml_u"]
 
     # Initialize variables
-    shape = tuple(
-        list(medium.domain.N)
-        + [
-            len(medium.domain.N),
-        ]
-    )
-    shape_one = tuple(
-        list(medium.domain.N)
-        + [
-            1,
-        ]
-    )
+    shape = tuple(list(medium.domain.N) + [
+        len(medium.domain.N),
+    ])
+    shape_one = tuple(list(medium.domain.N) + [
+        1,
+    ])
     if u0 is None:
         u0 = pml_u.replace_params(jnp.zeros(shape))
     else:
@@ -398,15 +398,13 @@ def simulate_wave_propagation(
             p0 = p0.replace_params(p0_params)
 
         # Force u(t=0) to be zero accounting for time staggered grid
-        u0 = -dt * momentum_conservation_rhs(p0, u0, medium, c_ref=c_ref, dt=dt) / 2
+        u0 = -dt * momentum_conservation_rhs(
+            p0, u0, medium, c_ref=c_ref, dt=dt) / 2
 
     # Initialize acoustic density
-    rho = (
-        p0.replace_params(
-            jnp.stack([p0.params[..., i] for i in range(p0.ndim)], axis=-1)
-        )
-        / p0.ndim
-    )
+    rho = (p0.replace_params(
+        jnp.stack([p0.params[..., i]
+                   for i in range(p0.ndim)], axis=-1)) / p0.ndim)
     rho = rho / (medium.sound_speed**2)
 
     # define functions to integrate
@@ -422,14 +420,19 @@ def simulate_wave_propagation(
         du = momentum_conservation_rhs(p, u, medium, c_ref=c_ref, dt=dt)
         u = pml_u * (pml_u * u + dt * du)
 
-        drho = mass_conservation_rhs(p, u, mass_src_field, medium, c_ref=c_ref, dt=dt)
+        drho = mass_conservation_rhs(p,
+                                     u,
+                                     mass_src_field,
+                                     medium,
+                                     c_ref=c_ref,
+                                     dt=dt)
         rho = pml_rho * (pml_rho * rho + dt * drho)
 
         p = pressure_from_density(rho, medium)
         return [p, u, rho], sensors(p, u, rho)
 
-    # Define the scanning function according to the checkpoint type
-    scan = ScanCheckpoint(checkpoint, max_unroll_checkpoint)
+    if checkpoint == CheckpointType.STEP:
+        scan_fun = jax_checkpoint(scan_fun)
 
     _, ys = scan(scan_fun, fields, output_steps)
 
@@ -447,9 +450,11 @@ def fourier_wave_prop_params(
 
     # Making PML on grid for rho and u
     def make_pml(staggering=0.0):
-        pml_grid = td_pml_on_grid(
-            medium, dt, c0=c_ref, dx=medium.domain.dx[0], coord_shift=staggering
-        )
+        pml_grid = td_pml_on_grid(medium,
+                                  dt,
+                                  c0=c_ref,
+                                  dx=medium.domain.dx[0],
+                                  coord_shift=staggering)
         pml = FourierSeries(pml_grid, medium.domain)
         return pml
 
@@ -525,18 +530,12 @@ def simulate_wave_propagation(
     pml_u = params["pml_u"]
 
     # Initialize variables
-    shape = tuple(
-        list(medium.domain.N)
-        + [
-            len(medium.domain.N),
-        ]
-    )
-    shape_one = tuple(
-        list(medium.domain.N)
-        + [
-            1,
-        ]
-    )
+    shape = tuple(list(medium.domain.N) + [
+        len(medium.domain.N),
+    ])
+    shape_one = tuple(list(medium.domain.N) + [
+        1,
+    ])
     if u0 is None:
         u0 = pml_u.replace_params(jnp.zeros(shape))
     else:
@@ -550,21 +549,13 @@ def simulate_wave_propagation(
             p0 = p0.replace_params(p0_params)
 
         # Force u(t=0) to be zero accounting for time staggered grid
-        u0 = (
-            -dt
-            * momentum_conservation_rhs(
-                p0, u0, medium, c_ref=c_ref, dt=dt, params=params["fourier"]
-            )
-            / 2
-        )
+        u0 = (-dt * momentum_conservation_rhs(
+            p0, u0, medium, c_ref=c_ref, dt=dt, params=params["fourier"]) / 2)
 
     # Initialize acoustic density
-    rho = (
-        p0.replace_params(
-            jnp.stack([p0.params[..., i] for i in range(p0.ndim)], axis=-1)
-        )
-        / p0.ndim
-    )
+    rho = (p0.replace_params(
+        jnp.stack([p0.params[..., i]
+                   for i in range(p0.ndim)], axis=-1)) / p0.ndim)
     rho = rho / (medium.sound_speed**2)
 
     # define functions to integrate
@@ -577,21 +568,29 @@ def simulate_wave_propagation(
         else:
             mass_src_field = sources.on_grid(n)
 
-        du = momentum_conservation_rhs(
-            p, u, medium, c_ref=c_ref, dt=dt, params=params["fourier"]
-        )
+        du = momentum_conservation_rhs(p,
+                                       u,
+                                       medium,
+                                       c_ref=c_ref,
+                                       dt=dt,
+                                       params=params["fourier"])
         u = pml_u * (pml_u * u + dt * du)
 
-        drho = mass_conservation_rhs(
-            p, u, mass_src_field, medium, c_ref=c_ref, dt=dt, params=params["fourier"]
-        )
+        drho = mass_conservation_rhs(p,
+                                     u,
+                                     mass_src_field,
+                                     medium,
+                                     c_ref=c_ref,
+                                     dt=dt,
+                                     params=params["fourier"])
         rho = pml_rho * (pml_rho * rho + dt * drho)
 
         p = pressure_from_density(rho, medium)
         return [p, u, rho], sensors(p, u, rho)
 
     # Define the scanning function according to the checkpoint type
-    scan = ScanCheckpoint(checkpoint, max_unroll_checkpoint)
+    if checkpoint == CheckpointType.STEP:
+        scan_fun = jax_checkpoint(scan_fun)
 
     _, ys = scan(scan_fun, fields, output_steps)
 

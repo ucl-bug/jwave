@@ -55,7 +55,7 @@ def _test_setter(
 
 def set_source(source_kind, domain):
     if source_kind == "disk":
-        r = 20e-3  # domain.dx[0]*domain.N[0]/4
+        r = 20e-3    # domain.dx[0]*domain.N[0]/4
         x, y = domain.spatial_axis
         X, Y = jnp.meshgrid(x, y)
         R = jnp.sqrt(X**2 + Y**2)
@@ -67,7 +67,8 @@ def set_source(source_kind, domain):
 
 TEST_SETTINGS = {
     "angularspectrum_cw_base": _test_setter(),
-    "angularspectrum_cw_no_restriction": _test_setter(angular_restriction=False),
+    "angularspectrum_cw_no_restriction":
+    _test_setter(angular_restriction=False),
     "angularspectrum_cw_close": _test_setter(z_pos=0.1e-3),
     "angularspectrum_cw_far": _test_setter(z_pos=200e-3),
 }
@@ -109,7 +110,8 @@ def test_angular_spectrum_cw(test_name, use_plots=False, reset_mat_file=False):
     solution_field = eval_solution(source)
 
     # Generate the matlab results if they don't exist
-    if not os.path.isfile(dir_path + "/kwave_data/" + matfile) or reset_mat_file:
+    if not os.path.isfile(dir_path + "/kwave_data/" +
+                          matfile) or reset_mat_file:
         print("Generating matlab results")
 
         mdict = {
@@ -164,9 +166,12 @@ def test_output_domain_size():
         domain,
         sound_speed=1.0,
     )
-    out_field = angular_spectrum(
-        field, z_pos=10, f0=f0, medium=medium, padding=64, angular_restriction=True
-    )
+    out_field = angular_spectrum(field,
+                                 z_pos=10,
+                                 f0=f0,
+                                 medium=medium,
+                                 padding=64,
+                                 angular_restriction=True)
     assert out_field.domain.N == (64, 64)
     assert out_field.domain.N == out_field.on_grid.shape[:-1]
 

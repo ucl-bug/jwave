@@ -93,18 +93,18 @@ def _test_setter(
 
 
 TEST_SETTINGS = {
-    "ivp_3d_no_pml_no_smooth_homog": _test_setter(),
-    "ivp_3d_no_pml_no_smooth_homog_odd": _test_setter(N=(65, 65, 65)),
-    "ivp_3d_no_pml_no_smooth_homog_non_cube": _test_setter(N=(65, 76, 67)),
-    "ivp_3d_pml_no_smooth_homog": _test_setter(
-        PMLSize=10,
-    ),
-    "ivp_3d_no_pml_no_smooth_heterog_c0": _test_setter(
-        c0_constructor=_get_heterog_sound_speed,
-    ),
-    "ivp_3d_no_pml_smooth_homog": _test_setter(
-        smooth_initial=True,
-    ),
+    "ivp_3d_no_pml_no_smooth_homog":
+    _test_setter(),
+    "ivp_3d_no_pml_no_smooth_homog_odd":
+    _test_setter(N=(65, 65, 65)),
+    "ivp_3d_no_pml_no_smooth_homog_non_cube":
+    _test_setter(N=(65, 76, 67)),
+    "ivp_3d_pml_no_smooth_homog":
+    _test_setter(PMLSize=10, ),
+    "ivp_3d_no_pml_no_smooth_heterog_c0":
+    _test_setter(c0_constructor=_get_heterog_sound_speed, ),
+    "ivp_3d_no_pml_smooth_homog":
+    _test_setter(smooth_initial=True, ),
 }
 
 
@@ -139,8 +139,10 @@ def test_ivp(test_name, use_plots=False):
     @partial(jit, backend="cpu")
     def run_simulation(p0):
         return simulate_wave_propagation(
-            medium, time_axis, p0=p0, smooth_initial=settings["smooth_initial"]
-        )
+            medium,
+            time_axis,
+            p0=p0,
+            smooth_initial=settings["smooth_initial"])
 
     # Extract last field
     p_final = run_simulation(p0)[-1].on_grid[..., 0]
@@ -185,12 +187,14 @@ def test_ivp(test_name, use_plots=False):
     if use_plots:
         jslice = p_final[settings["N"][0] // 2]
         kslice = kwave_p_final[settings["N"][0] // 2]
-        plot_comparison(jslice, kslice, test_name, ["(yz) j-Wave", "(yz) k-Wave"])
+        plot_comparison(jslice, kslice, test_name,
+                        ["(yz) j-Wave", "(yz) k-Wave"])
         plt.show()
 
         jslice = p_final[:, settings["N"][0] // 2]
         kslice = kwave_p_final[:, settings["N"][0] // 2]
-        plot_comparison(jslice, kslice, test_name, ["(xz) j-Wave", "(xz) k-Wave"])
+        plot_comparison(jslice, kslice, test_name,
+                        ["(xz) j-Wave", "(xz) k-Wave"])
         plt.show()
 
     # Check maximum error
@@ -199,7 +203,7 @@ def test_ivp(test_name, use_plots=False):
     print("  Maximum error = ", maxErr)
     assert (
         maxErr < settings["max_err"]
-    )  # , "Test failed, error above maximum limit of " + str(settings["max_err"])
+    )    # , "Test failed, error above maximum limit of " + str(settings["max_err"])
 
     # Log error
     log_accuracy(test_name, maxErr)
