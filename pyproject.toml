@@ -1,23 +1,14 @@
-[build-system]
-requires = [
-    "hatchling",
-    "setuptools>=50",
-    "wheel",
-    "toml",
-]
-build-backend = "hatchling.build"
-
-[project]
+[tool.poetry]
 name = "jwave"
+version = "0.0.3"
+description = "Fast and differentiable acoustic simulations in JAX."
 authors = [
-  { name="Antonio Stanziola", email="a.stanziola@ucl.ac.uk" },
-  { name="Simon Arridge" },
-  { name="Ben T. Cox" },
-  { name="Bradley E. Treeby" },
+  "Antonio Stanziola <a.stanziola@ucl.ac.uk>",
+  "Simon Arridge",
+  "Ben T. Cox",
+  "Bradley E. Treeby",
 ]
-description = "Fast, differentiable acoustic simulations in JAX."
 readme = "README.md"
-requires-python = ">=3.8"
 keywords = [
   "jax",
   "acoustics",
@@ -25,83 +16,105 @@ keywords = [
   "ultrasound",
   "differentiable-programming"
 ]
-license = { file = "LICENSE", name = "LGPL-3.0" }
+license = "LGPL-3.0-only"
 classifiers=[
   "Intended Audience :: Education",
   "Intended Audience :: Science/Research",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Environment :: GPU",
+  "Environment :: GPU :: NVIDIA CUDA",
+  "Environment :: GPU :: NVIDIA CUDA :: 11.6",
+  "Environment :: GPU :: NVIDIA CUDA :: 11.7",
+  "Environment :: GPU :: NVIDIA CUDA :: 11.8",
+  "Environment :: GPU :: NVIDIA CUDA :: 12.0",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Physics",
-]
-dynamic = ["version"]
-dependencies = [
-  "jaxdf<=0.3, >=0.2.4",
-  "matplotlib>=3.0.0, <4.0.0"
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-
-[project.optional-dependencies]
-docs = [
-  "coverage==7.0.4",
-  "flake8==5.0.4",
-  "gitchangelog==3.0.4",
-  "griffe==0.23.0",
-  "isort==5.12.0",
-  "jupytext==1.14.1",
-  "mako==1.2.3",
-  "markdown-katex==202112.1034",
-  "matplotlib==3.6.1",
-  "mkdocs-jupyter==0.22.0",
-  "mkdocs-macros-plugin==0.7.0",
-  "mkdocs-material==8.5.8",
-  "mkdocs-mermaid2-plugin==0.6.0",
-  "mkdocstrings==0.19.0",
-  "mkdocstrings-python==0.8.3",
-  "mypy==0.982",
-  "pre-commit==2.20.0",
-  "pycln==2.1.1",
-  "pytest==7.2.0",
-  "pystache==0.6.0",
+packages = [
+  { include="jwave", from="." }
 ]
 
-test = [
-  "coverage==7.0.4",
-  "flake8==5.0.4",
-  "mypy==0.982",
-  "pytest==7.2.0",
-  "matplotlib==3.6.1",
-  "pre-commit==2.20.0",
-  "pycln==2.1.1",
-  "isort==5.12.0",
-  "gitchangelog==3.0.4",
-  "mako==1.2.3",
-  "pystache==0.6.0",
-]
-
-[project.urls]
+[tool.poetry.urls]
 "Homepage" = "https://ucl-bug.github.io/jwave/"
+"Repository" = "https://github.com/ucl-bug/jwave"
 "Bug Tracker" = "https://github.com/ucl-bug/jwave/issues"
+"Support" = "https://discord.gg/VtUb4fFznt"
 
-[tool.hatch.build]
-include = ["jwave*"]
+[tool.poetry.dependencies]
+python = "^3.9"
+jaxdf = "^0.2.4"
+matplotlib = "^3.0.0"
 
-[tool.hatch.version]
-path = "jwave/__about__.py"
+[tool.poetry.group.dev.dependencies]
+coverage = "7.0.4"
+flake8 = "5.0.4"
+pytest = "^7.2.0"
+pre-commit = "^2.20.0"
+pycln = "2.1.1"
+isort = "^5.12.0"
+griffe = "^0.24.0"
+markdown-katex = "202112.1034"
+mkdocs-material = "^9.1.16"
+mkdocstrings = "^0.22.0"
+mkdocs-jupyter = "^0.24.1"
+mkdocs-macros-plugin = "^0.7.0"
+mkdocs-mermaid2-plugin = "^0.6.0"
+mkdocstrings-python = "^0.8.0"
+python-kacl = "^0.4.6"
+pymdown-extensions = "^10.0.1"
+plumkdocs = "0.0.2"
 
-[tool.pycln]
-all = true
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
-[tool.mypy]
-ignore_missing_imports = true
-allow_redefinition = true
-
-[tool.isort]
+[tools.isort]
+src_paths = ["jwave", "tests"]
 multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 
-[tool.black]
-line-length = 88
+[tool.pycln]
+all = true
+
+[tool.mypy]
+disallow_any_unimported = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+check_untyped_defs = true
+show_error_codes = true
+ignore_missing_imports = true
+allow_redefinition = true
+
+[tool.yapf]
+based_on_style = "pep8"
+spaces_before_comment = 4
+split_before_logical_operator = true
+
+[tool.pytest.ini_options]
+addopts = """\
+    --cov jwave \
+    --cov tests \
+    --cov-report term-missing \
+    --no-cov-on-fail \
+"""
+
+[tool.coverage.report]
+exclude_lines = [
+    'if TYPE_CHECKING:',
+    'pragma: no cover'
+]

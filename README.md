@@ -6,7 +6,7 @@
 
 [![Support](https://dcbadge.vercel.app/api/server/VtUb4fFznt?style=flat)](https://discord.gg/VtUb4fFznt)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
-[![Continous Integration](https://github.com/ucl-bug/jwave/actions/workflows/main.yml/badge.svg)](https://github.com/ucl-bug/jwave/actions/workflows/main.yml)
+[![Continous Integration](https://github.com/ucl-bug/jwave/actions/workflows/tests.yml/badge.svg)](https://github.com/ucl-bug/jwave/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/ucl-bug/jwave/branch/main/graph/badge.svg?token=6J03OMVJS1)](https://codecov.io/gh/ucl-bug/jwave)
 [![Documentation](https://github.com/ucl-bug/jwave/actions/workflows/build_docs.yml/badge.svg)](https://ucl-bug.github.io/jwave)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ucl-bug/jwave/main?labpath=docs%2Fnotebooks%2Fivp%2Fhomogeneous_medium.ipynb)

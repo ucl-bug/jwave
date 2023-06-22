@@ -1,17 +1,30 @@
 repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: check-ast
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-yaml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
 -   repo: https://github.com/hadialqattan/pycln
     rev: 'v1.1.0'
     hooks:
     -   id: pycln
         args: [--config=pyproject.toml]
+-   repo: https://github.com/google/yapf
+    rev: v0.40.0
+    hooks:
+    -   id: yapf
+        args: ['--style=pyproject.toml', '--parallel', '--in-place']
 -   repo: https://github.com/pycqa/isort
     rev: '5.12.0'
     hooks:
     -   id: isort
         files: "\\.(py)$"
         args: [--settings-path=pyproject.toml]
--   repo: https://github.com/psf/black
-    rev: 22.12.0
-    hooks:
-    - id: black
-      language_version: python3.10
