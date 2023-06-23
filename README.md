@@ -82,6 +82,20 @@ If you encounter any problems with the code or wish to propose new features, ple
 
 <br/>
 
+## Contributing
+
+Contributions are absolutely welcome! Most contributions start with an issue. Please don't hesitate to create issues in which you ask for features, give feedback on performances, or simply want to reach out.
+
+To make a pull request, please look at the detailed [Contributing guide](CONTRIBUTING.md) for how to do it, but fundamentally keep in mind the following main guidelines:
+
+- If you add a new feature or fix a bug:
+  - Make sure it is covered by tests
+  - Add a line in the changelog using `kacl-cli`
+- If you changed something in the documentation, make sure that the documentation site can be correctly build using `mkdocs serve`
+
+<br/>
+
+
 ## Citation
 
 [![arXiv](https://img.shields.io/badge/arXiv-2207.01499-b31b1b.svg?style=flat)](https://arxiv.org/abs/2207.01499)
