@@ -4,11 +4,9 @@ name: CI
 
 on:
   push:
-    - branches: [ main ]
-    - paths: '**.py'
+    branches: [ main ]
   pull_request:
-    - branches: [ main ]
-    - paths: '**.py'
+    paths: '**.py'
   workflow_dispatch:
 
 jobs:
