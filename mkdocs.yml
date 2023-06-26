@@ -74,6 +74,7 @@ nav:
       - Homogeneous wave propagation: notebooks/ivp/homogeneous_medium.ipynb
       - 3D simulations: notebooks/ivp/3d.ipynb
       - Sensors: notebooks/ivp/homogeneous_medium_sensors.ipynb
+      - Off-Grid Sensors: notebooks/ivp/off_grid_sensors.ipynb
       - Custom sensors: notebooks/ivp/custom_sensors.ipynb
       - Automatic differentiation: notebooks/ivp/homogeneous_medium_backprop.ipynb
       - Heterogeneous medium: notebooks/ivp/heterogeneous_medium.ipynb
