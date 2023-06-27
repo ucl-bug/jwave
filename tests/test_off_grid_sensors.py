@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 
-@pytest.mark.parametrize("n_grid", [(100, ), (101, )])
+@pytest.mark.parametrize("n_grid", [100, 101])
 def test_bli_function(n_grid):
     # Make a load of sensors on the grid. Check the bli function.
     y = _bli_function(np.arange(n_grid), np.arange(n_grid), n_grid)
