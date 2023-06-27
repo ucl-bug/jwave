@@ -16,6 +16,7 @@
 import math
 from dataclasses import dataclass
 from typing import List, Tuple, Union
+from numpy.typing import ArrayLike
 
 import numpy as np
 from jax import numpy as jnp
@@ -35,7 +36,7 @@ class Medium:
 
     Attributes:
       domain (Domain): domain of the medium
-      sound_speed (jnp.darray): speed of sound map, can be a scalar
+      sound_speed (jnp.ndarray): speed of sound map, can be a scalar
       density (jnp.ndarray): density map, can be a scalar
       attenuation (jnp.ndarray): attenuation map, can be a scalar
       pml_size (int): size of the PML layer in grid-points
@@ -148,8 +149,8 @@ class MediumType(Medium):
 @type_of.dispatch
 def type_of(m: Medium):
     return MediumType[type(m.sound_speed),
-                      type(m.density),
-                      type(m.attenuation)]
+    type(m.density),
+    type(m.attenuation)]
 
 
 MediumAllScalars = MediumType[object, object, object]
@@ -187,11 +188,11 @@ def _unit_fibonacci_sphere(
         coordinates of the points on the sphere.
     """
     points = []
-    phi = math.pi * (3.0 - math.sqrt(5.0))    # golden angle in radians
+    phi = math.pi * (3.0 - math.sqrt(5.0))  # golden angle in radians
     for i in range(samples):
-        y = 1 - (i / float(samples - 1)) * 2    # y goes from 1 to -1
-        radius = math.sqrt(1 - y * y)    # radius at y
-        theta = phi * i    # golden angle increment
+        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
+        radius = math.sqrt(1 - y * y)  # radius at y
+        theta = phi * i  # golden angle increment
         x = math.cos(theta) * radius
         z = math.sin(theta) * radius
         points.append((x, y, z))
@@ -228,15 +229,15 @@ def _fibonacci_sphere(
 
 def _circ_mask(N, radius, centre):
     x, y = np.mgrid[0:N[0], 0:N[1]]
-    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2)
+    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
 
 def _sphere_mask(N, radius, centre):
     x, y, z = np.mgrid[0:N[0], 0:N[1], 0:N[2]]
-    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2 +
-                               (z - centre[2])**2)
+    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2 +
+                               (z - centre[2]) ** 2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
@@ -327,7 +328,7 @@ class DistributedTransducer:
 
     def tree_flatten(self):
         children = (self.mask, self.signal, self.dt)
-        aux = (self.domain, )
+        aux = (self.domain,)
         return (children, aux)
 
     @classmethod
@@ -430,7 +431,7 @@ class Sensors:
 
     def tree_flatten(self):
         children = None
-        aux = (self.positions, )
+        aux = (self.positions,)
         return (children, aux)
 
     @classmethod
@@ -461,10 +462,115 @@ class Sensors:
             return p.on_grid[self.positions[0]]
         elif len(self.positions) == 2:
             return p.on_grid[self.positions[0],
-                             self.positions[1]]    # type: ignore
+            self.positions[1]]  # type: ignore
         elif len(self.positions) == 3:
             return p.on_grid[self.positions[0], self.positions[1],
-                             self.positions[2]]    # type: ignore
+            self.positions[2]]  # type: ignore
+        else:
+            raise ValueError(
+                "Sensors positions must be 1, 2 or 3 dimensional. Not {}".
+                format(len(self.positions)))
+
+
+def _bli_function(x0: jnp.ndarray, x: jnp.ndarray, n: int, include_imag: bool = False) -> jnp.ndarray:
+    """
+    The function used to compute the band limited interpolation function.
+
+    Args:
+        x0 (jnp.ndarray): Position of the sensors along the axis.
+        x (jnp.ndarray): Grid positions.
+        n (int): Size of the grid
+        include_imag (bool): Include the imaginary component?
+
+    Returns:
+    jnp.ndarray: The values of the function at the grid positions.
+    """
+    dx = jnp.where((x - x0[:, None]) == 0, 1, x - x0[:, None])  # https://github.com/google/jax/issues/1052
+    dx_nonzero = (x - x0[:, None]) != 0
+
+    if n % 2 == 0:
+        y = jnp.sin(jnp.pi * dx) / \
+            jnp.tan(jnp.pi * dx / n) / n
+        y -= jnp.sin(jnp.pi * x0[:, None]) * jnp.sin(jnp.pi * x) / n
+        if include_imag:
+            y += 1j * jnp.cos(jnp.pi * x0[:, None]) * jnp.sin(jnp.pi * x) / n
+    else:
+        y = jnp.sin(jnp.pi * dx) / \
+            jnp.sin(jnp.pi * dx / n) / n
+
+    # Deal with case of precisely on grid.
+    y = y * jnp.all(dx_nonzero, axis=1)[:, None] + (1 - dx_nonzero) * (~jnp.all(dx_nonzero, axis=1)[:, None])
+    return y
+
+
+@register_pytree_node_class
+class BLISensors:
+    """ Band-limited interpolant (off-grid) sensors.
+
+    Args:
+        positions (Tuple of List of float): Sensor positions.
+        n (Tuple of int): Grid size.
+
+    Attributes:
+        positions (Tuple[jnp.ndarray]): Sensor positions
+        n (Tuple[int]): Grid size.
+    """
+
+    positions: Tuple[jnp.ndarray]
+    n: Tuple[int]
+
+    def __init__(self, positions: Tuple[jnp.ndarray], n: Tuple[int]):
+        self.positions = positions
+        self.n = n
+
+        # Calculate the band-limited interpolant weights if not provided.
+        x = jnp.arange(n[0])[None]
+        self.bx = jnp.expand_dims(_bli_function(positions[0], x, n[0]),
+                                  axis=range(2, 2 + len(n)))
+
+        if len(n) > 1:
+            y = jnp.arange(n[1])[None]
+            self.by = jnp.expand_dims(_bli_function(positions[1], y, n[1]),
+                                      axis=range(2, 2 + len(n) - 1))
+        else:
+            self.by = None
+
+        if len(n) > 2:
+            z = jnp.arange(n[2])[None]
+            self.bz = jnp.expand_dims(_bli_function(positions[2], z, n[2]),
+                                      axis=range(2, 2 + len(n) - 2))
+        else:
+            self.bz = None
+
+    def tree_flatten(self):
+        children = self.positions,
+        aux = self.n,
+        return children, aux
+
+    @classmethod
+    def tree_unflatten(cls, aux, children):
+        return cls(*children, *aux)
+
+    def __call__(self, p: Field, u, v):
+        r"""Returns the values of the field p at the sensors positions.
+        Args:
+          p (Field): The field to be sampled.
+        """
+        if len(self.positions) == 1:
+            # 1D
+            pw = jnp.sum(p.on_grid[None] * self.bx, axis=1)
+            return pw
+        elif len(self.positions) == 2:
+            # 2D
+            pw = jnp.sum(p.on_grid[None] * self.bx, axis=1)
+            pw = jnp.sum(pw * self.by, axis=1)
+            return pw
+        elif len(self.positions) == 3:
+            # 3D
+            pw = jnp.sum(p.on_grid[None] * self.bx, axis=1)
+            pw = jnp.sum(pw * self.by, axis=1)
+            pw = jnp.sum(pw * self.bz, axis=1)
+            return pw
         else:
             raise ValueError(
                 "Sensors positions must be 1, 2 or 3 dimensional. Not {}".
@@ -488,7 +594,7 @@ class TimeAxis:
         self.t_end = t_end
 
     def tree_flatten(self):
-        children = (None, )
+        children = (None,)
         aux = (self.dt, self.t_end)
         return (children, aux)
 
@@ -522,7 +628,7 @@ class TimeAxis:
             np.max)
         if t_end is None:
             t_end = np.sqrt(
-                sum((x[-1] - x[0])**2
+                sum((x[-1] - x[0]) ** 2
                     for x in medium.domain.spatial_axis)) / functional(
-                        medium.sound_speed)(np.min)
+                medium.sound_speed)(np.min)
         return TimeAxis(dt=float(dt), t_end=float(t_end))
