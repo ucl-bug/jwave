@@ -4,7 +4,7 @@ import pytest
 
 
 @pytest.mark.parametrize("n_grid", [(100, ), (101, )])
-def test_bli_function(n_grid=100):
+def test_bli_function(n_grid):
     # Make a load of sensors on the grid. Check the bli function.
     y = _bli_function(np.arange(n_grid), np.arange(n_grid), n_grid)
     # Assert that the bli function is 1 at one place for each detector.
@@ -22,7 +22,7 @@ def test_bli_function(n_grid=100):
 
 
 @pytest.mark.parametrize("nx,ny,nz", [(100, 100, 100), (100, 101, 102)])
-def test_sensor(nx=100, ny=100, nz=100):
+def test_sensor(nx, ny, nz):
     # Check that it is identical to on-grid detectors in that case.
     n_detectors = min(nx, ny, nz)
 

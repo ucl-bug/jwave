@@ -15,12 +15,11 @@
 
 import math
 from dataclasses import dataclass
-from functools import partial
 from typing import List, Tuple, Union
 from numpy.typing import ArrayLike
 
 import numpy as np
-from jax import numpy as jnp, custom_jvp
+from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
 from jaxdf import Field, FourierSeries, OnGrid
 from jaxdf.geometry import Domain
@@ -473,12 +472,20 @@ class Sensors:
                 format(len(self.positions)))
 
 
-def _bli_function(x0, x, n, include_imag=False):
-    # x0 = position of sensors along axis
-    # x = grid
-    # n = size of grid
-    # include_imag = include the imaginary component?
-    dx = jnp.where((x - x0[:, None]) == 0, x - x0[:, None] + 1e-4, x - x0[:, None])  # Stop us getting nans.
+def _bli_function(x0: jnp.ndarray, x: jnp.ndarray, n: int, include_imag: bool = False) -> jnp.ndarray:
+    """
+    The function used to compute the band limited interpolation function.
+
+    Args:
+        x0 (jnp.ndarray): Position of the sensors along the axis.
+        x (jnp.ndarray): Grid positions.
+        n (int): Size of the grid
+        include_imag (bool): Include the imaginary component?
+
+    Returns:
+    jnp.ndarray: The values of the function at the grid positions.
+    """
+    dx = jnp.where((x - x0[:, None]) == 0, 1, x - x0[:, None])  # https://github.com/google/jax/issues/1052
     dx_nonzero = (x - x0[:, None]) != 0
 
     if n % 2 == 0:
@@ -501,15 +508,20 @@ class BLISensors:
     """ Band-limited interpolant (off-grid) sensors.
 
     Args:
-        positions (Tuple of List of float): The positions of the sensors.
-        n (Tuple of int): The shape of the grid.
+        positions (Tuple of List of float): Sensor positions.
+        n (Tuple of int): Grid size.
+
+    Attributes:
+        positions (Tuple[jnp.ndarray]): Sensor positions
+        n (Tuple[int]): Grid size.
     """
 
-    positions: Tuple[ArrayLike]
+    positions: Tuple[jnp.ndarray]
+    n: Tuple[int]
 
-    def __init__(self, positions: Tuple[ArrayLike], n: Tuple[int]):
+    def __init__(self, positions: Tuple[jnp.ndarray], n: Tuple[int]):
         self.positions = positions
-        self.N = n
+        self.n = n
 
         # Calculate the band-limited interpolant weights if not provided.
         x = jnp.arange(n[0])[None]
@@ -532,7 +544,7 @@ class BLISensors:
 
     def tree_flatten(self):
         children = self.positions,
-        aux = self.N,
+        aux = self.n,
         return children, aux
 
     @classmethod
