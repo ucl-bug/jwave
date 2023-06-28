@@ -22,6 +22,8 @@ except ImportError:
     raise ImportError(
         "Please install imageio and tqdm to use use the extras module.")
 
+import tempfile
+
 import matplotlib.pyplot as plt
 from jaxdf import Field
 
@@ -58,7 +60,7 @@ def save_video(
         'equal'.
     """
     # Make a temporary directory in /tmp
-    tmp_dir = os.path.join("/tmp", "jwave_video")
+    tmp_dir = tempfile.mkdtemp()
 
     # Clean the directory if it exists
     if os.path.exists(tmp_dir):
@@ -77,7 +79,7 @@ def save_video(
     # Create the video
     writer = imageio.get_writer(filename, fps=fps)
     for filename in sorted(os.listdir(tmp_dir)):
-        frame = imageio.imread(os.path.join(tmp_dir, filename))
+        frame = imageio.v2.imread(os.path.join(tmp_dir, filename))
         writer.append_data(frame)
     writer.close()
 
