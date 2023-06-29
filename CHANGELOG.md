@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 - Removed the uncertainty propagation notebook example. For a more in depth example of using linear uncertainty propagation see [this repository](https://github.com/ucl-bug/linear-uncertainty)
 
+### Added
+- Exposed `points_on_circle` function to generate points on a circle
+
 ## [0.1.3] - 2023-06-28
 ### Added
 - Added off grid sensors [@tomelse]

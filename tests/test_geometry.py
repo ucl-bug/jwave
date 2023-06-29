@@ -2,7 +2,7 @@ import numpy as np
 from jax import numpy as jnp
 
 from jwave.geometry import (Domain, Medium, _fibonacci_sphere,
-                            _points_on_circle, _unit_fibonacci_sphere)
+                            _unit_fibonacci_sphere, points_on_circle)
 
 
 def test_repr():
@@ -24,14 +24,14 @@ def test_repr():
     assert str(medium) == expected_output
 
 
-def test_points_on_circle():
+def testpoints_on_circle():
     n = 5
     radius = 10.0
     centre = (0.0, 0.0)
     x_expected = [10, 3, -8, -8, 3]
     y_expected = [0, 9, 5, -5, -9]
 
-    x_actual, y_actual = _points_on_circle(n, radius, centre, cast_int=True)
+    x_actual, y_actual = points_on_circle(n, radius, centre, cast_int=True)
 
     assert x_actual == x_expected
     assert y_actual == y_expected
