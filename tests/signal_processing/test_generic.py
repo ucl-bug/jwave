@@ -23,7 +23,3 @@ def test_analytic_signal():
     y = jnp.sin(x)
     y_analytic = analytic_signal(y, -1)
     assert jnp.allclose(jnp.abs(y_analytic), 1.0)
-
-
-if __name__ == "__main__":
-    test_analytic_signal()

@@ -101,12 +101,14 @@ def fourier_upsample(x: Array,
         return x
 
     def _single_upsample(x):
-        """adds zeros at appropriate cut values"""
         new_size = list(map(lambda x: x * upsample, x.shape))
         Fx = jnp.fft.fftshift(jnp.fft.fftn(x))
         new_Fx = jnp.zeros(new_size, dtype=Fx.dtype)
-        cuts = [int((upsample - 1) * x / 2 / upsample) for x in new_size]
-        slices = tuple([slice(cut, -cut) for cut in cuts])
+        cuts = [(new_dim - old_dim) // 2
+                for old_dim, new_dim in zip(Fx.shape, new_size)]
+        slices = tuple([
+            slice(cut, cut + old_dim) for cut, old_dim in zip(cuts, Fx.shape)
+        ])
         new_Fx = new_Fx.at[slices].set(Fx)
         return jnp.fft.ifftn(jnp.fft.ifftshift(new_Fx)) * (upsample**x.ndim)
 
@@ -135,6 +137,14 @@ def apply_ramp(signal: Array,
     Returns:
         jnp.ndarray: [description]
     """
+    # Raise ValueError if the center frequency is negative
+    if center_freq <= 0:
+        raise ValueError(
+            f"Center frequency must be positive, got {center_freq}")
+
+    # Raise an error if the signal is not 1D
+    if signal.ndim != 1:
+        raise ValueError(f"Signal must be 1D, got {signal.ndim}D")
 
     t = jnp.arange(signal.shape[0]) * dt
     period = 1 / center_freq
@@ -176,7 +186,7 @@ def gaussian_window(signal: Array, time: Array, mu: float,
     return signal * jnp.exp(-((time - mu)**2) / sigma**2)
 
 
-def smoothing_filter(sample_input) -> Callable:
+def smoothing_filter(sample_input: jnp.ndarray) -> Callable:
     r"""Returns a smoothing filter based on the blackman window, which
     works on a signal similar to the one provided as input. The filter
     is amenable to jax transformations.
@@ -204,7 +214,7 @@ def smoothing_filter(sample_input) -> Callable:
             filter_kernel = third_component * filter_kernel_2d
 
     # Different filtering functions for real and complex data
-    if sample_input.dtype != jnp.complex64 or sample_input.dtype != jnp.complex128:
+    if sample_input.dtype != jnp.complex64 and sample_input.dtype != jnp.complex128:
         Fx = eval_shape(jnp.fft.rfft, sample_input)
         filter_kernel = filter_kernel[..., :Fx.shape[-1]]
 
