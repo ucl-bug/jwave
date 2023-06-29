@@ -170,7 +170,7 @@ MediumOnGrid = Union[
 """A type for Medium objects that have at least one OnGrid component"""
 
 
-def _unit_fibonacci_sphere(
+def unit_fibonacci_sphere(
         samples: int = 128) -> List[Tuple[float, float, float]]:
     """
     Generate evenly distributed points on the surface
@@ -179,12 +179,12 @@ def _unit_fibonacci_sphere(
     From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
 
     Args:
-    samples (int, optional): The number of points to generate.
-        Default is 128.
+        samples (int, optional): The number of points to generate.
+            Default is 128.
 
     Returns:
-    points (list): A list of tuples representing the (x, y, z)
-        coordinates of the points on the sphere.
+        points (list): A list of tuples representing the (x, y, z)
+            coordinates of the points on the sphere.
     """
     points = []
     phi = math.pi * (3.0 - math.sqrt(5.0))    # golden angle in radians
@@ -218,7 +218,7 @@ def _fibonacci_sphere(
     Returns:
     x, y, z (tuple): The x, y, and z coordinates of the points on the sphere.
     """
-    points = _unit_fibonacci_sphere(n)
+    points = unit_fibonacci_sphere(n)
     points = np.array(points)
     points = points * radius + centre
     if cast_int:

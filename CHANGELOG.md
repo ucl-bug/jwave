@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 - Exposed `points_on_circle` function to generate points on a circle
+- Exposed `unit_fibonacci_sphere` function
 
 ## [0.1.3] - 2023-06-28
 ### Added

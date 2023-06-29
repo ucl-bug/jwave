@@ -2,7 +2,7 @@ import numpy as np
 from jax import numpy as jnp
 
 from jwave.geometry import (Domain, Medium, _fibonacci_sphere,
-                            _unit_fibonacci_sphere, points_on_circle)
+                            points_on_circle, unit_fibonacci_sphere)
 
 
 def test_repr():
@@ -37,10 +37,10 @@ def testpoints_on_circle():
     assert y_actual == y_expected
 
 
-def test_unit_fibonacci_sphere():
+def testunit_fibonacci_sphere():
     samples = 128
 
-    points = _unit_fibonacci_sphere(samples=samples)
+    points = unit_fibonacci_sphere(samples=samples)
 
     # Assert that the correct number of points have been generated
     assert len(points) == samples
