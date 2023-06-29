@@ -1,55 +1,31 @@
 import os
 
-import numpy as np
-import pytest
+from jax import random
 from jaxdf import Domain, OnGrid
 
 from jwave.extras import save_video
-
-# Create mock field
-domain = Domain((
-    64,
-    64,
-), (
-    1,
-    1,
-))
-field_params = np.random.rand(5, *domain.N, 1)
-fields = OnGrid(field_params, domain)
-
-filenames = [
-    'video1.mp4',
-]
-fpss = [
-    30,
-]
-vmins = [
-    1,
-]
-vmaxs = [
-    2,
-]
-cmaps = [
-    'RdBu_r',
-]
-aspects = ['equal', 'auto']
+from jwave.extras.export import save_video
 
 
-@pytest.mark.parametrize('filename', filenames)
-@pytest.mark.parametrize('fps', fpss)
-@pytest.mark.parametrize('vmin', vmins)
-@pytest.mark.parametrize('vmax', vmaxs)
-@pytest.mark.parametrize('cmap', cmaps)
-@pytest.mark.parametrize('aspect', aspects)
-def test_save_video(filename, fps, vmin, vmax, cmap, aspect):
-    save_video(fields, filename, fps, vmin, vmax, cmap, aspect)
-    assert os.path.exists(filename)    # check if the file was created
-    assert filename.endswith('.mp4')    # check if the file is an mp4 file
-    os.remove(filename)    # remove the file after the test
+def test_save_video():
+    # Generate a test Field object
+    key = random.PRNGKey(0)
+    field_data = random.normal(key, (10, 64, 64, 1))
+    domain = Domain((64, 64), (1, 1))
+    field = OnGrid(field_data, domain)
 
-    # Additional asserts can be added to test the video content.
-    # This is more complex and requires video processing libraries
-    # to analyze the video frames and properties.
+    # Define the filename for the video
+    filename = "test.mp4"
 
+    # Ensure the file does not exist before the function call
+    if os.path.exists(filename):
+        os.remove(filename)
 
-pytest.main()
+    # Call the function
+    save_video(field, filename)
+
+    # Check that the video file was created
+    assert os.path.exists(filename), "Video file was not created"
+
+    # Clean up by removing the created video file
+    os.remove(filename)

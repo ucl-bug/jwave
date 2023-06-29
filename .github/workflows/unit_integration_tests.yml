@@ -1,0 +1,33 @@
+# This is a workflow for Unit, Integration, and Regression Tests
+# It is used to test the code on every pull request, whenever a
+# python, matlab, yaml, makefile, or markdown file is changed.
+
+name: Unit and Integration Tests
+
+on:
+  pull_request:
+    paths:
+      - '**.py'
+      - '**.m'
+      - '**.yaml'
+      - '**Makefile'
+
+jobs:
+  unit_and_integration_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/python-poetry-env
+      - name: Downloading test data
+        run: |
+          make get_test_data
+      - name: Running tests
+        run: |
+          poetry run coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
+          poetry run coverage xml
+      - name: "Upload coverage to Codecov"
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          name: codecov-umbrella

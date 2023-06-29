@@ -6,7 +6,7 @@
 
 [![Support](https://dcbadge.vercel.app/api/server/VtUb4fFznt?style=flat)](https://discord.gg/VtUb4fFznt)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
-[![Continous Integration](https://github.com/ucl-bug/jwave/actions/workflows/tests.yml/badge.svg)](https://github.com/ucl-bug/jwave/actions/workflows/tests.yml)
+[![Continous Integration](https://github.com/ucl-bug/jwave/actions/workflows/ci_tests.yml/badge.svg)](https://github.com/ucl-bug/jwave/actions/workflows/ci_tests.yml)
 [![codecov](https://codecov.io/gh/ucl-bug/jwave/branch/main/graph/badge.svg?token=6J03OMVJS1)](https://codecov.io/gh/ucl-bug/jwave)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ucl-bug/jwave/main?labpath=docs%2Fnotebooks%2Fivp%2Fhomogeneous_medium.ipynb)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1xAHAognF1v9un6GNvaGPSfdVeCDK8l9z?usp=sharing)
