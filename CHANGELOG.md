@@ -5,7 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Changed
-- Renamed `plot_complex_field` into `display_complex_field`
+- Refactored `save_video` to use opencv.
+
+### Deprecated
+- `plot_complex_field` has been deprecated in favor of `display_complex_field`
+
+### Removed
+- Removed the uncertainty propagation notebook example. For a more in depth example of using linear uncertainty propagation see [this repository](https://github.com/ucl-bug/linear-uncertainty)
 
 ## [0.1.3] - 2023-06-28
 ### Added

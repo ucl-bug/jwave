@@ -12,76 +12,62 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
+from typing import Union
 
-import os
-
-try:
-    import imageio
-    from tqdm import trange
-except ImportError:
-    raise ImportError(
-        "Please install imageio and tqdm to use use the extras module.")
-
-import tempfile
-
-import matplotlib.pyplot as plt
+import numpy as np
 from jaxdf import Field
+from matplotlib import colormaps, colors
 
 
 def save_video(
     fields: Field,
     filename: str,
-    fps=30,
-    vmin=None,
-    vmax=None,
+    fps: int = 30,
+    vmin: Union[None, float] = None,
+    vmax: Union[None, float] = None,
     cmap="RdBu_r",
     aspect="equal",
+    codec="mp4v",
 ):
-    r"""Saves a video of the fields to an mp4 file. **Unix only**. It
-    requires ffmpeg and the package `imageio` to be installed.
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "Please install opencv-python to use the save_video function.")
 
-    Args:
-      fields (Field): The fields to save. It needs to be a Field object
-        with a time dimension, represented as a leading index. It must be
-        therefore possible to iterate over the time dimension using
-        ``for field in fields``, or generally being able to access the
-        fields as ``fields[i]``.
-      filename (str): The name of the file to save the video to.
-      fps (int, optional): The number of frames per second. Defaults to 30.
-      vmin (float, optional): The minimum value of the color scale. If None,
-        the minimum value of the fields at each time step is used. Defaults
-        to None.
-      vmax (float, optional): The maximum value of the color scale. If None,
-        the maximum value of the fields at each time step is used. Defaults
-        to None.
-      cmap (str, optional): The matplotlib colormap to use. Defaults to
-        'RdBu_r'.
-      aspect (str, optional): The aspect ratio of the plot. Defaults to
-        'equal'.
-    """
-    # Make a temporary directory in /tmp
-    tmp_dir = tempfile.mkdtemp()
+    try:
+        from tqdm import trange
+    except ImportError:
+        # Define a fallback function if tqdm is not available.
+        def trange(*args, **kwargs):
+            return range(*args, **kwargs)
 
-    # Clean the directory if it exists
-    if os.path.exists(tmp_dir):
-        os.system(f"rm -rf {tmp_dir}")
-    os.mkdir(tmp_dir)
+    # Define the colormap
+    cmap = colormaps[cmap]
 
-    # Saves all images in the temporary director
+    # Define a video writer
+    fourcc = cv2.VideoWriter_fourcc(*codec)
+
+    # Assuming the field shape is known
+    frame_height, frame_width, _ = fields[0].on_grid.shape
+    writer = cv2.VideoWriter(filename, fourcc, fps,
+                             (frame_width, frame_height))
+
     for i in trange(fields.params.shape[0]):
-        img_data = fields[i].on_grid
-        plt.imshow(img_data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect)
-        plt.colorbar()
-        # Save with leading zeros
-        plt.savefig(f"{tmp_dir}/frame_{i:08}.png")
-        plt.close()
+        img_data = fields[i].on_grid[:, :, 0]
+        norm = colors.Normalize(vmin=vmin,
+                                vmax=vmax) if vmin and vmax else None
+        img_data = cmap(norm(img_data)) if norm else cmap(img_data)
 
-    # Create the video
-    writer = imageio.get_writer(filename, fps=fps)
-    for filename in sorted(os.listdir(tmp_dir)):
-        frame = imageio.v2.imread(os.path.join(tmp_dir, filename))
-        writer.append_data(frame)
-    writer.close()
+        # Convert from RGBA to BGR and ignore the alpha channel
+        img_data = cv2.cvtColor((img_data[:, :, :3] * 255).astype(np.uint8),
+                                cv2.COLOR_RGBA2BGR)
 
-    # Clean up
-    os.system(f"rm -rf {tmp_dir}")
+        # If aspect ratio is not 'equal', resize the image according to the given aspect ratio
+        if aspect != 'equal':
+            aspect_ratio = tuple(map(int, aspect.split(':')))
+            img_data = cv2.resize(img_data, aspect_ratio)
+
+        writer.write(img_data)
+
+    writer.release()
