@@ -13,7 +13,50 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
-from jwave.utils import is_numeric
+import warnings
+
+import matplotlib
+import numpy as np
+
+from jwave.utils import display_complex_field, is_numeric, plot_complex_field
+
+
+def test_deprecation_warning():
+    """
+    Test if deprecation warning is raised when calling plot_complex_field
+    """
+    with warnings.catch_warnings(record=True) as w:
+        # Cause all warnings to always be triggered.
+        warnings.simplefilter("always")
+        # Call the deprecated function
+        plot_complex_field(
+            np.random.rand(10, 10) + 1j * np.random.rand(10, 10))
+        # Verify some things
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "plot_complex_field is deprecated" in str(w[-1].message)
+
+
+def test_display_complex_field():
+    """
+    Test if display_complex_field returns correct output types
+    """
+    fig, axes = display_complex_field(
+        np.random.rand(10, 10) + 1j * np.random.rand(10, 10))
+    assert isinstance(fig, matplotlib.figure.Figure)
+    assert isinstance(axes, np.ndarray)
+    assert all(isinstance(ax, matplotlib.axes.Axes) for ax in axes.flatten())
+
+
+def test_plot_complex_field():
+    """
+    Test if plot_complex_field returns correct output types
+    """
+    fig, axes = plot_complex_field(
+        np.random.rand(10, 10) + 1j * np.random.rand(10, 10))
+    assert isinstance(fig, matplotlib.figure.Figure)
+    assert isinstance(axes, np.ndarray)
+    assert all(isinstance(ax, matplotlib.axes.Axes) for ax in axes.flatten())
 
 
 def test_is_numeric():

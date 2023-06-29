@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
+import warnings
 from typing import Tuple, Union
 
 import numpy as np
@@ -112,19 +113,22 @@ def is_numeric(x):
     return isinstance(x, (int, float, complex))
 
 
-def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
+def display_complex_field(
+        field: Union[Field, jnp.ndarray, np.ndarray],
+        figsize: Tuple[int, int] = (15, 8),
+        max_intensity: Union[float, None] = None) -> Tuple[Figure, np.ndarray]:
     """
-    Plots a complex field.
+    Displays the real and absolute value of a complex field.
 
     Args:
-      field (jnp.ndarray): Complex field to plot.
-      figsize (tuple): Figure size.
-      max_intensity (float): Maximum intensity to plot.
-        Defaults to the maximum value in the field.
+      field (Union[Field, jnp.ndarray, np.ndarray]): Complex field to plot.
+      figsize (Tuple[int, int]): Figure size.
+      max_intensity (Union[float, None]): Maximum intensity to plot.
+        If None, the maximum intensity is set to the maximum absolute value of the field.
+        Defaults to None.
 
     Returns:
-      matplotlib.pyplot.figure: Figure object.
-      matplotlib.pyplot.axes: Axes object.
+      Tuple[matplotlib.pyplot.figure, matplotlib.pyplot.axes]: Tuple of Figure object and Axes object.
     """
     fig, axes = plt.subplots(1, 2, figsize=figsize)
     if isinstance(field, Field):
@@ -133,15 +137,37 @@ def plot_complex_field(field: Field, figsize=(15, 8), max_intensity=None):
     if max_intensity is None:
         max_intensity = jnp.amax(jnp.abs(field))
 
-    axes[0].imshow(field.real,
-                   vmin=-max_intensity,
-                   vmax=max_intensity,
-                   cmap="seismic")
+    im1 = axes[0].imshow(field.real,
+                         vmin=-max_intensity,
+                         vmax=max_intensity,
+                         cmap="seismic")
     axes[0].set_title("Real wavefield")
-    axes[1].imshow(jnp.abs(field), vmin=0, vmax=max_intensity, cmap="magma")
+    im2 = axes[1].imshow(jnp.abs(field),
+                         vmin=0,
+                         vmax=max_intensity,
+                         cmap="magma")
     axes[1].set_title("Wavefield magnitude")
 
+    # Add colorbars
+    divider1 = make_axes_locatable(axes[0])
+    cax1 = divider1.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im1, cax=cax1)
+
+    divider2 = make_axes_locatable(axes[1])
+    cax2 = divider2.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im2, cax=cax2)
+
     return fig, axes
+
+
+def plot_complex_field(
+        field: Union[Field, jnp.ndarray, np.ndarray],
+        figsize: Tuple[int, int] = (15, 8),
+        max_intensity: Union[float, None] = None) -> Tuple[Figure, np.ndarray]:
+    warnings.warn(
+        "plot_complex_field is deprecated, use display_complex_field instead",
+        DeprecationWarning)
+    return display_complex_field(field, figsize, max_intensity)
 
 
 def show_field(

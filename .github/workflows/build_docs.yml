@@ -1,0 +1,25 @@
+# This is a workflow that runs whenever a pull request
+# changes some documentation files or the mkdocs.yml file. It
+# checks that the documentation builds correctly.
+
+name: Build Docs
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '**.md'
+      - '**.ipynb'
+      - '**.sh'
+      - '**.css'
+      - '**.js'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/python-poetry-env
+      - name: Build docs
+        run: poetry run mkdocs build

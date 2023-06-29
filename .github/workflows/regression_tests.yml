@@ -1,0 +1,20 @@
+# This is a workflow for Regression Tests.
+# It is triggered by a pull request to the main branch.
+
+name: Regression Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  regression_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/python-poetry-env
+      - name: Downloading test data
+        run: |
+          make get_test_data
+      - name: Running tests
+        run: poetry run coverage run --source=jwave -m pytest -xvs ./tests/regression_tests

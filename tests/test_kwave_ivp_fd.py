@@ -26,7 +26,7 @@ from scipy.io import loadmat, savemat
 
 from jwave import FiniteDifferences
 from jwave.acoustics import simulate_wave_propagation
-from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
+from jwave.geometry import Domain, Medium, TimeAxis, circ_mask
 from jwave.utils import plot_comparison
 
 from .utils import log_accuracy
@@ -39,7 +39,7 @@ plt.rcParams["figure.dpi"] = 300
 # Setting source
 def _get_p0(domain):
     Nx = domain.N
-    p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
+    p0 = 5.0 * circ_mask(Nx, 5, (40, 40))
     p0 = jnp.expand_dims(p0, -1)
     p0 = FiniteDifferences(p0, domain, accuracy=8)
     return p0

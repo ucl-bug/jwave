@@ -13,14 +13,9 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
-from enum import Enum
-from typing import TypeVar
-
-Carry = TypeVar("Carry")
-X = TypeVar("X")
-Y = TypeVar("Y")
+from jwave.signal_processing import tone_burst
 
 
-class CheckpointType(Enum):
-    NONE = 0
-    STEP = 1
+def test_tone_burst_with_valid_inputs():
+    result = tone_burst(1000.0, 100.0, 10.0)
+    assert len(result) > 0

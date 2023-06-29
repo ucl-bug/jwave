@@ -19,3 +19,6 @@ runs:
     - name: Create virtual environment
       run: poetry install --with=dev
       shell: bash
+    - name: Install jaxlib
+      run: poetry run pip install jax[cpu]
+      shell: bash
