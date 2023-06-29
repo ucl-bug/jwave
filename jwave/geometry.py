@@ -226,7 +226,26 @@ def fibonacci_sphere(
     return points[:, 0], points[:, 1], points[:, 2]
 
 
-def _circ_mask(N, radius, centre):
+def circ_mask(N: Tuple[int, int], radius: float,
+              centre: Union[List[float], Tuple[float, float]]) -> np.ndarray:
+    """
+    Generate a 2D binary mask representing a circle within a 2D grid.
+
+    The mask is an ndarray of size N with 1s inside the circle (defined by a given
+    centre and radius) and 0s outside.
+
+    Args:
+        N (Tuple[int, int]): The shape of the output mask (size of the grid).
+            It should be in the format (x_size, y_size).
+        radius (float): The radius of the circle.
+        centre (Union[List[float], Tuple[float, float]]): The coordinates of
+            the centre of the circle in the format (x, y).
+
+    Returns:
+        mask (np.ndarray): The 2D mask as a numpy ndarray of integers.
+            The shape of the mask is N. Values inside the circle are 1, and values
+            outside the circle are 0.
+    """
     x, y = np.mgrid[0:N[0], 0:N[1]]
     dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2)
     mask = (dist_from_centre < radius).astype(int)
