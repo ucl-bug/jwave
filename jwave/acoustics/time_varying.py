@@ -28,7 +28,6 @@ from jwave.acoustics.spectral import kspace_op
 from jwave.geometry import (Medium, MediumAllScalars, MediumOnGrid, Sources,
                             TimeAxis)
 from jwave.signal_processing import smooth
-from jwave.transformations import CheckpointType
 
 from .pml import td_pml_on_grid
 
@@ -329,7 +328,7 @@ def simulate_wave_propagation(
     sensors=None,
     u0=None,
     p0=None,
-    checkpoint: CheckpointType = CheckpointType.NONE,
+    checkpoint: bool = True,
     max_unroll_checkpoint: int = 10,
     smooth_initial=True,
     params=None,
@@ -431,7 +430,7 @@ def simulate_wave_propagation(
         p = pressure_from_density(rho, medium)
         return [p, u, rho], sensors(p, u, rho)
 
-    if checkpoint == CheckpointType.STEP:
+    if checkpoint:
         scan_fun = jax_checkpoint(scan_fun)
 
     _, ys = scan(scan_fun, fields, output_steps)
@@ -480,7 +479,7 @@ def simulate_wave_propagation(
     sensors=None,
     u0=None,
     p0=None,
-    checkpoint: CheckpointType = CheckpointType.NONE,
+    checkpoint: bool = True,
     max_unroll_checkpoint: int = 10,
     smooth_initial=True,
     params=None,
@@ -589,7 +588,7 @@ def simulate_wave_propagation(
         return [p, u, rho], sensors(p, u, rho)
 
     # Define the scanning function according to the checkpoint type
-    if checkpoint == CheckpointType.STEP:
+    if checkpoint:
         scan_fun = jax_checkpoint(scan_fun)
 
     _, ys = scan(scan_fun, fields, output_steps)
