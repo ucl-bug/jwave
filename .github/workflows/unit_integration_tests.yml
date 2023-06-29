@@ -2,7 +2,7 @@
 # It is used to test the code on every pull request, whenever a
 # python, matlab, yaml, makefile, or markdown file is changed.
 
-name: Unite and Integration Tests
+name: Unit and Integration Tests
 
 on:
   pull_request:
