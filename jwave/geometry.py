@@ -287,6 +287,8 @@ class Sources:
     Attributes:
       positions (Tuple[List[int]): source positions
       signals (List[jnp.ndarray]): source signals
+      dt (float): time step
+      domain (Domain): domain
 
     !!! example
 
