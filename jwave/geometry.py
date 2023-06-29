@@ -198,7 +198,7 @@ def unit_fibonacci_sphere(
     return points
 
 
-def _fibonacci_sphere(
+def fibonacci_sphere(
         n: int,
         radius: float,
         centre: Union[Tuple[float, float, float], np.ndarray],
@@ -233,7 +233,27 @@ def _circ_mask(N, radius, centre):
     return mask
 
 
-def _sphere_mask(N, radius, centre):
+def sphere_mask(
+        N: Tuple[int, int, int], radius: float,
+        centre: Union[List[float], Tuple[float, float, float]]) -> np.ndarray:
+    """
+    Generate a 3D binary mask representing a sphere within a 3D grid.
+
+    The mask is an ndarray of size N with 1s inside the sphere (defined by a given
+    centre and radius) and 0s outside.
+
+    Args:
+        N (Tuple[int, int, int]): The shape of the output mask (size of the grid).
+            It should be in the format (x_size, y_size, z_size).
+        radius (float): The radius of the sphere.
+        centre (Union[List[float], Tuple[float, float, float]]): The coordinates of the
+            centre of the sphere in the format (x, y, z).
+
+    Returns:
+        mask (np.ndarray): The 3D mask as a numpy ndarray of integers. The shape of
+            the mask is N. Values inside the sphere are 1, and values outside the
+            sphere are 0.
+    """
     x, y, z = np.mgrid[0:N[0], 0:N[1], 0:N[2]]
     dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2 +
                                (z - centre[2])**2)

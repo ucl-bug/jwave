@@ -1,8 +1,8 @@
 import numpy as np
 from jax import numpy as jnp
 
-from jwave.geometry import (Domain, Medium, _fibonacci_sphere,
-                            points_on_circle, unit_fibonacci_sphere)
+from jwave.geometry import (Domain, Medium, fibonacci_sphere, points_on_circle,
+                            unit_fibonacci_sphere)
 
 
 def test_repr():
@@ -52,12 +52,12 @@ def testunit_fibonacci_sphere():
         assert np.isclose(distance_from_origin, 1.0, atol=1e-5)
 
 
-def test_fibonacci_sphere():
+def testfibonacci_sphere():
     n = 128
     radius = 10.0
     centre = np.array([1.0, 2.0, 3.0])
 
-    x, y, z = _fibonacci_sphere(n, radius, centre, cast_int=False)
+    x, y, z = fibonacci_sphere(n, radius, centre, cast_int=False)
 
     # Assert that the correct number of points have been generated
     assert len(x) == len(y) == len(z) == n
