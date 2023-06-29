@@ -1,0 +1,34 @@
+# This workflow runs both the regression tests and the unit/integration tests.
+# It is triggered on push to the main branch.
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  full_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/python-poetry-env
+      - name: Downloading test data
+        run: |
+          make get_test_data
+      - name: Running Regression Tests
+        run: |
+          poetry run coverage run --source=jwave -m pytest -xvs ./tests/regression_tests
+      - name: Remove coverage data from regression tests
+        run: |
+          rm ./.coverage
+      - name: Running Unit and Integration tests
+        run: |
+          poetry run coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
+          coverage xml
+      - name: "Upload coverage to Codecov"
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          name: codecov-umbrella
