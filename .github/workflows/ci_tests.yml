@@ -25,7 +25,7 @@ jobs:
       - name: Running Unit and Integration tests
         run: |
           poetry run coverage run --source=jwave -m pytest -xvs --ignore=tests/regression_tests
-          coverage xml
+          poetry run coverage xml
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v3
         with:
