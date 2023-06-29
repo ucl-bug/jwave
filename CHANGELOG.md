@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Exposed `fibonacci_sphere` function
 - Exposed `sphere_mask` function for creating spherical binary masks
 - Exposed `circ_mask` function for creating circular binary masks
+- Exposed bli_function that is used to compute the band limited interpolant
 
 ## [0.1.3] - 2023-06-28
 ### Added

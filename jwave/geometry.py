@@ -510,10 +510,10 @@ class Sensors:
                 format(len(self.positions)))
 
 
-def _bli_function(x0: jnp.ndarray,
-                  x: jnp.ndarray,
-                  n: int,
-                  include_imag: bool = False) -> jnp.ndarray:
+def bli_function(x0: jnp.ndarray,
+                 x: jnp.ndarray,
+                 n: int,
+                 include_imag: bool = False) -> jnp.ndarray:
     """
     The function used to compute the band limited interpolation function.
 
@@ -524,7 +524,7 @@ def _bli_function(x0: jnp.ndarray,
         include_imag (bool): Include the imaginary component?
 
     Returns:
-    jnp.ndarray: The values of the function at the grid positions.
+        jnp.ndarray: The values of the function at the grid positions.
     """
     dx = jnp.where(
         (x - x0[:, None]) == 0, 1,
@@ -569,19 +569,19 @@ class BLISensors:
 
         # Calculate the band-limited interpolant weights if not provided.
         x = jnp.arange(n[0])[None]
-        self.bx = jnp.expand_dims(_bli_function(positions[0], x, n[0]),
+        self.bx = jnp.expand_dims(bli_function(positions[0], x, n[0]),
                                   axis=range(2, 2 + len(n)))
 
         if len(n) > 1:
             y = jnp.arange(n[1])[None]
-            self.by = jnp.expand_dims(_bli_function(positions[1], y, n[1]),
+            self.by = jnp.expand_dims(bli_function(positions[1], y, n[1]),
                                       axis=range(2, 2 + len(n) - 1))
         else:
             self.by = None
 
         if len(n) > 2:
             z = jnp.arange(n[2])[None]
-            self.bz = jnp.expand_dims(_bli_function(positions[2], z, n[2]),
+            self.bz = jnp.expand_dims(bli_function(positions[2], z, n[2]),
                                       axis=range(2, 2 + len(n) - 2))
         else:
             self.bz = None
