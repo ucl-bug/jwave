@@ -1,8 +1,8 @@
 import numpy as np
 from jax import numpy as jnp
 
-from jwave.geometry import (Domain, Medium, _fibonacci_sphere,
-                            _points_on_circle, _unit_fibonacci_sphere)
+from jwave.geometry import (Domain, Medium, fibonacci_sphere, points_on_circle,
+                            unit_fibonacci_sphere)
 
 
 def test_repr():
@@ -24,23 +24,23 @@ def test_repr():
     assert str(medium) == expected_output
 
 
-def test_points_on_circle():
+def testpoints_on_circle():
     n = 5
     radius = 10.0
     centre = (0.0, 0.0)
     x_expected = [10, 3, -8, -8, 3]
     y_expected = [0, 9, 5, -5, -9]
 
-    x_actual, y_actual = _points_on_circle(n, radius, centre, cast_int=True)
+    x_actual, y_actual = points_on_circle(n, radius, centre, cast_int=True)
 
     assert x_actual == x_expected
     assert y_actual == y_expected
 
 
-def test_unit_fibonacci_sphere():
+def testunit_fibonacci_sphere():
     samples = 128
 
-    points = _unit_fibonacci_sphere(samples=samples)
+    points = unit_fibonacci_sphere(samples=samples)
 
     # Assert that the correct number of points have been generated
     assert len(points) == samples
@@ -52,12 +52,12 @@ def test_unit_fibonacci_sphere():
         assert np.isclose(distance_from_origin, 1.0, atol=1e-5)
 
 
-def test_fibonacci_sphere():
+def testfibonacci_sphere():
     n = 128
     radius = 10.0
     centre = np.array([1.0, 2.0, 3.0])
 
-    x, y, z = _fibonacci_sphere(n, radius, centre, cast_int=False)
+    x, y, z = fibonacci_sphere(n, radius, centre, cast_int=False)
 
     # Assert that the correct number of points have been generated
     assert len(x) == len(y) == len(z) == n

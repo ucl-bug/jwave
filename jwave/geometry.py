@@ -16,7 +16,6 @@
 import math
 from dataclasses import dataclass
 from typing import List, Tuple, Union
-from numpy.typing import ArrayLike
 
 import numpy as np
 from jax import numpy as jnp
@@ -111,27 +110,27 @@ class Medium:
         return "Medium:\n - " + "\n - ".join(strings)
 
 
-def _points_on_circle(n: int,
-                      radius: float,
-                      centre: Tuple[float, float],
-                      cast_int: bool = True,
-                      angle: float = 0.0,
-                      max_angle: float = 2 * np.pi):
+def points_on_circle(
+        n: int,
+        radius: float,
+        centre: Tuple[float, float],
+        cast_int: bool = True,
+        angle: float = 0.0,
+        max_angle: float = 2 * np.pi) -> Tuple[List[float], List[float]]:
     """
     Generate points on a circle.
 
     Args:
-    n (int): Number of points.
-    radius (float): Radius of the circle.
-    centre (tuple): Centre coordinates of the circle (x, y).
-    cast_int (bool, optional): If True, points will be rounded and converted to integers. Default is True.
-    angle (float, optional): Starting angle in radians. Default is 0.
-    max_angle (float, optional): Maximum angle to reach in radians. Default is 2*pi (full circle).
+        n (int): Number of points.
+        radius (float): Radius of the circle.
+        centre (tuple): Centre coordinates of the circle (x, y).
+        cast_int (bool, optional): If True, points will be rounded and converted to integers. Default is True.
+        angle (float, optional): Starting angle in radians. Default is 0.
+        max_angle (float, optional): Maximum angle to reach in radians. Default is 2*pi (full circle).
 
     Returns:
-    x, y (tuple): Lists of x and y coordinates of the points.
+        x, y (tuple): Lists of x and y coordinates of the points.
     """
-
     angles = np.linspace(0, max_angle, n, endpoint=False)
     x = (radius * np.cos(angles + angle) + centre[0]).tolist()
     y = (radius * np.sin(angles + angle) + centre[1]).tolist()
@@ -149,8 +148,8 @@ class MediumType(Medium):
 @type_of.dispatch
 def type_of(m: Medium):
     return MediumType[type(m.sound_speed),
-    type(m.density),
-    type(m.attenuation)]
+                      type(m.density),
+                      type(m.attenuation)]
 
 
 MediumAllScalars = MediumType[object, object, object]
@@ -171,7 +170,7 @@ MediumOnGrid = Union[
 """A type for Medium objects that have at least one OnGrid component"""
 
 
-def _unit_fibonacci_sphere(
+def unit_fibonacci_sphere(
         samples: int = 128) -> List[Tuple[float, float, float]]:
     """
     Generate evenly distributed points on the surface
@@ -180,26 +179,26 @@ def _unit_fibonacci_sphere(
     From https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
 
     Args:
-    samples (int, optional): The number of points to generate.
-        Default is 128.
+        samples (int, optional): The number of points to generate.
+            Default is 128.
 
     Returns:
-    points (list): A list of tuples representing the (x, y, z)
-        coordinates of the points on the sphere.
+        points (list): A list of tuples representing the (x, y, z)
+            coordinates of the points on the sphere.
     """
     points = []
-    phi = math.pi * (3.0 - math.sqrt(5.0))  # golden angle in radians
+    phi = math.pi * (3.0 - math.sqrt(5.0))    # golden angle in radians
     for i in range(samples):
-        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
-        radius = math.sqrt(1 - y * y)  # radius at y
-        theta = phi * i  # golden angle increment
+        y = 1 - (i / float(samples - 1)) * 2    # y goes from 1 to -1
+        radius = math.sqrt(1 - y * y)    # radius at y
+        theta = phi * i    # golden angle increment
         x = math.cos(theta) * radius
         z = math.sin(theta) * radius
         points.append((x, y, z))
     return points
 
 
-def _fibonacci_sphere(
+def fibonacci_sphere(
         n: int,
         radius: float,
         centre: Union[Tuple[float, float, float], np.ndarray],
@@ -219,7 +218,7 @@ def _fibonacci_sphere(
     Returns:
     x, y, z (tuple): The x, y, and z coordinates of the points on the sphere.
     """
-    points = _unit_fibonacci_sphere(n)
+    points = unit_fibonacci_sphere(n)
     points = np.array(points)
     points = points * radius + centre
     if cast_int:
@@ -227,17 +226,56 @@ def _fibonacci_sphere(
     return points[:, 0], points[:, 1], points[:, 2]
 
 
-def _circ_mask(N, radius, centre):
+def circ_mask(N: Tuple[int, int], radius: float,
+              centre: Union[List[float], Tuple[float, float]]) -> np.ndarray:
+    """
+    Generate a 2D binary mask representing a circle within a 2D grid.
+
+    The mask is an ndarray of size N with 1s inside the circle (defined by a given
+    centre and radius) and 0s outside.
+
+    Args:
+        N (Tuple[int, int]): The shape of the output mask (size of the grid).
+            It should be in the format (x_size, y_size).
+        radius (float): The radius of the circle.
+        centre (Union[List[float], Tuple[float, float]]): The coordinates of
+            the centre of the circle in the format (x, y).
+
+    Returns:
+        mask (np.ndarray): The 2D mask as a numpy ndarray of integers.
+            The shape of the mask is N. Values inside the circle are 1, and values
+            outside the circle are 0.
+    """
     x, y = np.mgrid[0:N[0], 0:N[1]]
-    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2)
+    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
 
-def _sphere_mask(N, radius, centre):
+def sphere_mask(
+        N: Tuple[int, int, int], radius: float,
+        centre: Union[List[float], Tuple[float, float, float]]) -> np.ndarray:
+    """
+    Generate a 3D binary mask representing a sphere within a 3D grid.
+
+    The mask is an ndarray of size N with 1s inside the sphere (defined by a given
+    centre and radius) and 0s outside.
+
+    Args:
+        N (Tuple[int, int, int]): The shape of the output mask (size of the grid).
+            It should be in the format (x_size, y_size, z_size).
+        radius (float): The radius of the sphere.
+        centre (Union[List[float], Tuple[float, float, float]]): The coordinates of the
+            centre of the sphere in the format (x, y, z).
+
+    Returns:
+        mask (np.ndarray): The 3D mask as a numpy ndarray of integers. The shape of
+            the mask is N. Values inside the sphere are 1, and values outside the
+            sphere are 0.
+    """
     x, y, z = np.mgrid[0:N[0], 0:N[1], 0:N[2]]
-    dist_from_centre = np.sqrt((x - centre[0]) ** 2 + (y - centre[1]) ** 2 +
-                               (z - centre[2]) ** 2)
+    dist_from_centre = np.sqrt((x - centre[0])**2 + (y - centre[1])**2 +
+                               (z - centre[2])**2)
     mask = (dist_from_centre < radius).astype(int)
     return mask
 
@@ -249,6 +287,8 @@ class Sources:
     Attributes:
       positions (Tuple[List[int]): source positions
       signals (List[jnp.ndarray]): source signals
+      dt (float): time step
+      domain (Domain): domain
 
     !!! example
 
@@ -328,7 +368,7 @@ class DistributedTransducer:
 
     def tree_flatten(self):
         children = (self.mask, self.signal, self.dt)
-        aux = (self.domain,)
+        aux = (self.domain, )
         return (children, aux)
 
     @classmethod
@@ -431,7 +471,7 @@ class Sensors:
 
     def tree_flatten(self):
         children = None
-        aux = (self.positions,)
+        aux = (self.positions, )
         return (children, aux)
 
     @classmethod
@@ -462,17 +502,20 @@ class Sensors:
             return p.on_grid[self.positions[0]]
         elif len(self.positions) == 2:
             return p.on_grid[self.positions[0],
-            self.positions[1]]  # type: ignore
+                             self.positions[1]]    # type: ignore
         elif len(self.positions) == 3:
             return p.on_grid[self.positions[0], self.positions[1],
-            self.positions[2]]  # type: ignore
+                             self.positions[2]]    # type: ignore
         else:
             raise ValueError(
                 "Sensors positions must be 1, 2 or 3 dimensional. Not {}".
                 format(len(self.positions)))
 
 
-def _bli_function(x0: jnp.ndarray, x: jnp.ndarray, n: int, include_imag: bool = False) -> jnp.ndarray:
+def bli_function(x0: jnp.ndarray,
+                 x: jnp.ndarray,
+                 n: int,
+                 include_imag: bool = False) -> jnp.ndarray:
     """
     The function used to compute the band limited interpolation function.
 
@@ -483,9 +526,11 @@ def _bli_function(x0: jnp.ndarray, x: jnp.ndarray, n: int, include_imag: bool = 
         include_imag (bool): Include the imaginary component?
 
     Returns:
-    jnp.ndarray: The values of the function at the grid positions.
+        jnp.ndarray: The values of the function at the grid positions.
     """
-    dx = jnp.where((x - x0[:, None]) == 0, 1, x - x0[:, None])  # https://github.com/google/jax/issues/1052
+    dx = jnp.where(
+        (x - x0[:, None]) == 0, 1,
+        x - x0[:, None])    # https://github.com/google/jax/issues/1052
     dx_nonzero = (x - x0[:, None]) != 0
 
     if n % 2 == 0:
@@ -499,7 +544,8 @@ def _bli_function(x0: jnp.ndarray, x: jnp.ndarray, n: int, include_imag: bool = 
             jnp.sin(jnp.pi * dx / n) / n
 
     # Deal with case of precisely on grid.
-    y = y * jnp.all(dx_nonzero, axis=1)[:, None] + (1 - dx_nonzero) * (~jnp.all(dx_nonzero, axis=1)[:, None])
+    y = y * jnp.all(dx_nonzero, axis=1)[:, None] + (1 - dx_nonzero) * (
+        ~jnp.all(dx_nonzero, axis=1)[:, None])
     return y
 
 
@@ -525,19 +571,19 @@ class BLISensors:
 
         # Calculate the band-limited interpolant weights if not provided.
         x = jnp.arange(n[0])[None]
-        self.bx = jnp.expand_dims(_bli_function(positions[0], x, n[0]),
+        self.bx = jnp.expand_dims(bli_function(positions[0], x, n[0]),
                                   axis=range(2, 2 + len(n)))
 
         if len(n) > 1:
             y = jnp.arange(n[1])[None]
-            self.by = jnp.expand_dims(_bli_function(positions[1], y, n[1]),
+            self.by = jnp.expand_dims(bli_function(positions[1], y, n[1]),
                                       axis=range(2, 2 + len(n) - 1))
         else:
             self.by = None
 
         if len(n) > 2:
             z = jnp.arange(n[2])[None]
-            self.bz = jnp.expand_dims(_bli_function(positions[2], z, n[2]),
+            self.bz = jnp.expand_dims(bli_function(positions[2], z, n[2]),
                                       axis=range(2, 2 + len(n) - 2))
         else:
             self.bz = None
@@ -594,7 +640,7 @@ class TimeAxis:
         self.t_end = t_end
 
     def tree_flatten(self):
-        children = (None,)
+        children = (None, )
         aux = (self.dt, self.t_end)
         return (children, aux)
 
@@ -628,7 +674,7 @@ class TimeAxis:
             np.max)
         if t_end is None:
             t_end = np.sqrt(
-                sum((x[-1] - x[0]) ** 2
+                sum((x[-1] - x[0])**2
                     for x in medium.domain.spatial_axis)) / functional(
-                medium.sound_speed)(np.min)
+                        medium.sound_speed)(np.min)
         return TimeAxis(dt=float(dt), t_end=float(t_end))

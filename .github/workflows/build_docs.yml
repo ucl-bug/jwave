@@ -12,6 +12,8 @@ on:
       - '**.md'
       - '**.ipynb'
       - '**.sh'
+      - '**.css'
+      - '**.js'
 
 jobs:
   build-and-publish:

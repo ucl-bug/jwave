@@ -26,7 +26,7 @@ from scipy.io import loadmat, savemat
 
 from jwave import FourierSeries
 from jwave.acoustics import simulate_wave_propagation
-from jwave.geometry import Domain, Medium, TimeAxis, _sphere_mask
+from jwave.geometry import Domain, Medium, TimeAxis, sphere_mask
 from jwave.utils import plot_comparison
 
 from .utils import log_accuracy
@@ -39,7 +39,7 @@ plt.rcParams["figure.dpi"] = 300
 # Setting source
 def _get_p0(domain):
     Nx = domain.N
-    p0 = 4.0 * _sphere_mask(Nx, 5, (40, 36, 33))
+    p0 = 4.0 * sphere_mask(Nx, 5, (40, 36, 33))
     p0 = jnp.expand_dims(p0, -1)
     p0 = FourierSeries(p0, domain)
     return p0

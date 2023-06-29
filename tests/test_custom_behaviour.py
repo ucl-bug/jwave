@@ -19,7 +19,7 @@ from jax import value_and_grad
 
 from jwave import FourierSeries
 from jwave.acoustics import simulate_wave_propagation
-from jwave.geometry import Domain, Medium, TimeAxis, _circ_mask
+from jwave.geometry import Domain, Medium, TimeAxis, circ_mask
 
 TEST_SETTINGS = {
     "N": (128, 128),
@@ -31,7 +31,7 @@ def test_changing_params_wave_prop():
     domain = Domain(TEST_SETTINGS["N"], TEST_SETTINGS["dx"])
     medium = Medium(domain, 1500.0, pml_size=16)
     Nx = domain.N
-    p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
+    p0 = 5.0 * circ_mask(Nx, 5, (40, 40))
     p0 = jnp.expand_dims(p0, -1)
     p0 = FourierSeries(p0, domain)
 
@@ -60,7 +60,7 @@ def test_differentiating_params():
     domain = Domain(TEST_SETTINGS["N"], TEST_SETTINGS["dx"])
     medium = Medium(domain, 1500.0, pml_size=16)
     Nx = domain.N
-    p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
+    p0 = 5.0 * circ_mask(Nx, 5, (40, 40))
     p0 = jnp.expand_dims(p0, -1)
     p0 = FourierSeries(p0, domain)
 
@@ -89,7 +89,7 @@ def test_extract_params_in_jit():
     domain = Domain(TEST_SETTINGS["N"], TEST_SETTINGS["dx"])
     medium = Medium(domain, 1500.0, pml_size=16)
     Nx = domain.N
-    p0 = 5.0 * _circ_mask(Nx, 5, (40, 40))
+    p0 = 5.0 * circ_mask(Nx, 5, (40, 40))
     p0 = jnp.expand_dims(p0, -1)
     p0 = FourierSeries(p0, domain)
 
