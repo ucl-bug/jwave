@@ -270,12 +270,19 @@ def mass_conservation_rhs(
 
 def _rewrite_saveat(
     medium: Medium,
-    saveat: SaveAt,
+    saveat: Union[SaveAt, None],
+    time_axis: TimeAxis,
     sensors: Sensors,
 ):
     # TODO: Deal properly with sub-saveat. There is some redundancy between
     # SaveAt and sensors. Most likely, sensors should be some kind of
     # derived class of SaveAt.
+
+    # If saveat is None, generate a default one that samples at the
+    # time steps of the time axis.
+    if saveat is None:
+        ts = time_axis.to_array()
+        saveat = SaveAt(t0=True, t1=True, ts=ts, steps=False)
 
     # Warn the user if subs is set and also sensors are set,
     # since it will be overwritten.
@@ -451,7 +458,7 @@ def acoustic_solver(
     p0: Optional[OnGrid] = None,
     settings: Optional[WaveSolverSettings] = WaveSolverSettings(),
     adjoint: Optional[AbstractAdjoint] = DirectAdjoint(),
-    saveat: Optional[SaveAt] = SaveAt(steps=True),
+    saveat: Optional[SaveAt] = None,
     stepsize_controller: Optional[
         AbstractStepSizeController] = ConstantStepSize(),
     max_steps: Optional[int] = None,
@@ -465,7 +472,7 @@ def acoustic_solver(
         )
 
     # Rewrite the saveat
-    saveat = _rewrite_saveat(medium, saveat, sensors)
+    saveat = _rewrite_saveat(medium, saveat, time_axis, sensors)
 
     # If saving at steps, then max_steps must be set
     if saveat.subs.steps and max_steps is None:

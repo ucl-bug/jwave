@@ -39,14 +39,14 @@ class TimeAxis:
         children = (
             self.t0,
             self.t1,
+            self.dt,
         )
-        aux = (self.dt, )
+        aux = None
         return (children, aux)
 
     @classmethod
     def tree_unflatten(cls, aux, children):
-        t0, t1 = children
-        dt = aux[0]
+        t0, t1, dt = children
         return cls(t0, t1, dt)
 
     @property

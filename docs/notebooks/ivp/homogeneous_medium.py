@@ -1,3 +1,4 @@
+from diffrax import RecursiveCheckpointAdjoint
 from jax import jit
 from jax import numpy as jnp
 from matplotlib import pyplot as plt
@@ -26,7 +27,7 @@ def compiled_simulator(medium, p0):
                            time_axis,
                            SemiImplicitEulerCorrected(),
                            p0=p0,
-                           max_steps=max_steps)
+                           adjoint=RecursiveCheckpointAdjoint())
 
 
 pressure = compiled_simulator(medium, p0)
