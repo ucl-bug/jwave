@@ -13,20 +13,24 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Dict, Tuple, TypeVar, Union
+import warnings
+from typing import Optional, TypeVar, Union
 
 import numpy as np
-from jax import checkpoint as jax_checkpoint
+from diffrax import (AbstractAdjoint, AbstractStepSizeController,
+                     ConstantStepSize, DirectAdjoint, ODETerm, SaveAt,
+                     diffeqsolve)
+from diffrax.custom_types import Scalar
 from jax import numpy as jnp
-from jax.lax import scan
+from jax.tree_util import register_pytree_node_class
 from jaxdf import Field, operator
-from jaxdf.discretization import FourierSeries, Linear, OnGrid
-from jaxdf.operators import (diag_jacobian, functional, shift_operator,
-                             sum_over_dims)
+from jaxdf.discretization import FourierSeries, OnGrid
+from jaxdf.operators import functional, shift_operator, sum_over_dims
 
 from jwave.acoustics.spectral import kspace_op
-from jwave.geometry import (Medium, MediumAllScalars, MediumOnGrid, Sources,
-                            TimeAxis)
+from jwave.geometry import (Medium, MediumAllScalars, MediumOnGrid, Sensors,
+                            Sources)
+from jwave.ode import SemiImplicitEulerCorrected, TimeAxis
 from jwave.signal_processing import smooth
 
 from .pml import td_pml_on_grid
@@ -50,32 +54,102 @@ def _shift_rho(rho0, direction, dx):
     return rho0
 
 
+# Settings for the wave solver
+@register_pytree_node_class
+class WaveSolverSettings:
+
+    def __init__(self,
+                 PMLAlpha: Optional[Scalar] = 2.0,
+                 PMLSize: Optional[Scalar] = 20,
+                 PMLInside: Optional[bool] = True,
+                 SmoothP0: Optional[bool] = True,
+                 SmoothSoundSpeed: Optional[bool] = False,
+                 SmoothDensity: Optional[bool] = False):
+        """
+        Initializes the settings for a Wave Solver.
+
+        Args:
+            PMLAlpha (Scalar, optional): Alpha value for Perfectly
+                Matched Layer (PML). Defaults to 2.0.
+            PMLSize (Scalar, optional): Size of the Perfectly Matched Layer (PML).
+                Defaults to 20.
+            PMLInside (bool, optional): Flag indicating whether PML is inside.
+                Defaults to True.
+            SmoothP0 (bool, optional): Flag for smoothing initial pressure distribution.
+                Defaults to True.
+            SmoothSoundSpeed (bool, optional): Flag for smoothing sound speed.
+                Defaults to False.
+            SmoothDensity (bool, optional): Flag for smoothing density. Defaults to False.
+        """
+        self.PMLAlpha = PMLAlpha
+        self.PMLSize = PMLSize
+        self.PMLInside = PMLInside
+        self.SmoothP0 = SmoothP0
+        self.SmoothSoundSpeed = SmoothSoundSpeed
+        self.SmoothDensity = SmoothDensity
+
+    def tree_flatten(self):
+        children = (self.PMLAlpha, )
+        aux = (self.PMLSize, self.PMLInside, self.SmoothP0,
+               self.SmoothSoundSpeed, self.SmoothDensity)
+        return children, aux
+
+    @classmethod
+    def tree_unflatten(cls, aux, children):
+        return cls(*children, *aux)
+
+    def __repr__(self) -> str:
+        """
+        Generates a machine-readable string representation of the instance.
+
+        Returns:
+            str: String representation of the instance.
+        """
+        return (
+            f"WaveSolverSettings(PMLAlpha={self.PMLAlpha}, PMLSize={self.PMLSize}, "
+            f"PMLInside={self.PMLInside}, SmoothP0={self.SmoothP0}, "
+            f"SmoothSoundSpeed={self.SmoothSoundSpeed}, SmoothDensity={self.SmoothDensity})"
+        )
+
+    def __str__(self) -> str:
+        """
+        Generates a human-readable string representation of the instance.
+
+        Returns:
+            str: String representation of the instance.
+        """
+        return (
+            f"WaveSolverSettings with PMLAlpha: {self.PMLAlpha}, PMLSize: {self.PMLSize}, "
+            f"PMLInside: {self.PMLInside}, SmoothP0: {self.SmoothP0}, "
+            f"SmoothSoundSpeed: {self.SmoothSoundSpeed}, SmoothDensity: {self.SmoothDensity}"
+        )
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, WaveSolverSettings):
+            return False
+        return (self.PMLAlpha == other.PMLAlpha
+                and self.PMLSize == other.PMLSize
+                and self.PMLInside == other.PMLInside
+                and self.SmoothP0 == other.SmoothP0
+                and self.SmoothSoundSpeed == other.SmoothSoundSpeed
+                and self.SmoothDensity == other.SmoothDensity)
+
+
 @operator
-def momentum_conservation_rhs(p: OnGrid,
-                              u: OnGrid,
-                              medium: Medium,
-                              *,
-                              c_ref=1.0,
-                              dt=1.0,
-                              params=None) -> OnGrid:
-    r"""Staggered implementation of the momentum conservation equation.
+def pressure_from_density(rho: Field, medium: Medium, *, params=None) -> Field:
+    r"""Compute the pressure field from the density field.
 
     Args:
-      p (OnGrid): The pressure field.
-      u (OnGrid): The velocity field.
+      rho (Field): The density field.
       medium (Medium): The medium.
-      c_ref (float): The reference sound speed. **Unused**
-      dt (float): The time step. **Unused**
       params: The operator parameters. **Unused**
 
     Returns:
-      OnGrid: The right hand side of the momentum conservation equation.
+      Field: The pressure field.
     """
-    # Staggered implementation
-    dx = np.asarray(u.domain.dx)
-    rho0 = _shift_rho(medium.density, 1, dx)
-    dp = diag_jacobian(p, stagger=[0.5])
-    return -dp / rho0, params
+    rho_sum = sum_over_dims(rho)
+    c0 = medium.sound_speed
+    return (c0**2) * rho_sum, params
 
 
 @operator
@@ -131,42 +205,6 @@ def momentum_conservation_rhs(
     dp = jnp.stack([single_grad(i) for i in range(p.ndim)], axis=-1)
     update = -p.replace_params(dp) / rho0
 
-    return update, params
-
-
-@operator
-def mass_conservation_rhs(p: OnGrid,
-                          u: OnGrid,
-                          mass_source: object,
-                          medium: Medium,
-                          *,
-                          c_ref,
-                          dt,
-                          params=None) -> OnGrid:
-    r"""Implementation of the mass conservation equation. The pressure field
-    is assumed to be staggered forward for each component, and will be staggered
-    backward before being multiplied by the ambient density.
-
-    Args:
-      p (OnGrid): The pressure field.
-      u (OnGrid): The velocity field.
-      mass_source (object): The mass source.
-      medium (Medium): The medium.
-      c_ref (float): The reference sound speed. **Unused**
-      dt (float): The time step. **Unused**
-      params: The operator parameters. **Unused**
-
-    Returns:
-      OnGrid: The right hand side of the mass conservation equation.
-    """
-
-    rho0 = medium.density
-    c0 = medium.sound_speed
-    dx = np.asarray(p.domain.dx)
-
-    # Staggered implementation
-    du = diag_jacobian(u, stagger=[-0.5])
-    update = -du * rho0 + 2 * mass_source / (c0 * p.ndim * dx)
     return update, params
 
 
@@ -230,217 +268,92 @@ def mass_conservation_rhs(
     return update, params
 
 
-@operator
-def pressure_from_density(rho: Field, medium: Medium, *, params=None) -> Field:
-    r"""Compute the pressure field from the density field.
-
-    Args:
-      rho (Field): The density field.
-      medium (Medium): The medium.
-      params: The operator parameters. **Unused**
-
-    Returns:
-      Field: The pressure field.
-    """
-    rho_sum = sum_over_dims(rho)
-    c0 = medium.sound_speed
-    return (c0**2) * rho_sum, params
-
-
-def ongrid_wave_prop_params(
-    medium: OnGrid,
-    time_axis: TimeAxis,
-    *args,
-    **kwargs,
-):
-    # Check which elements of medium are a field
-    x = [
-        x for x in [medium.sound_speed, medium.density, medium.attenuation]
-        if isinstance(x, Field)
-    ][0]
-
-    dt = time_axis.dt
-    c_ref = functional(medium.sound_speed)(jnp.amax)
-
-    # Making PML on grid for rho and u
-    def make_pml(staggering=0.0):
-        pml_grid = td_pml_on_grid(medium,
-                                  dt,
-                                  c0=c_ref,
-                                  dx=medium.domain.dx[0],
-                                  coord_shift=staggering)
-        pml = x.replace_params(pml_grid)
-        return pml
-
-    pml_rho = make_pml()
-    pml_u = make_pml(staggering=0.5)
-
-    return {
-        "pml_rho": pml_rho,
-        "pml_u": pml_u,
-    }
-
-
-@operator
-def wave_propagation_symplectic_step(
-    p: Linear,
-    u: Linear,
-    rho: Linear,
+def _rewrite_saveat(
     medium: Medium,
-    sources: Union[None, Sources],
-    pmls: Dict,
-    *,
-    step: Union[int, object],
-    c_ref=Union[None, object],
-    dt=Union[None, object],
-    params=None,
-) -> Tuple[Linear, Linear, Linear]:
-
-    # Evaluate mass source
-    if sources is None:
-        mass_src_field = 0.0
-    else:
-        mass_src_field = sources.on_grid(step)
-
-    # Calculate momentum conservation equation
-    du = momentum_conservation_rhs(p, u, medium, c_ref, dt)
-    pml_u = pmls["pml_u"]
-    u = pml_u * (pml_u * u + dt * du)
-
-    # Calculate mass conservation equation
-    drho = mass_conservation_rhs(p, u, mass_src_field, medium, c_ref, dt)
-    pml_rho = pmls["pml_rho"]
-    rho = pml_rho * (pml_rho * rho + dt * drho)
-
-    # Update pressure
-    p = pressure_from_density(rho, medium)
-
-    # Return updated fields
-    return [p, u, rho]
-
-
-@operator
-def simulate_wave_propagation(
-    medium: MediumOnGrid,
-    time_axis: TimeAxis,
-    *,
-    sources=None,
-    sensors=None,
-    u0=None,
-    p0=None,
-    checkpoint: bool = True,
-    max_unroll_checkpoint: int = 10,
-    smooth_initial=True,
-    params=None,
+    saveat: SaveAt,
+    sensors: Sensors,
 ):
-    r"""Simulate the wave propagation operator.
+    # TODO: Deal properly with sub-saveat. There is some redundancy between
+    # SaveAt and sensors. Most likely, sensors should be some kind of
+    # derived class of SaveAt.
 
-    Args:
-      medium (OnGridOrScalars): The medium.
-      time_axis (TimeAxis): The time axis.
-      sources (Any): The source terms. It can be any jax traceable object that
-        implements the method `sources.on_grid(n)`, which returns the source
-        field at the nth time step.
-      sensors (Any): The sensor terms. It can be any jax traceable object that
-        can be called as `sensors(p,u,rho)`, where `p` is the pressure field,
-        `u` is the velocity field, and `rho` is the density field. The return
-        value of this function is the recorded field. If `sensors` is not
-        specified, the recorded field is the entire pressure field.
-      u0 (Field): The initial velocity field. If `None`, the initial velocity
-        field is set depending on the `p0` value, such that `u(t=0)=0`. Note that
-        the velocity field is staggered forward by half time step relative to the
-        pressure field.
-      p0 (Field): The initial pressure field. If `None`, the initial pressure
-        field is set to zero.
-      checkpoint (bool): Whether to checkpoint the simulation at each time step.
-        See [jax.checkpoint](https://jax.readthedocs.io/en/latest/_autosummary/jax.checkpoint.html)
-      smooth_initial (bool): Whether to smooth the initial conditions.
-      params: The operator parameters.
+    # Warn the user if subs is set and also sensors are set,
+    # since it will be overwritten.
+    if saveat.subs.fn is not None and Sensors is not None:
+        warnings.warn(
+            f"Both sensors and saveat.fn are set. The latter will be overwritten"
+        )
 
-    Returns:
-      Any: The recording of the sensors at each time step.
-    """
-
-    # Default sensors simply return the presure field
+    # Define default sampling function, that only returns the pressure
+    # if sensors is None and saveat.fn is None
     if sensors is None:
         sensors = lambda p, u, rho: p
 
-    # Setup parameters
-    output_steps = jnp.arange(0, time_axis.Nt, 1)
-    dt = time_axis.dt
-    c_ref = functional(medium.sound_speed)(jnp.amax)
+    if sensors is not None:
+        # Define the sampling function
+        print("Redefining sampling func")
 
-    if params == None:
-        params = ongrid_wave_prop_params(medium, time_axis)
+        def sampling(t, fields, args):
+            u, rho = fields
 
-    # Get parameters
-    pml_rho = params["pml_rho"]
-    pml_u = params["pml_u"]
+            # Generate p
+            p = pressure_from_density(rho, medium)
 
-    # Initialize variables
-    shape = tuple(list(medium.domain.N) + [
-        len(medium.domain.N),
-    ])
-    shape_one = tuple(list(medium.domain.N) + [
-        1,
-    ])
-    if u0 is None:
-        u0 = pml_u.replace_params(jnp.zeros(shape))
-    else:
-        assert u0.dim == len(medium.domain.N)
-    if p0 is None:
-        p0 = pml_rho.replace_params(jnp.zeros(shape_one))
-    else:
-        if smooth_initial:
-            p0_params = p0.params[..., 0]
-            p0_params = jnp.expand_dims(smooth(p0_params), -1)
-            p0 = p0.replace_params(p0_params)
+            return sensors(p, u, rho)
 
-        # Force u(t=0) to be zero accounting for time staggered grid
-        u0 = -dt * momentum_conservation_rhs(
-            p0, u0, medium, c_ref=c_ref, dt=dt) / 2
+        return SaveAt(
+            t0=saveat.subs.t0,
+            t1=saveat.subs.t1,
+            ts=saveat.subs.ts,
+            steps=saveat.subs.steps,
+            fn=sampling,
+            dense=saveat.dense,
+            solver_state=saveat.solver_state,
+            controller_state=saveat.controller_state,
+            made_jump=saveat.made_jump,
+        )
 
-    # Initialize acoustic density
-    rho = (p0.replace_params(
-        jnp.stack([p0.params[..., i]
-                   for i in range(p0.ndim)], axis=-1)) / p0.ndim)
-    rho = rho / (medium.sound_speed**2)
-
-    # define functions to integrate
-    fields = [p0, u0, rho]
-
-    def scan_fun(fields, n):
-        p, u, rho = fields
-        if sources is None:
-            mass_src_field = 0.0
-        else:
-            mass_src_field = sources.on_grid(n)
-
-        du = momentum_conservation_rhs(p, u, medium, c_ref=c_ref, dt=dt)
-        u = pml_u * (pml_u * u + dt * du)
-
-        drho = mass_conservation_rhs(p,
-                                     u,
-                                     mass_src_field,
-                                     medium,
-                                     c_ref=c_ref,
-                                     dt=dt)
-        rho = pml_rho * (pml_rho * rho + dt * drho)
-
-        p = pressure_from_density(rho, medium)
-        return [p, u, rho], sensors(p, u, rho)
-
-    if checkpoint:
-        scan_fun = jax_checkpoint(scan_fun)
-
-    _, ys = scan(scan_fun, fields, output_steps)
-
-    return ys
+    print("I should not be here")
+    return saveat
 
 
-def fourier_wave_prop_params(
+# General operator
+@operator
+def simulate_wave_propagation(
+        medium: MediumOnGrid,
+        time_axis: TimeAxis,
+        solver: SemiImplicitEulerCorrected,
+        *,
+        sources: Optional[Sources] = None,
+        sensors: Optional[Sensors] = None,
+        u0: Optional[OnGrid] = None,
+        p0: Optional[OnGrid] = None,
+        settings: Optional[WaveSolverSettings] = WaveSolverSettings(),
+        adjoint: Optional[AbstractAdjoint] = DirectAdjoint(),
+        saveat: Optional[SaveAt] = SaveAt(steps=True),
+        stepsize_controller: Optional[
+            AbstractStepSizeController] = ConstantStepSize(),
+        max_steps: Optional[int] = None,
+        params=None):
+    # Must define the maximum number of steps, otherwise DirectAdjoint will not
+    # allow for backpropagation (but only forward AD)
+    if max_steps is None and adjoint is DirectAdjoint():
+        max_steps = time_axis.Nt
+
+    raise NotImplementedError("The general operator is not implemented yet")
+
+
+def simulate_wave_propagation(*args, **kwargs):
+    warnings.warn(
+        "The `simulate_wave_propagation` operator is deprecated. Use the acoustic_solver instead."
+    )
+    return acoustic_solver(*args, **kwargs)
+
+
+def kspace_acoustic_solver_params(
     medium: Union[MediumAllScalars, MediumOnGrid],
     time_axis: TimeAxis,
+    solver: SemiImplicitEulerCorrected,
     *args,
     **kwargs,
 ):
@@ -467,134 +380,161 @@ def fourier_wave_prop_params(
         "pml_rho": pml_rho,
         "pml_u": pml_u,
         "fourier": fourier,
+        "c_ref": c_ref,
     }
 
 
-@operator(init_params=fourier_wave_prop_params)
-def simulate_wave_propagation(
-    medium: Union[MediumAllScalars, MediumOnGrid],
-    time_axis: TimeAxis,
-    *,
-    sources=None,
-    sensors=None,
-    u0=None,
-    p0=None,
-    checkpoint: bool = True,
-    max_unroll_checkpoint: int = 10,
-    smooth_initial=True,
-    params=None,
+def _initialize_fourier_fields(
+        medium: Union[MediumAllScalars, MediumOnGrid],
+        time_axis: TimeAxis,
+        sample_field: FourierSeries,
+        params: Any,
+        u0: Optional[FourierSeries] = None,
+        p0: Optional[FourierSeries] = None,
+        settings: Optional[WaveSolverSettings] = WaveSolverSettings(),
 ):
-    r"""Simulates the wave propagation operator using the PSTD method. This
-    implementation is equivalent to the `kspaceFirstOrderND` function in the
-    k-Wave Toolbox.
-
-    Args:
-      medium (FourierOrScalars): The medium.
-      time_axis (TimeAxis): The time axis.
-      sources (Any): The source terms. It can be any jax traceable object that
-        implements the method `sources.on_grid(n)`, which returns the source
-        field at the nth time step.
-      sensors (Any): The sensor terms. It can be any jax traceable object that
-        can be called as `sensors(p,u,rho)`, where `p` is the pressure field,
-        `u` is the velocity field, and `rho` is the density field. The return
-        value of this function is the recorded field. If `sensors` is not
-        specified, the recorded field is the entire pressure field.
-      u0 (Field): The initial velocity field. If `None`, the initial velocity
-        field is set depending on the `p0` value, such that `u(t=0)=0`. Note that
-        the velocity field is staggered forward by half time step relative to the
-        pressure field.
-      p0 (Field): The initial pressure field. If `None`, the initial pressure
-        field is set to zero.
-      checkpoint (CheckpointType): The kind of checkpointing to use for the
-        simulation. See `CheckpointType` and `ScanCheckpoint` for more details.
-      smooth_initial (bool): Whether to smooth the initial conditions.
-      params: The operator parameters.
-
-    Returns:
-      Any: The recording of the sensors at each time step.
-    """
-    # Default sensors simply return the presure field
-    if sensors is None:
-        sensors = lambda p, u, rho: p
-
-    # Setup parameters
-    output_steps = jnp.arange(0, time_axis.Nt, 1)
-    dt = time_axis.dt
-    c_ref = functional(medium.sound_speed)(jnp.amax)
-    if params == None:
-        params = fourier_wave_prop_params(medium, time_axis)
-
-    # Get parameters
-    pml_rho = params["pml_rho"]
-    pml_u = params["pml_u"]
-
-    # Initialize variables
     shape = tuple(list(medium.domain.N) + [
         len(medium.domain.N),
     ])
     shape_one = tuple(list(medium.domain.N) + [
         1,
     ])
-    if u0 is None:
-        u0 = pml_u.replace_params(jnp.zeros(shape))
-    else:
-        assert u0.dim == len(medium.domain.N)
+    c_ref = params["c_ref"]
+    dt = time_axis.dt
+
+    # Initialize u0 and p0 to zero if not given
     if p0 is None:
-        p0 = pml_rho.replace_params(jnp.zeros(shape_one))
+        p0 = sample_field.replace_params(jnp.zeros(shape_one))
     else:
-        if smooth_initial:
+        if settings.SmoothP0:
             p0_params = p0.params[..., 0]
             p0_params = jnp.expand_dims(smooth(p0_params), -1)
             p0 = p0.replace_params(p0_params)
 
-        # Force u(t=0) to be zero accounting for time staggered grid
-        u0 = (-dt * momentum_conservation_rhs(
-            p0, u0, medium, c_ref=c_ref, dt=dt, params=params["fourier"]) / 2)
+        # Force u(t=0) to be zero accounting for time staggered grid, if not set
+        if u0 is None:
+            u0 = 0.0 * p0    #TODO: This should not be necessary
+            u0 = (-(dt / 2) * momentum_conservation_rhs(
+                p0, u0, medium, c_ref=c_ref, dt=dt, params=params["fourier"]))
 
-    # Initialize acoustic density
-    rho = (p0.replace_params(
+    # Define initial acoustic density
+    rho0 = (p0.replace_params(
         jnp.stack([p0.params[..., i]
                    for i in range(p0.ndim)], axis=-1)) / p0.ndim)
-    rho = rho / (medium.sound_speed**2)
+    rho0 = rho0 / (medium.sound_speed**2)
 
-    # define functions to integrate
-    fields = [p0, u0, rho]
+    # Smooth sound speed and density if requested
+    if settings.SmoothSoundSpeed:
+        sos_params = medium.sound_speed.params[..., 0]
+        sos_params = jnp.expand_dims(smooth(sos_params), -1)
+        medium.sound_speed = medium.sound_speed.replace_params(sos_params)
 
-    def scan_fun(fields, n):
-        p, u, rho = fields
+    if settings.SmoothDensity:
+        rho_params = medium.density.params[..., 0]
+        rho_params = jnp.expand_dims(smooth(rho_params), -1)
+        medium.density = medium.density.replace_params(rho_params)
+
+    return medium, u0, rho0
+
+
+# The default solver is equivalent to k-wave, and uses the k-space correction. The
+# k-space correction is included in the gradient operators
+@operator(init_params=kspace_acoustic_solver_params)
+def acoustic_solver(
+    medium: Union[MediumAllScalars, MediumOnGrid],
+    time_axis: TimeAxis,
+    solver: SemiImplicitEulerCorrected = SemiImplicitEulerCorrected(),
+    *,
+    sources: Optional[Sources] = None,
+    sensors: Optional[Sensors] = None,
+    u0: Optional[OnGrid] = None,
+    p0: Optional[OnGrid] = None,
+    settings: Optional[WaveSolverSettings] = WaveSolverSettings(),
+    adjoint: Optional[AbstractAdjoint] = DirectAdjoint(),
+    saveat: Optional[SaveAt] = SaveAt(steps=True),
+    stepsize_controller: Optional[
+        AbstractStepSizeController] = ConstantStepSize(),
+    max_steps: Optional[int] = None,
+    params=None,
+):
+    # With the modified k-space correction, the stepsize_controller can only
+    # be ConstantStepSize. Raise an error if it is not
+    if not isinstance(stepsize_controller, ConstantStepSize):
+        raise NotImplementedError(
+            "The modified k-space correction only works with a constant stepsize controller"
+        )
+
+    # Rewrite the saveat
+    saveat = _rewrite_saveat(medium, saveat, sensors)
+
+    # If saving at steps, then max_steps must be set
+    if saveat.subs.steps and max_steps is None:
+        raise ValueError("max_steps must be set when saveat.steps is True")
+
+    # Get operator parameters
+    c_ref = params["c_ref"]
+    pml_rho = params["pml_rho"]
+    pml_u = params["pml_u"]
+    fourier = params["fourier"]
+
+    # Make initial conditions
+    medium, u0, rho0 = _initialize_fourier_fields(medium, time_axis, pml_u,
+                                                  params, u0, p0, settings)
+    fields = (u0, rho0)
+
+    # Define the functions for the symplectic Euler integration
+    dt = time_axis.dt
+
+    def f(t, rho, args):
+        # Generate p
+        p = pressure_from_density(rho, medium)
+        return momentum_conservation_rhs(p,
+                                         rho,
+                                         medium,
+                                         c_ref=c_ref,
+                                         dt=dt,
+                                         params=params["fourier"])
+
+    def g(t, u, args):
+        # Generate (a fake) p
+        # TODO: This should not be needed here. In general, p should not
+        # exist in those equations. However, the current implementation of
+        # the pair of ode functions requires it.
+        p = pressure_from_density(u, medium)
+
+        # Generate source field if needed
+        n = jnp.round(t * dt)
         if sources is None:
             mass_src_field = 0.0
         else:
             mass_src_field = sources.on_grid(n)
 
-        du = momentum_conservation_rhs(p,
-                                       u,
-                                       medium,
-                                       c_ref=c_ref,
-                                       dt=dt,
-                                       params=params["fourier"])
-        u = pml_u * (pml_u * u + dt * du)
-
-        drho = mass_conservation_rhs(p,
+        return mass_conservation_rhs(p,
                                      u,
                                      mass_src_field,
                                      medium,
                                      c_ref=c_ref,
                                      dt=dt,
                                      params=params["fourier"])
-        rho = pml_rho * (pml_rho * rho + dt * drho)
 
-        p = pressure_from_density(rho, medium)
-        return [p, u, rho], sensors(p, u, rho)
+    # Setup diffrax solver
+    terms = ODETerm(f), ODETerm(g)
+    args = (pml_u, pml_rho, None)
 
-    # Define the scanning function according to the checkpoint type
-    if checkpoint:
-        scan_fun = jax_checkpoint(scan_fun)
+    # Integrate
+    solution = diffeqsolve(terms,
+                           solver,
+                           t0=time_axis.t0,
+                           t1=time_axis.t1,
+                           dt0=time_axis.dt,
+                           y0=fields,
+                           args=args,
+                           saveat=saveat,
+                           stepsize_controller=stepsize_controller,
+                           adjoint=adjoint,
+                           max_steps=max_steps)
 
-    _, ys = scan(scan_fun, fields, output_steps)
-
-    return ys
-
-
-if __name__ == "__main__":
-    pass
+    # TODO: May be interesting to return the full solution, to use the
+    # interpolation ability of the solution object, as well as the possibility to integrate
+    # against the integration extrema and to take numerical derivatives of the solution
+    return solution.ys

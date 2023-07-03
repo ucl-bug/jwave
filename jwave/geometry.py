@@ -22,7 +22,7 @@ from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
 from jaxdf import Field, FourierSeries, OnGrid
 from jaxdf.geometry import Domain
-from jaxdf.operators import dot_product, functional
+from jaxdf.operators import dot_product
 from plum import parametric, type_of
 
 Number = Union[float, int]
@@ -621,60 +621,3 @@ class BLISensors:
             raise ValueError(
                 "Sensors positions must be 1, 2 or 3 dimensional. Not {}".
                 format(len(self.positions)))
-
-
-@register_pytree_node_class
-class TimeAxis:
-    r"""Temporal vector to be used for acoustic
-    simulation based on the pseudospectral method of
-    [k-Wave](http://www.k-wave.org/)
-    Attributes:
-      dt (float): time step
-      t_end (float): simulation end time
-    """
-    dt: float
-    t_end: float
-
-    def __init__(self, dt, t_end):
-        self.dt = dt
-        self.t_end = t_end
-
-    def tree_flatten(self):
-        children = (None, )
-        aux = (self.dt, self.t_end)
-        return (children, aux)
-
-    @classmethod
-    def tree_unflatten(cls, aux, children):
-        dt, t_end = aux
-        return cls(dt, t_end)
-
-    @property
-    def Nt(self):
-        r"""Returns the number of time steps"""
-        return np.ceil(self.t_end / self.dt)
-
-    def to_array(self):
-        r"""Returns the time-axis as an array"""
-        out_steps = jnp.arange(0, self.Nt, 1)
-        return out_steps * self.dt
-
-    @staticmethod
-    def from_medium(medium: Medium, cfl: float = 0.3, t_end=None):
-        r"""Construct a `TimeAxis` object from `kGrid` and `Medium`
-        Args:
-          grid (kGrid):
-          medium (Medium):
-          cfl (float, optional):  The [CFL number](http://www.k-wave.org/). Defaults to 0.3.
-          t_end ([float], optional):  The final simulation time. If None,
-              it is automatically calculated as the time required to travel
-              from one corner of the domain to the opposite one.
-        """
-        dt = cfl * min(medium.domain.dx) / functional(medium.sound_speed)(
-            np.max)
-        if t_end is None:
-            t_end = np.sqrt(
-                sum((x[-1] - x[0])**2
-                    for x in medium.domain.spatial_axis)) / functional(
-                        medium.sound_speed)(np.min)
-        return TimeAxis(dt=float(dt), t_end=float(t_end))
