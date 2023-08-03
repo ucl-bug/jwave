@@ -18,8 +18,8 @@ from typing import Optional, TypeVar, Union
 
 import numpy as np
 from diffrax import (AbstractAdjoint, AbstractStepSizeController,
-                     ConstantStepSize, DirectAdjoint, ODETerm, SaveAt,
-                     diffeqsolve)
+                     ConstantStepSize, DirectAdjoint, ODETerm,
+                     RecursiveCheckpointAdjoint, SaveAt, diffeqsolve)
 from diffrax.custom_types import Scalar
 from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
@@ -336,7 +336,7 @@ def simulate_wave_propagation(
         u0: Optional[OnGrid] = None,
         p0: Optional[OnGrid] = None,
         settings: Optional[WaveSolverSettings] = WaveSolverSettings(),
-        adjoint: Optional[AbstractAdjoint] = DirectAdjoint(),
+        adjoint: Optional[AbstractAdjoint] = None,
         saveat: Optional[SaveAt] = SaveAt(steps=True),
         stepsize_controller: Optional[
             AbstractStepSizeController] = ConstantStepSize(),
@@ -457,7 +457,7 @@ def acoustic_solver(
     u0: Optional[OnGrid] = None,
     p0: Optional[OnGrid] = None,
     settings: Optional[WaveSolverSettings] = WaveSolverSettings(),
-    adjoint: Optional[AbstractAdjoint] = DirectAdjoint(),
+    adjoint: Optional[AbstractAdjoint] = None,
     saveat: Optional[SaveAt] = None,
     stepsize_controller: Optional[
         AbstractStepSizeController] = ConstantStepSize(),
@@ -527,6 +527,11 @@ def acoustic_solver(
     # Setup diffrax solver
     terms = ODETerm(f), ODETerm(g)
     args = (pml_u, pml_rho, None)
+
+    # Define adjoint
+    if adjoint is None:
+        n_steps = time_axis.to_array(keep_last=True).shape[0]
+        adjoint = RecursiveCheckpointAdjoint(checkpoints=n_steps)
 
     # Integrate
     solution = diffeqsolve(terms,

@@ -53,12 +53,15 @@ class TimeAxis:
     def Nt(self):
         r"""Returns the number of time steps"""
         Δt = self.t1 - self.t0
-        return np.ceil(Δt / self.dt)
+        return np.ceil(Δt / self.dt).astype(int)
 
-    def to_array(self):
+    def to_array(self, keep_last: bool = False):
         r"""Returns the time-axis as an array"""
-        out_steps = jnp.arange(0, self.Nt, 1)
-        return out_steps * self.dt
+        if keep_last:
+            out_steps = jnp.linspace(self.t0, self.t1, self.Nt + 1)
+        else:
+            out_steps = jnp.linspace(self.t0, self.t1 - self.dt, self.Nt)
+        return out_steps
 
     @classmethod
     def from_cfl_number(
