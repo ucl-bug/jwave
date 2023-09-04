@@ -14,7 +14,7 @@
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
 import warnings
-from typing import Tuple, Union
+from typing import Set, Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
@@ -23,6 +23,51 @@ from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PIL import Image
+
+
+def get_smallest_prime_factors(n: int) -> Set[int]:
+    """
+    Get the smallest prime factors of a given number.
+
+   Args
+        n (int): The number to find the smallest prime factors for.
+
+    Returns:
+        Set[int]: A set containing the smallest prime factors of the number.
+    """
+    smallest_prime_factors = []
+    i = 2
+    while i * i <= n:
+        if n % i:
+            i += 1
+        else:
+            smallest_prime_factors.append(i)
+            n //= i
+    if n > 1:
+        smallest_prime_factors.append(n)
+    return set(smallest_prime_factors)
+
+
+def numbers_with_smallest_primes(min_range: int,
+                                 max_range: int,
+                                 max_prime: int = 7) -> None:
+    """
+    Print the numbers within a given range that have smallest prime factors all less than or equal to a maximum value.
+
+    Args:
+        min_range (int): The minimum value of the range to search within.
+        max_range (int): The maximum value of the range to search within.
+        max_prime (int): The maximum prime factor that numbers in the range can have. Default is 7.
+
+    Returns:
+        None: This function prints the qualifying numbers and their smallest prime factors.
+    """
+    for i in range(min_range, max_range + 1):
+        smallest_prime_factors = get_smallest_prime_factors(i)
+        if all(x <= max_prime for x in smallest_prime_factors):
+            print(
+                f"Number: {i}, Smallest Prime Factors: {smallest_prime_factors}"
+            )
 
 
 def load_image_to_numpy(
