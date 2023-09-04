@@ -18,7 +18,8 @@ import warnings
 import matplotlib
 import numpy as np
 
-from jwave.utils import display_complex_field, is_numeric, plot_complex_field
+from jwave.utils import (display_complex_field, is_numeric,
+                         numbers_with_smallest_primes, plot_complex_field)
 
 
 def test_deprecation_warning():
@@ -64,3 +65,14 @@ def test_is_numeric():
     assert is_numeric(1.0)
     assert is_numeric(1j)
     assert not is_numeric("1")
+
+
+def test_numbers_with_smallest_primes(
+        capfd):    # `capfd` is a built-in pytest fixture
+    numbers_with_smallest_primes(450, 487)
+    captured = capfd.readouterr()    # Capture the output
+    output = captured.out.strip()
+    expected_output = ("Number: 450, Smallest Prime Factors: {2, 3, 5}\n"
+                       "Number: 480, Smallest Prime Factors: {2, 3, 5}\n"
+                       "Number: 486, Smallest Prime Factors: {2, 3}")
+    assert output == expected_output
