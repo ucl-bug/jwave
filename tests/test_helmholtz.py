@@ -15,6 +15,7 @@
 
 from jax import numpy as jnp
 
+from jwave.acoustics.operators import helmholtz
 from jwave.acoustics.time_harmonic import helmholtz_solver
 from jwave.geometry import Domain, FourierSeries, Medium
 
@@ -38,6 +39,23 @@ def test_if_homog_helmholtz_runs():
         method="gmres",
         maxiter=10,
     )
+
+
+def test_default_params():
+    N = (128, 128)
+    domain = Domain(N, (1.0, 1.0))
+    field = jnp.zeros(N).astype(jnp.complex64)
+    field = FourierSeries(field, domain)
+    sos = jnp.ones(N)
+    sos = FourierSeries(sos, domain)
+
+    medium = Medium(domain, sound_speed=sos, pml_size=15)
+
+    default_params = helmholtz.default_params(field, medium, omega=1.0)
+
+    # Check that 'pml_on_grid', 'fft_u' are in the dict
+    assert 'pml_on_grid' in default_params.keys()
+    assert 'fft_u' in default_params.keys()
 
 
 if __name__ == "__main__":

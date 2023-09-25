@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 ### Added
 - Added `numbers_with_smallest_primes` utility to find grids with small primes for efficient FFT when using FourierSeries
+### Fixed
+- Restored `default_params` for the helmholtz operators that wen missing since the last jaxdf update
 
 ## [0.1.4] - 2023-06-29
 ### Changed
