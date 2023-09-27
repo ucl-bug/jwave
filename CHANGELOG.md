@@ -4,8 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.5] - 2023-09-27
 ### Added
 - Added `numbers_with_smallest_primes` utility to find grids with small primes for efficient FFT when using FourierSeries
+
 ### Fixed
 - Restored `default_params` for the helmholtz operators that wen missing since the last jaxdf update
 
@@ -82,7 +85,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Pml for 1D and 3D simulations.
 - Plotting functions of `jwave.utils` now work with both `Field`s and arrays.
 
-[Unreleased]: https://github.com/ucl-bug/jwave/compare/0.1.4...master
+[Unreleased]: https://github.com/ucl-bug/jwave/compare/0.1.5...master
+[0.1.5]: https://github.com/ucl-bug/jwave/compare/0.1.4...0.1.5
 [0.1.4]: https://github.com/ucl-bug/jwave/compare/0.1.3...0.1.4
 [0.1.3]: https://github.com/ucl-bug/jwave/compare/0.1.2...0.1.3
 [0.1.2]: https://github.com/ucl-bug/jwave/compare/0.1.1...0.1.2
@@ -92,3 +96,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [0.0.3]: https://github.com/ucl-bug/jwave/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/ucl-bug/jwave/compare/0.0.1...0.0.2
 [0.0.1]: https://github.com/ucl-bug/jwave/releases/tag/0.0.1
+
