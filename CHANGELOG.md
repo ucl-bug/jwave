@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fixed arguments error in helmholtz notebook
 
 ### Changed
-- `Medium` objects are now `JaxDFModule`s, which is based on `equinox` modules. It is also a [parametric module for dispatching operators](https://beartype.github.io/plum/parametric.html), meaning that there's a type difference betwee `Medium[FourierSeries` and `Medium[FiniteDifferences]`, for example.
+- `Medium` objects are now `JaxDFModule`s, which is based on `equinox` modules. It is also a [parametric module for dispatching operators](https://beartype.github.io/plum/parametric.html), meaning that there's a type difference betwee `Medium[FourierSeries]` and `Medium[FiniteDifferences]`, for example.
 
 ### Added
 - Added a logger in `jwave.logger`
