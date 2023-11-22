@@ -25,8 +25,8 @@ from jaxdf.operators import (diag_jacobian, functional, shift_operator,
                              sum_over_dims)
 
 from jwave.acoustics.spectral import kspace_op
-from jwave.geometry import (Medium, MediumAllScalars, MediumOnGrid, Sources,
-                            TimeAxis)
+from jwave.geometry import Medium, Sources, TimeAxis
+from jwave.logger import logger
 from jwave.signal_processing import smooth
 
 from .pml import td_pml_on_grid
@@ -42,7 +42,8 @@ def _shift_rho(rho0, direction, dx):
             return 0.5 * (jnp.roll(u, -direction, axis) + u)
 
         rho0 = jnp.stack(
-            [linear_interp(rho0_params, n) for n in range(rho0.ndim)], axis=-1)
+            [linear_interp(rho0_params, n) for n in range(rho0.domain.ndim)],
+            axis=-1)
     elif isinstance(rho0, Field):
         rho0 = shift_operator(rho0, direction * dx)
     else:
@@ -75,7 +76,7 @@ def momentum_conservation_rhs(p: OnGrid,
     dx = np.asarray(u.domain.dx)
     rho0 = _shift_rho(medium.density, 1, dx)
     dp = diag_jacobian(p, stagger=[0.5])
-    return -dp / rho0, params
+    return -dp / rho0
 
 
 @operator
@@ -128,10 +129,10 @@ def momentum_conservation_rhs(
         iku = jnp.moveaxis(Fx * shift_and_k_op[axis] * k_op, -1, axis)
         return jnp.fft.ifftn(iku).real
 
-    dp = jnp.stack([single_grad(i) for i in range(p.ndim)], axis=-1)
+    dp = jnp.stack([single_grad(i) for i in range(p.domain.ndim)], axis=-1)
     update = -p.replace_params(dp) / rho0
 
-    return update, params
+    return update
 
 
 @operator
@@ -166,7 +167,7 @@ def mass_conservation_rhs(p: OnGrid,
 
     # Staggered implementation
     du = diag_jacobian(u, stagger=[-0.5])
-    update = -du * rho0 + 2 * mass_source / (c0 * p.ndim * dx)
+    update = -du * rho0 + 2 * mass_source / (c0 * p.domain.ndim * dx)
     return update, params
 
 
@@ -222,17 +223,19 @@ def mass_conservation_rhs(
         iku = jnp.moveaxis(Fx * shift_and_k_op[axis] * k_op, -1, axis)
         return jnp.fft.ifftn(iku).real
 
-    du = jnp.stack([single_grad(i, u.params[..., i]) for i in range(p.ndim)],
-                   axis=-1)
-    update = -p.replace_params(du) * rho0 + 2 * mass_source / (c0 * p.ndim *
-                                                               dx)
+    du = jnp.stack(
+        [single_grad(i, u.params[..., i]) for i in range(p.domain.ndim)],
+        axis=-1)
+    update = -p.replace_params(du) * rho0 + 2 * mass_source / (
+        c0 * p.domain.ndim * dx)
 
-    return update, params
+    return update
 
 
 @operator
 def pressure_from_density(rho: Field, medium: Medium, *, params=None) -> Field:
-    r"""Compute the pressure field from the density field.
+    r"""Calculate pressure from acoustic density given by the raw output of the
+    timestepping scheme.
 
     Args:
       rho (Field): The density field.
@@ -244,7 +247,7 @@ def pressure_from_density(rho: Field, medium: Medium, *, params=None) -> Field:
     """
     rho_sum = sum_over_dims(rho)
     c0 = medium.sound_speed
-    return (c0**2) * rho_sum, params
+    return (c0**2) * rho_sum
 
 
 def ongrid_wave_prop_params(
@@ -321,7 +324,7 @@ def wave_propagation_symplectic_step(
 
 @operator
 def simulate_wave_propagation(
-    medium: MediumOnGrid,
+    medium: Medium[OnGrid],
     time_axis: TimeAxis,
     *,
     sources=None,
@@ -403,7 +406,7 @@ def simulate_wave_propagation(
     # Initialize acoustic density
     rho = (p0.replace_params(
         jnp.stack([p0.params[..., i]
-                   for i in range(p0.ndim)], axis=-1)) / p0.ndim)
+                   for i in range(p0.domain.ndim)], axis=-1)) / p0.domain.ndim)
     rho = rho / (medium.sound_speed**2)
 
     # define functions to integrate
@@ -433,13 +436,14 @@ def simulate_wave_propagation(
     if checkpoint:
         scan_fun = jax_checkpoint(scan_fun)
 
+    logger.debug("Starting simulation using generic OnGrid code")
     _, ys = scan(scan_fun, fields, output_steps)
 
     return ys
 
 
 def fourier_wave_prop_params(
-    medium: Union[MediumAllScalars, MediumOnGrid],
+    medium: Medium[FourierSeries],
     time_axis: TimeAxis,
     *args,
     **kwargs,
@@ -472,7 +476,7 @@ def fourier_wave_prop_params(
 
 @operator(init_params=fourier_wave_prop_params)
 def simulate_wave_propagation(
-    medium: Union[MediumAllScalars, MediumOnGrid],
+    medium: Medium[FourierSeries],
     time_axis: TimeAxis,
     *,
     sources=None,
@@ -554,7 +558,7 @@ def simulate_wave_propagation(
     # Initialize acoustic density
     rho = (p0.replace_params(
         jnp.stack([p0.params[..., i]
-                   for i in range(p0.ndim)], axis=-1)) / p0.ndim)
+                   for i in range(p0.domain.ndim)], axis=-1)) / p0.domain.ndim)
     rho = rho / (medium.sound_speed**2)
 
     # define functions to integrate
@@ -591,6 +595,7 @@ def simulate_wave_propagation(
     if checkpoint:
         scan_fun = jax_checkpoint(scan_fun)
 
+    logger.debug("Starting simulation using FourierSeries code")
     _, ys = scan(scan_fun, fields, output_steps)
 
     return ys

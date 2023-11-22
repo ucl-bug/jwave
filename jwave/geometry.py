@@ -17,97 +17,148 @@ import math
 from dataclasses import dataclass
 from typing import List, Tuple, Union
 
+import equinox as eqx
 import numpy as np
 from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
-from jaxdf import Field, FourierSeries, OnGrid
+from jaxdf import Field, FourierSeries
 from jaxdf.geometry import Domain
+from jaxdf.mods import JaxDFModule
 from jaxdf.operators import dot_product, functional
-from plum import parametric, type_of
+from jaxtyping import Array
+from plum import parametric
+
+from jwave.logger import logger
 
 Number = Union[float, int]
 
 
-@register_pytree_node_class
-class Medium:
-    r"""
-    Medium structure
+@parametric
+class Medium(JaxDFModule):
+    """_summary_
 
-    Attributes:
-      domain (Domain): domain of the medium
-      sound_speed (jnp.ndarray): speed of sound map, can be a scalar
-      density (jnp.ndarray): density map, can be a scalar
-      attenuation (jnp.ndarray): attenuation map, can be a scalar
-      pml_size (int): size of the PML layer in grid-points
+    Args:
+        eqx (_type_): _description_
 
-    !!! example
+    Raises:
+        ValueError: _description_
+        TypeError: _description_
+        ValueError: _description_
 
-      ```python
-      N = (128,356)
-      medium = Medium(
-        sound_speed = jnp.ones(N),
-        density = jnp.ones(N),.
-        attenuation = 0.0,
-        pml_size = 15
-      )
-      ```
-
+    Returns:
+        _type_: _description_
     """
     domain: Domain
-    sound_speed: Union[Number, Field] = 1.0
-    density: Union[Number, Field] = 1.0
-    attenuation: Union[Number, Field] = 0.0
-    pml_size: Number = 20.0
+    sound_speed: Union[FourierSeries, Field, float]
+    density: Union[FourierSeries, Field, float]
+    attenuation: Union[FourierSeries, Field, float]
+    pml_size: float = eqx.field(default=20.0, static=True)
 
     def __init__(self,
-                 domain,
-                 sound_speed=1.0,
-                 density=1.0,
-                 attenuation=0.0,
-                 pml_size=20):
-        # Check that all domains are the same
-        for field in [sound_speed, density, attenuation]:
-            if isinstance(field, Field):
-                assert domain == field.domain, "All domains must be the same"
-
-        # Set the attributes
+                 domain: Domain,
+                 sound_speed: Union[Array, Field, float] = 1.0,
+                 density: Union[Array, Field, float] = 1.0,
+                 attenuation: Union[Array, Field, float] = 1.0,
+                 pml_size: float = 20.0):
         self.domain = domain
+
+        # Check if any input is an Array and none are subclasses of Field
+        inputs_are_arrays = [
+            isinstance(x, Array) and not jnp.isscalar(x)
+            for x in [sound_speed, density, attenuation]
+        ]
+        inputs_are_fields = [
+            issubclass(type(x), Field)
+            for x in [sound_speed, density, attenuation]
+        ]
+
+        if any(inputs_are_arrays) and any(inputs_are_fields):
+            raise ValueError(
+                "Ambiguous inputs for Medium: cannot mix Arrays and Field subclasses."
+            )
+
+        if all(inputs_are_arrays):
+            logger.warning(
+                "All inputs are Arrays. This is not recommended for performance reasons. Consider using Fields instead."
+            )
+
         self.sound_speed = sound_speed
         self.density = density
         self.attenuation = attenuation
+
+        # Converting if needed
+        for field_name in ["sound_speed", "density", "attenuation"]:
+            # Convert to Fourier Series if it is a jax Array and is not a scalar
+            if isinstance(
+                    self.__dict__[field_name],
+                    Array) and not jnp.isscalar(self.__dict__[field_name]):
+                #logger.info(f"Converting {field_name}, which is an Array, to a FourierSeries before storing it in the Medium object.")
+                self.__dict__[field_name] = FourierSeries(
+                    self.__dict__[field_name], domain)
+
+        # Other parameters
         self.pml_size = pml_size
+
+    def __check_init__(self):
+        # Check that all domains are the same
+        for field in [self.sound_speed, self.density, self.attenuation]:
+            if isinstance(field, Field):
+                assert self.domain == field.domain, "The domain of all fields must be the same as the domain of the Medium object."
+
+    @classmethod
+    def __init_type_parameter__(self, t: type):
+        """Check whether the type parameters is valid."""
+        if issubclass(t, Field):
+            return t
+        else:
+            raise TypeError(
+                f"The type parameter of a Medium object must be a subclass of Field. Got {t}"
+            )
+
+    @classmethod
+    def __infer_type_parameter__(self, *args, **kwargs):
+        """Inter the type parameter from the arguments. Defaults to FourierSeries if
+        the parameters are all floats"""
+        # Reconstruct kwargs from args
+        keys = self.__init__.__code__.co_varnames[1:]
+        extra_kwargs = dict(zip(keys, args))
+        kwargs.update(extra_kwargs)
+
+        # Get fields types
+        field_inputs = ["sound_speed", "density", "attenuation"]
+        input_types = []
+        for field_name in field_inputs:
+            if field_name in kwargs:
+                field = kwargs[field_name]
+
+                if isinstance(field, Field):
+                    input_types.append(type(field))
+
+        # Keep only unique
+        input_types = set(input_types)
+
+        has_fields = len(input_types) > 0
+        if not has_fields:
+            return FourierSeries
+
+        # Check that there are no more than one field type
+        if len(input_types) > 1:
+            raise ValueError(
+                f"All fields must be of the same type or scalars for a Medium object. Got {input_types}"
+            )
+
+        return input_types.pop()
+
+    @classmethod
+    def __le_type_parameter__(self, left, right):
+        assert len(left) == 1 and len(
+            right) == 1, "Medium type parameters can't be tuples."
+        return issubclass(left[0], right[0])
 
     @property
     def int_pml_size(self) -> int:
         r"""Returns the size of the PML layer as an integer"""
         return int(self.pml_size)
-
-    def tree_flatten(self):
-        children = (self.sound_speed, self.density, self.attenuation)
-        aux = (self.domain, self.pml_size)
-        return (children, aux)
-
-    @classmethod
-    def tree_unflatten(cls, aux, children):
-        sound_speed, density, attenuation = children
-        domain, pml_size = aux
-        a = cls(domain, sound_speed, density, attenuation, pml_size)
-        return a
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-
-        def show_param(pname):
-            attr = getattr(self, pname)
-            return f"{pname}: " + str(attr)
-
-        all_params = [
-            "domain", "sound_speed", "density", "attenuation", "pml_size"
-        ]
-        strings = list(map(lambda x: show_param(x), all_params))
-        return "Medium:\n - " + "\n - ".join(strings)
 
 
 def points_on_circle(
@@ -138,36 +189,6 @@ def points_on_circle(
         x = list(map(int, x))
         y = list(map(int, y))
     return x, y
-
-
-@parametric(runtime_type_of=True)
-class MediumType(Medium):
-    """A type for Medium objects that depends on the discretization of its components"""
-
-
-@type_of.dispatch
-def type_of(m: Medium):
-    return MediumType[type(m.sound_speed),
-                      type(m.density),
-                      type(m.attenuation)]
-
-
-MediumAllScalars = MediumType[object, object, object]
-"""A type for Medium objects that have all scalar components"""
-
-MediumFourierSeries = Union[
-    MediumType[FourierSeries, object, object],
-    MediumType[object, FourierSeries, object],
-    MediumType[object, object, FourierSeries],
-]
-"""A type for Medium objects that have at least one FourierSeries component"""
-
-MediumOnGrid = Union[
-    MediumType[OnGrid, object, object],
-    MediumType[object, OnGrid, object],
-    MediumType[object, object, OnGrid],
-]
-"""A type for Medium objects that have at least one OnGrid component"""
 
 
 def unit_fibonacci_sphere(

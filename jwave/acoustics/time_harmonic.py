@@ -185,9 +185,9 @@ def _cbs_norm_units(medium, omega, k0, src):
     # Update fields
     src = FourierSeries(src.on_grid, domain)
     if issubclass(type(medium.sound_speed), FourierSeries):
-        medium.sound_speed = FourierSeries(c, domain)
-    else:
-        medium.sound_speed = c
+        c = FourierSeries(c, domain)
+
+    medium = medium.replace("sound_speed", c)
 
     # Update k0
     k0 = k0 * _conversion["dx"]
