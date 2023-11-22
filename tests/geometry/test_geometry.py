@@ -51,7 +51,6 @@ def testfibonacci_sphere():
 
 
 if __name__ == "__main__":
-    test_repr()
     testpoints_on_circle()
     testunit_fibonacci_sphere()
     testfibonacci_sphere()
