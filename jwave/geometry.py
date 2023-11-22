@@ -49,9 +49,9 @@ class Medium(JaxDFModule):
         _type_: _description_
     """
     domain: Domain
-    sound_speed: Union[FourierSeries, Field, float]
-    density: Union[FourierSeries, Field, float]
-    attenuation: Union[FourierSeries, Field, float]
+    sound_speed: Union[Array, Field, float]
+    density: Union[Array, Field, float]
+    attenuation: Union[Array, Field, float]
     pml_size: float = eqx.field(default=20.0, static=True)
 
     def __init__(self,
