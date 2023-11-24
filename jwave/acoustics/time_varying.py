@@ -22,7 +22,7 @@ from jax import numpy as jnp
 from jax.lax import scan
 from jaxdf import Field, operator
 from jaxdf.discretization import FourierSeries, Linear, OnGrid
-from jaxdf.mods import JaxDFModule
+from jaxdf.mods import Module
 from jaxdf.operators import diag_jacobian, shift_operator, sum_over_dims
 
 from jwave.acoustics.spectral import kspace_op
@@ -35,7 +35,7 @@ from .pml import td_pml_on_grid
 Any = TypeVar("Any")
 
 
-class TimeWavePropagationSettings(JaxDFModule):
+class TimeWavePropagationSettings(Module):
     """
     TimeWavePropagationSettings configures the settings for
     time domain wave solvers. This class serves as a container

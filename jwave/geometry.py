@@ -23,7 +23,7 @@ from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
 from jaxdf import Field, FourierSeries
 from jaxdf.geometry import Domain
-from jaxdf.mods import JaxDFModule
+from jaxdf.mods import Module
 from jaxdf.operators import dot_product, functional
 from jaxtyping import Array
 from plum import parametric
@@ -34,7 +34,7 @@ Number = Union[float, int]
 
 
 @parametric
-class Medium(JaxDFModule):
+class Medium(Module):
     """_summary_
 
     Args:
