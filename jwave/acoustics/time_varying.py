@@ -48,6 +48,7 @@ class TimeWavePropagationSettings(Module):
     ...    c_ref = lambda m: m.min_sound_speed)
     >>> print(settings.checkpoint)
     True
+
     ```
     """
 
