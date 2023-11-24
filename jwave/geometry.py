@@ -115,6 +115,84 @@ class Medium(JaxDFModule):
                 f"The type parameter of a Medium object must be a subclass of Field. Got {t}"
             )
 
+    @property
+    def max_sound_speed(self):
+        """
+        Calculate and return the maximum sound speed.
+
+        This property uses the `sound_speed` method/function and applies the `amax`
+        function from JAX's numpy (jnp) library to find the maximum sound speed value.
+
+        Returns:
+            The maximum sound speed value.
+        """
+        return functional(self.sound_speed)(jnp.amax)
+
+    @property
+    def min_sound_speed(self):
+        """
+        Calculate and return the minimum sound speed.
+
+        This property uses the `sound_speed` method/function and applies the `amin`
+        function from JAX's numpy (jnp) library to find the minimum sound speed value.
+
+        Returns:
+            The minimum sound speed value.
+        """
+        return functional(self.sound_speed)(jnp.amin)
+
+    @property
+    def max_density(self):
+        """
+        Calculate and return the maximum density.
+
+        This property uses the `density` method/function and applies the `amax`
+        function from JAX's numpy (jnp) library to find the maximum density value.
+
+        Returns:
+            The maximum density value.
+        """
+        return functional(self.density)(jnp.amax)
+
+    @property
+    def min_density(self):
+        """
+        Calculate and return the minimum density.
+
+        This property uses the `density` method/function and applies the `amin`
+        function from JAX's numpy (jnp) library to find the minimum density value.
+
+        Returns:
+            The minimum density value.
+        """
+        return functional(self.density)(jnp.amin)
+
+    @property
+    def max_attenuation(self):
+        """
+        Calculate and return the maximum attenuation.
+
+        This property uses the `attenuation` method/function and applies the `amax`
+        function from JAX's numpy (jnp) library to find the maximum attenuation value.
+
+        Returns:
+            The maximum attenuation value.
+        """
+        return functional(self.attenuation)(jnp.amax)
+
+    @property
+    def min_attenuation(self):
+        """
+        Calculate and return the minimum attenuation.
+
+        This property uses the `attenuation` method/function and applies the `amin`
+        function from JAX's numpy (jnp) library to find the minimum attenuation value.
+
+        Returns:
+            The minimum attenuation value.
+        """
+        return functional(self.attenuation)(jnp.amin)
+
     @classmethod
     def __infer_type_parameter__(self, *args, **kwargs):
         """Inter the type parameter from the arguments. Defaults to FourierSeries if

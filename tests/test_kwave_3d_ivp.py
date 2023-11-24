@@ -25,7 +25,8 @@ from matplotlib import pyplot as plt
 from scipy.io import loadmat, savemat
 
 from jwave import FourierSeries
-from jwave.acoustics import simulate_wave_propagation
+from jwave.acoustics import (TimeWavePropagationSettings,
+                             simulate_wave_propagation)
 from jwave.geometry import Domain, Medium, TimeAxis, sphere_mask
 from jwave.utils import plot_comparison
 
@@ -135,14 +136,17 @@ def test_ivp(test_name, use_plots=False):
     )
     time_axis = TimeAxis.from_medium(medium, cfl=0.5, t_end=2.5e-6)
 
+    # Define simulation settings
+    sim_settings = TimeWavePropagationSettings(
+        smooth_initial=settings["smooth_initial"])
+
     # Run simulation
     @partial(jit, backend="cpu")
     def run_simulation(p0):
-        return simulate_wave_propagation(
-            medium,
-            time_axis,
-            p0=p0,
-            smooth_initial=settings["smooth_initial"])
+        return simulate_wave_propagation(medium,
+                                         time_axis,
+                                         p0=p0,
+                                         settings=sim_settings)
 
     # Extract last field
     p_final = run_simulation(p0)[-1].on_grid[..., 0]
