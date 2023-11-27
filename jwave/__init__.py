@@ -14,9 +14,53 @@
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
 # nopycln: file
-from jaxdf.discretization import *
+from jaxdf import (
+  operator,
+  Continuous,
+  Domain,
+  FiniteDifferences,
+  FourierSeries,
+  Field,
+  Linear,
+  OnGrid
+)
+
+from .acoustics import (
+  angular_spectrum,
+  born_iteration,
+  born_series,
+  db2neper,
+  helmholtz_solver_verbose,
+  helmholtz_solver,
+  helmholtz,
+  homogeneous_helmholtz_green,
+  laplacian_with_pml,
+  mass_conservation_rhs,
+  momentum_conservation_rhs,
+  pml,
+  pressure_from_density,
+  rayleigh_integral,
+  scale_source_helmholtz,
+  scattering_potential,
+  simulate_wave_propagation,
+  spectral,
+  wave_propagation_symplectic_step,
+  wavevector,
+  TimeWavePropagationSettings,
+)
+from .geometry import (
+  BLISensors,
+  DistributedTransducer,
+  Medium,
+  Sensors,
+  Sources,
+  TimeAxis,
+  TimeHarmonicSource,
+)
 
 from jwave import acoustics as ac
 from jwave import geometry as geometry
+from jwave import logger as logger
+from jwave import phantoms as phantoms
 from jwave import signal_processing as signal_processing
 from jwave import utils as utils

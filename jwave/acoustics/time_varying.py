@@ -82,8 +82,6 @@ class TimeWavePropagationSettings(Module):
         self.smooth_initial = smooth_initial
 
 
-default_time_wave_prop_settings = TimeWavePropagationSettings()
-
 
 def _shift_rho(rho0, direction, dx):
     if isinstance(rho0, OnGrid):
@@ -382,7 +380,7 @@ def simulate_wave_propagation(
     medium: Medium[OnGrid],
     time_axis: TimeAxis,
     *,
-    settings: TimeWavePropagationSettings = default_time_wave_prop_settings,
+    settings: TimeWavePropagationSettings = TimeWavePropagationSettings(),
     sources=None,
     sensors=None,
     u0=None,
@@ -533,7 +531,7 @@ def simulate_wave_propagation(
     medium: Medium[FourierSeries],
     time_axis: TimeAxis,
     *,
-    settings: TimeWavePropagationSettings = default_time_wave_prop_settings,
+    settings: TimeWavePropagationSettings = TimeWavePropagationSettings(),
     sources=None,
     sensors=None,
     u0=None,

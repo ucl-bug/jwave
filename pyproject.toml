@@ -108,8 +108,11 @@ split_before_logical_operator = true
 
 [tool.pytest.ini_options]
 addopts = """\
-    --doctest-modules \
+    --doctest-modules\
 """
+
+[tool.pytest_env]
+CUDA_VISIBLE_DEVICES = ""
 
 [tool.coverage.report]
 exclude_lines = [
