@@ -37,6 +37,7 @@ from .acoustics import (
   laplacian_with_pml,
   mass_conservation_rhs,
   momentum_conservation_rhs,
+  neper2db,
   pml,
   pressure_from_density,
   rayleigh_integral,

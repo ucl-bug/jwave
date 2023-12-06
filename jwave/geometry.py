@@ -99,12 +99,20 @@ class Medium(Module):
         # Other parameters
         self.pml_size = pml_size
 
+    '''
+    TODO: This requires runtime checking of values if the dx is changed
+    inside a jitted function, as it happens for normalization operators.
+    
+    One potential way to fix this is to use runtime equinox errors
+    https://docs.kidger.site/equinox/api/errors/
+    
     def __check_init__(self):
         # Check that all domains are the same
         for field in [self.sound_speed, self.density, self.attenuation]:
             if isinstance(field, Field):
                 assert self.domain == field.domain, "The domain of all fields must be the same as the domain of the Medium object."
-
+    '''
+    
     @classmethod
     def __init_type_parameter__(self, t: type):
         """Check whether the type parameters is valid."""
@@ -140,6 +148,10 @@ class Medium(Module):
             The minimum sound speed value.
         """
         return functional(self.sound_speed)(jnp.amin)
+    
+    @property
+    def middle_sound_speed(self):
+        return (self.max_sound_speed + self.min_sound_speed) / 2
 
     @property
     def max_density(self):

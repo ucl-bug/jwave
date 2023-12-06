@@ -144,9 +144,9 @@ def _cbs_pml(field: OnGrid,
     def transform_fun(x):
         return num(x) / den(x)
 
-    delta_pml = jnp.asarray(list(map(pml_edge, medium.domain.N)))
-    coord_grid = Domain(N=medium.domain.N,
-                        dx=tuple([1.0] * len(medium.domain.N))).grid
+    delta_pml = jnp.asarray(list(map(pml_edge, field.domain.N)))
+    coord_grid = Domain(N=field.domain.N,
+                        dx=tuple([1.0] * len(field.domain.N))).grid
     coord_grid = coord_grid
 
     diff = jnp.abs(coord_grid) - delta_pml

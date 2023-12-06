@@ -14,7 +14,7 @@
 # License along with j-Wave. If not, see <https://www.gnu.org/licenses/>.
 
 # nopycln: file
-from .conversion import db2neper
+from .conversion import db2neper, neper2db
 from .operators import (
   helmholtz,
   laplacian_with_pml,
