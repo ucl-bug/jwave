@@ -51,7 +51,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.9"
-jaxdf = "^0.2.4"
+jaxdf = "^0.2.7"
 matplotlib = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]

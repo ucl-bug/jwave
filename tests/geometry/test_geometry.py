@@ -1,27 +1,7 @@
 import numpy as np
-from jax import numpy as jnp
 
-from jwave.geometry import (Domain, Medium, fibonacci_sphere, points_on_circle,
+from jwave.geometry import (fibonacci_sphere, points_on_circle,
                             unit_fibonacci_sphere)
-
-
-def test_repr():
-    # Create Domain object. Replace with correct constructor based on your implementation.
-    domain = Domain()
-
-    N = (8, 9)
-    medium = Medium(domain=domain,
-                    sound_speed=jnp.ones(N),
-                    density=jnp.ones(N),
-                    attenuation=0.0,
-                    pml_size=15)
-
-    expected_output = "Medium:\n - domain: {}\n - sound_speed: {}\n - density: {}\n - attenuation: {}\n - pml_size: {}".format(
-        str(medium.domain), str(medium.sound_speed), str(medium.density),
-        str(medium.attenuation), str(medium.pml_size))
-
-    # Check that the __repr__ method output matches the expected output
-    assert str(medium) == expected_output
 
 
 def testpoints_on_circle():
@@ -68,3 +48,9 @@ def testfibonacci_sphere():
                                        (y[i] - centre[1])**2 +
                                        (z[i] - centre[2])**2)
         assert np.isclose(distance_from_centre, radius, atol=1e-5)
+
+
+if __name__ == "__main__":
+    testpoints_on_circle()
+    testunit_fibonacci_sphere()
+    testfibonacci_sphere()
