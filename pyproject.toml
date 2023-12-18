@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jwave"
-version = "0.2.0"
+version = "0.1.5"
 description = "Fast and differentiable acoustic simulations in JAX."
 authors = [
   "Antonio Stanziola <a.stanziola@ucl.ac.uk>",
@@ -108,8 +108,11 @@ split_before_logical_operator = true
 
 [tool.pytest.ini_options]
 addopts = """\
-    --doctest-modules \
+    --doctest-modules\
 """
+
+[tool.pytest_env]
+CUDA_VISIBLE_DEVICES = ""
 
 [tool.coverage.report]
 exclude_lines = [

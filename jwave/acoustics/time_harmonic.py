@@ -342,7 +342,7 @@ def born_series(
 
     out_field = _cbs_unnorm_units(out_field, _conversion)
 
-    return out_field, None
+    return out_field
 
 
 @operator
@@ -377,7 +377,7 @@ def born_iteration(field: Field,
     G = homogeneous_helmholtz_green(V1 + src, k0=k0, epsilon=epsilon)
     V2 = scattering_potential(field - G, k_sq, k0=k0, epsilon=epsilon)
 
-    return field - (1j / epsilon) * V2, params
+    return field - (1j / epsilon) * V2
 
 
 @operator
@@ -401,7 +401,7 @@ def scattering_potential(field: Field,
 
     k = k_sq - k0**2 - 1j * epsilon
     out = field * k
-    return out, params
+    return out
 
 
 @operator
@@ -430,7 +430,7 @@ def homogeneous_helmholtz_green(field: FourierSeries,
     u_fft = jnp.fft.fftn(u)
     Gu_fft = g_fourier * u_fft
     Gu = jnp.fft.ifftn(Gu_fft)
-    return field.replace_params(Gu), params
+    return field.replace_params(Gu)
 
 
 @operator
@@ -500,7 +500,7 @@ def rayleigh_integral(
     # Weights of the Rayleigh integral
     weights = jax.vmap(jax.vmap(direc_exp_term, in_axes=(0, 0, 0)),
                        in_axes=(0, 0, 0))(R[..., 0], R[..., 1], R[..., 2])
-    return jnp.sum(weights * pressure.on_grid) * area, None
+    return jnp.sum(weights * pressure.on_grid) * area
 
 
 @operator
@@ -560,7 +560,7 @@ def helmholtz_solver(
         )[0]
     elif method == "bicgstab":
         out = bicgstab(helm_func, source, guess, tol=tol, maxiter=maxiter)[0]
-    return -1j * omega * out, None
+    return -1j * omega * out
 
 
 def helmholtz_solver_verbose(
