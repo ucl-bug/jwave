@@ -269,7 +269,7 @@ def helmholtz(u: Field, medium: Medium, *, omega=1.0, params=None) -> Field:
 
     # Add the wavenumber term
     k = wavevector(u, medium, omega, params=wavevector_params)
-    return L + k, None
+    return L + k
 
 
 def ongrid_helmholtz_init_params(u: OnGrid, medium: Medium, omega, *args,
@@ -297,7 +297,7 @@ def helmholtz(u: OnGrid, medium: Medium, *, omega=1.0, params=None) -> OnGrid:
 
     # Add the wavenumber term
     k = wavevector(u, medium, omega=omega)
-    return L + k, params
+    return L + k
 
 
 def scale_source_helmholtz(source: Field, medium: Medium) -> Field:
