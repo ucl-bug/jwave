@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jwave"
-version = "0.2.0"
+version = "0.2.1"
 description = "Fast and differentiable acoustic simulations in JAX."
 authors = [
   "Antonio Stanziola <a.stanziola@ucl.ac.uk>",
