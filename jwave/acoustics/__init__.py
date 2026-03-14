@@ -17,6 +17,7 @@
 from .conversion import db2neper
 from .operators import (
   helmholtz,
+  klein_gordon,
   laplacian_with_pml,
   scale_source_helmholtz,
   wavevector,
