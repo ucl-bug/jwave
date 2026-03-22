@@ -3,8 +3,9 @@ from io import StringIO
 
 from jax import numpy as jnp
 
-from jwave.acoustics import simulate_wave_propagation
-from jwave.geometry import Domain, FourierSeries, Medium, TimeAxis
+from jwave import FiniteDifferences
+from jwave.acoustics import TimeWavePropagationSettings, simulate_wave_propagation
+from jwave.geometry import Domain, FourierSeries, Medium, TimeAxis, circ_mask
 from jwave.logger import logger, set_logging_level
 
 
@@ -43,10 +44,6 @@ def test_correct_call():
 def test_fd_nondefault_accuracy():
     """Regression test for jwave#224: FD fields with accuracy != 8
     must not cause pytree mismatch in lax.scan."""
-    from jwave import FiniteDifferences
-    from jwave.acoustics import TimeWavePropagationSettings
-    from jwave.geometry import circ_mask
-
     domain = Domain((64, 64), (1e-3, 1e-3))
     p0_arr = 5.0 * circ_mask(domain.N, 3, (32, 32))
     p0 = FiniteDifferences(
