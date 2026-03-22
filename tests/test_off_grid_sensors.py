@@ -67,9 +67,11 @@ def test_sensor(nx, ny, nz):
     s3d = BLISensors((x + 0.25, y + 0.3, z + 0.1), (nx, ny, nz))
     domain3d = Domain((nx, ny, nz), (1, 1, 1))
     # Check ones in ones out.
+    # rtol=1e-4: BLI uses float32 3D FFT interpolation, which has limited
+    # precision that varies across platforms (different BLAS/FFT backends).
     p3d = FourierSeries(np.ones((nx, ny, nz)), domain3d)
     y = s3d(p3d, None, None)
-    assert (np.all(np.isclose(y, 1)))
+    assert (np.all(np.isclose(y, 1, rtol=1e-4)))
 
     # Check zeros in zeros out
     p3d = FourierSeries(np.zeros((nx, ny, nz)), domain3d)
