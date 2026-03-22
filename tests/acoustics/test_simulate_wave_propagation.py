@@ -40,5 +40,27 @@ def test_correct_call():
     assert "Starting simulation using FourierSeries code" in log_contents
 
 
+def test_fd_nondefault_accuracy():
+    """Regression test for jwave#224: FD fields with accuracy != 8
+    must not cause pytree mismatch in lax.scan."""
+    from jwave import FiniteDifferences
+    from jwave.acoustics import TimeWavePropagationSettings
+    from jwave.geometry import circ_mask
+
+    domain = Domain((64, 64), (1e-3, 1e-3))
+    p0_arr = 5.0 * circ_mask(domain.N, 3, (32, 32))
+    p0 = FiniteDifferences(
+        jnp.expand_dims(p0_arr, -1), domain, accuracy=4)
+    sound_speed = FiniteDifferences(
+        jnp.expand_dims(jnp.ones(domain.N) * 1500.0, -1), domain, accuracy=4)
+    medium = Medium(domain, sound_speed=sound_speed, pml_size=0)
+    time_axis = TimeAxis.from_medium(medium, cfl=0.1)
+    time_axis.t_end = 2e-6
+    settings = TimeWavePropagationSettings(smooth_initial=False)
+
+    p = simulate_wave_propagation(medium, time_axis, p0=p0, settings=settings)
+    assert p is not None
+
+
 if __name__ == "__main__":
     test_correct_call()

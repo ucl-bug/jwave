@@ -13,16 +13,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 
 - Tracer leak in OnGrid/FourierSeries laplacian_with_pml when using helmholtz_solver with checkpoint=False
+- FiniteDifferences with non-default accuracy no longer causes pytree mismatch in time-domain simulation (#224)
 
 ### Changed
 
 - Migrated from Poetry to uv for dependency management and builds
 - Minimum Python version bumped to 3.11
 - Upgraded plumkdocs to >=1.0.0 and mkdocstrings to >=1.0.0
+- Upgraded jaxdf dependency to >=0.3.0
 
 ## [0.2.1] - 2024-09-17
 
 ### Changed
+
 - Upgraded `jaxdf` dependency
 
 ## [0.2.0] - 2023-12-18
