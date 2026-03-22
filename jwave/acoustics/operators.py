@@ -56,7 +56,19 @@ def laplacian_with_pml(u: Continuous,
     return sum_over_dims(mod_diag_jacobian)
 
 
-@operator
+def ongrid_laplacian_with_pml_init(u: OnGrid, medium: Medium, omega, *args,
+                                   **kwargs):
+    p = {
+        "gradient": gradient.default_params(u),
+        "diag_jacobian": diag_jacobian.default_params(u),
+    }
+    rho0 = medium.density
+    if issubclass(type(rho0), Field):
+        p["gradient_rho0"] = gradient.default_params(rho0)
+    return p
+
+
+@operator(init_params=ongrid_laplacian_with_pml_init)
 def laplacian_with_pml(u: OnGrid,
                        medium: Medium,
                        *,
@@ -77,18 +89,18 @@ def laplacian_with_pml(u: OnGrid,
     pml = u.replace_params(pml_grid)
 
     # Making laplacian
-    grad_u = gradient(u)
+    grad_u = gradient(u, params=params["gradient"])
     mod_grad_u = grad_u * pml
-    mod_diag_jacobian = diag_jacobian(mod_grad_u) * pml
+    mod_diag_jacobian = diag_jacobian(
+        mod_grad_u, params=params["diag_jacobian"]) * pml
     nabla_u = sum_over_dims(mod_diag_jacobian)
 
     # Density term
     rho0 = medium.density
     if not (issubclass(type(rho0), Field)):
-        # Assume it is a number
         rho_u = 0.0
     else:
-        grad_rho0 = gradient(rho0)
+        grad_rho0 = gradient(rho0, params=params["gradient_rho0"])
         rho_u = sum_over_dims(mod_grad_u * grad_rho0) / rho0
 
     # Put everything together
@@ -161,10 +173,14 @@ def laplacian_with_pml(u: FiniteDifferences,
 
 def fourier_laplacian_with_pml_init(u: FourierSeries, medium: Medium, omega,
                                     *args, **kwargs):
-    return {
+    p = {
         "pml_on_grid": on_grid_pml_init(u, medium, omega),
         "fft_u": gradient.default_params(u),
     }
+    rho0 = medium.density
+    if issubclass(type(rho0), Field):
+        p["fft_rho0"] = gradient.default_params(rho0)
+    return p
 
 
 @operator(init_params=fourier_laplacian_with_pml_init)
@@ -208,9 +224,6 @@ def laplacian_with_pml(u: FourierSeries,
         assert isinstance(
             rho0, FourierSeries
         ), "rho0 must be a FourierSeries or a number when used with FourierSeries fields"
-
-        if not ("fft_rho0" in params.keys()):
-            params["fft_rho0"] = gradient.default_params(rho0)
 
         grad_rho0 = gradient(rho0, stagger=[0.5], params=params["fft_rho0"])
         dx = list(map(lambda x: -x / 2, u.domain.dx))
