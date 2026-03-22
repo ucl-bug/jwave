@@ -20,10 +20,10 @@ license = "LGPL-3.0-only"
 classifiers=[
   "Intended Audience :: Education",
   "Intended Audience :: Science/Research",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Environment :: GPU",
   "Environment :: GPU :: NVIDIA CUDA",
   "Environment :: GPU :: NVIDIA CUDA :: 11.6",
@@ -50,7 +50,7 @@ packages = [
 "Support" = "https://discord.gg/VtUb4fFznt"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.11"
 jaxdf = "^0.2.8"
 matplotlib = "^3.0.0"
 
