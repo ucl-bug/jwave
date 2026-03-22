@@ -1,83 +1,68 @@
-[tool.poetry]
+[project]
 name = "jwave"
 version = "0.2.1"
 description = "Fast and differentiable acoustic simulations in JAX."
-authors = [
-  "Antonio Stanziola <a.stanziola@ucl.ac.uk>",
-  "Simon Arridge",
-  "Ben T. Cox",
-  "Bradley E. Treeby",
-]
 readme = "README.md"
-keywords = [
-  "jax",
-  "acoustics",
-  "simulation",
-  "ultrasound",
-  "differentiable-programming"
+authors = [
+    { name = "Antonio Stanziola", email = "stanziola.antonio@gmail.com" },
+    { name = "Simon Arridge" },
+    { name = "Ben T. Cox" },
+    { name = "Bradley E. Treeby" },
 ]
 license = "LGPL-3.0-only"
-classifiers=[
-  "Intended Audience :: Education",
-  "Intended Audience :: Science/Research",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Environment :: GPU",
-  "Environment :: GPU :: NVIDIA CUDA",
-  "Environment :: GPU :: NVIDIA CUDA :: 11.6",
-  "Environment :: GPU :: NVIDIA CUDA :: 11.7",
-  "Environment :: GPU :: NVIDIA CUDA :: 11.8",
-  "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.0",
-  "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.1",
-  "Topic :: Scientific/Engineering",
-  "Topic :: Scientific/Engineering :: Artificial Intelligence",
-  "Topic :: Scientific/Engineering :: Physics",
-  "Topic :: Software Development",
-  "Topic :: Software Development :: Libraries",
-  "Topic :: Software Development :: Libraries :: Python Modules",
+keywords = ["jax", "acoustics", "simulation", "ultrasound", "differentiable-programming"]
+requires-python = ">=3.11"
+dependencies = [
+    "jaxdf>=0.2.8",
+    "matplotlib>=3.0.0",
+]
+classifiers = [
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Environment :: GPU",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-packages = [
-  { include="jwave", from="." }
-]
-
-[tool.poetry.urls]
-"Homepage" = "https://ucl-bug.github.io/jwave/"
-"Repository" = "https://github.com/ucl-bug/jwave"
+[project.urls]
+Homepage = "https://ucl-bug.github.io/jwave/"
+Repository = "https://github.com/ucl-bug/jwave"
 "Bug Tracker" = "https://github.com/ucl-bug/jwave/issues"
-"Support" = "https://discord.gg/VtUb4fFznt"
-
-[tool.poetry.dependencies]
-python = "^3.9"
-jaxdf = "^0.2.8"
-matplotlib = "^3.0.0"
-
-[tool.poetry.group.dev.dependencies]
-coverage = "^7.2.7"
-pytest = "^7.2.0"
-pre-commit = "^3.3.3"
-pycln = "^2.1.5"
-isort = "^5.12.0"
-griffe = "^0.29.1"
-mkdocs-material = "^9.1.16"
-mkdocstrings = "^0.22.0"
-mkdocs-jupyter = "^0.24.1"
-mkdocs-macros-plugin = "^1.0.1"
-mkdocs-mermaid2-plugin = "^0.6.0"
-mkdocstrings-python = "^1.1.2"
-python-kacl = "^0.4.6"
-pymdown-extensions = "^10.0.1"
-plumkdocs = "0.0.2"
-tqdm = "^4.65.0"
-opencv-python = "^4.7.0.72"
+Support = "https://discord.gg/VtUb4fFznt"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tools.isort]
+[tool.hatch.build.targets.wheel]
+packages = ["jwave"]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.2.7",
+    "isort>=5.12.0",
+    "mkdocs-jupyter>=0.24.1",
+    "mkdocs-mermaid2-plugin>=0.6.0",
+    "opencv-python>=4.7.0.72",
+    "plumkdocs>=1.0.1",
+    "pre-commit>=3.3.3",
+    "pycln>=2.1.5",
+    "pymdown-extensions>=10.0.1",
+    "pytest>=7.2.0",
+    "python-kacl>=0.4.6",
+    "tqdm>=4.65.0",
+]
+
+[tool.isort]
 src_paths = ["jwave", "tests"]
 multi_line_output = 3
 include_trailing_comma = true
@@ -100,11 +85,6 @@ check_untyped_defs = true
 show_error_codes = true
 ignore_missing_imports = true
 allow_redefinition = true
-
-[tool.yapf]
-based_on_style = "pep8"
-spaces_before_comment = 4
-split_before_logical_operator = true
 
 [tool.pytest.ini_options]
 addopts = """\
