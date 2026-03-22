@@ -8,11 +8,11 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/python-poetry-env
-      - name: Publish to pypi
-        run: |
-          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
-          poetry publish --build --no-interaction
+      - name: Build package
+        run: uv build
+      - name: Publish to PyPI
+        run: uv publish --token ${{ secrets.PYPI_TOKEN }}
       - name: Deploy docs
-        run: poetry run mkdocs gh-deploy --force
+        run: uv run mkdocs gh-deploy --force
