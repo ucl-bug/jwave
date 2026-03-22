@@ -17,6 +17,7 @@ from math import factorial
 from typing import Union
 
 import jax
+import numpy as np
 from jax import numpy as jnp
 from jax.lax import while_loop
 from jax.scipy.sparse.linalg import bicgstab, gmres
@@ -164,12 +165,12 @@ def _cbs_norm_units(medium, omega, k0, src):
     # Store conversion variables
     domain = medium.domain
     _conversion = {
-        "dx": jnp.mean(jnp.asarray(domain.dx)),
+        "dx": float(np.mean(domain.dx)),
         "omega": omega,
     }
 
     # Set discretization to 1
-    dx = tuple(map(lambda x: x / _conversion["dx"], domain.dx))
+    dx = tuple(float(x / _conversion["dx"]) for x in domain.dx)
     domain = Domain(domain.N, dx)
 
     # set omega to 1
@@ -197,7 +198,7 @@ def _cbs_norm_units(medium, omega, k0, src):
 
 def _cbs_unnorm_units(field, conversion):
     domain = field.domain
-    dx = tuple(map(lambda x: x * conversion["dx"], domain.dx))
+    dx = tuple(float(x * conversion["dx"]) for x in domain.dx)
     domain = Domain(domain.N, dx)
 
     return FourierSeries(field.params, domain)
