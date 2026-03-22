@@ -1098,7 +1098,7 @@ dev = [
     { name = "mkdocs-jupyter", specifier = ">=0.24.1" },
     { name = "mkdocs-mermaid2-plugin", specifier = ">=0.6.0" },
     { name = "opencv-python", specifier = ">=4.7.0.72" },
-    { name = "plumkdocs", specifier = ">=1.0.0" },
+    { name = "plumkdocs", specifier = ">=1.0.1" },
     { name = "pre-commit", specifier = ">=3.3.3" },
     { name = "pycln", specifier = ">=2.1.5" },
     { name = "pymdown-extensions", specifier = ">=10.0.1" },
@@ -2068,7 +2068,7 @@ wheels = [
 
 [[package]]
 name = "plumkdocs"
-version = "1.0.0"
+version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "griffe" },
@@ -2080,9 +2080,9 @@ dependencies = [
     { name = "plum-dispatch" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/44/01cb5d6611d13619959147aabbceb9fc35a1e62e687945d9ac80ead47624/plumkdocs-1.0.0.tar.gz", hash = "sha256:f5df08aaf75ebb8c60607a63dfa29a3b7726fd4c7b84870cab03bfa9fac5b198", size = 130899, upload-time = "2026-01-03T16:51:24.88Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/e5/a49e65c27c636d0a622bbaf3fa71d2abaac719c57fb517027a89f8754e76/plumkdocs-1.0.1.tar.gz", hash = "sha256:c66972249928e754d3c962530077cabae65bbd0a60ebcf293299b107c9724893", size = 136688, upload-time = "2026-03-22T10:48:24.177Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/27/0ade2abf92e10fe0549427ccb7792495dc994f1cea1301358fedfb7342a7/plumkdocs-1.0.0-py3-none-any.whl", hash = "sha256:bec75371ceb0e28d956a905cd521fd6020a4ea17c1d112e3c62dbd3314927bb1", size = 6576, upload-time = "2026-01-03T16:51:23.792Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/2f/868b0968c1f9a0e3237ccb8d6346ef1497d03ad7874b1364d896266c3d96/plumkdocs-1.0.1-py3-none-any.whl", hash = "sha256:f932307198ba9949af190518fdefab4e55ce9b01d0aad1523b0f495ca3ce0934", size = 6572, upload-time = "2026-03-22T10:48:22.85Z" },
 ]
 
 [[package]]
