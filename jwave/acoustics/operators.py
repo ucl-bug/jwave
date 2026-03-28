@@ -313,6 +313,43 @@ def helmholtz(u: OnGrid, medium: Medium, *, omega=1.0, params=None) -> OnGrid:
     return L + k
 
 
+def klein_gordon_init_params(u: Field,
+                             medium: Medium,
+                             omega,
+                             *args,
+                             **kwargs):
+    return helmholtz.default_params(u, medium, omega)
+
+
+@operator(init_params=klein_gordon_init_params)
+def klein_gordon(u: Field,
+                 medium: Medium,
+                 *,
+                 omega=1.0,
+                 mass=0.0,
+                 params=None) -> Field:
+    r"""Klein-Gordon operator: :math:`(\nabla^2 + k^2 - m^2)u`.
+
+    Extends the Helmholtz operator with a mass term.  The Klein-Gordon
+    equation arises in relativistic wave mechanics and describes massive
+    scalar fields.  Setting ``mass=0`` recovers the Helmholtz operator
+    exactly.
+
+    Args:
+      u (Field): Complex field.
+      medium (Medium): Medium object.
+      omega (float): Angular frequency.
+      mass (float): Mass parameter :math:`m`.
+      params (None, optional): Parameters for the underlying Helmholtz
+          operator.
+
+    Returns:
+      Field: Klein-Gordon operator applied to ``u``.
+    """
+    h = helmholtz(u, medium, omega=omega, params=params)
+    return h - mass**2 * u
+
+
 def scale_source_helmholtz(source: Field, medium: Medium) -> Field:
     if isinstance(medium.sound_speed, Field):
         min_sos = functional(medium.sound_speed)(jnp.amin)
